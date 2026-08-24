@@ -1,0 +1,29 @@
+{
+  "name": "zenx-go",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:integration": "pnpm --filter api test:integration",
+    "test:e2e": "pnpm --filter api test:db:prepare && pnpm --filter api test:db:reset && cross-env NEXT_PUBLIC_API_BASE_URL=http://localhost:4100/api/v1 pnpm build && turbo test:e2e",
+    "test:db:prepare": "pnpm --filter api test:db:prepare",
+    "test:db:reset": "pnpm --filter api test:db:reset",
+    "db:migrate": "pnpm --filter api prisma:deploy",
+    "db:seed": "pnpm --filter api prisma:seed",
+    "db:generate": "pnpm --filter api prisma:generate",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "cross-env": "^10.0.0",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,17 @@
+export default () => ({
+  nodeEnv: process.env.NODE_ENV ?? 'development',
+  port: Number(process.env.API_PORT ?? 4000),
+  webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+  databaseUrl: process.env.DATABASE_URL,
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret-change-me-32',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret-change-me-32',
+  cookieSecure: process.env.COOKIE_SECURE === 'true',
+  cookieDomain: process.env.COOKIE_DOMAIN || undefined,
+  termsVersion: process.env.TERMS_VERSION ?? '2026-01',
+  privacyVersion: process.env.PRIVACY_VERSION ?? '2026-01',
+  otpSmsProvider: process.env.OTP_SMS_PROVIDER ?? 'mock',
+  otpZaloProvider: process.env.OTP_ZALO_PROVIDER ?? 'mock',
+  otpEmailProvider: process.env.OTP_EMAIL_PROVIDER ?? 'mock',
+  otpMockFixedCode: process.env.OTP_MOCK_FIXED_CODE,
+  paymentProvider: process.env.PAYMENT_PROVIDER ?? 'mock',
+});
