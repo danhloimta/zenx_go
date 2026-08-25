@@ -119,6 +119,7 @@ export class ApiClient {
   private readonly baseUrl: string;
   private readonly defaultHeaders: HeadersInit;
   private readonly fetcher: typeof fetch;
+  private refreshPromise: Promise<unknown> | null = null;
 
   constructor(options: ApiClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? "/api/v1";
@@ -126,7 +127,7 @@ export class ApiClient {
     this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
   }
 
-  async request<T>(path: string, options: ApiRequestOptions = {}, query?: Query): Promise<T> {
+  async request<T>(path: string, options: ApiRequestOptions = {}, query?: Query, allowRefresh = true): Promise<T> {
     const headers = new Headers(this.defaultHeaders);
     for (const [key, value] of new Headers(options.headers).entries()) {
       headers.set(key, value);
@@ -147,7 +148,17 @@ export class ApiClient {
     const payload = await readPayload(response);
 
     if (!response.ok) {
-      throw ApiError.fromResponse(response, payload);
+      const error = ApiError.fromResponse(response, payload);
+      if (response.status === 401 && allowRefresh && !path.startsWith('/auth/')) {
+        try {
+          await this.refreshSession();
+          return this.request<T>(path, options, query, false);
+        } catch {
+          // Preserve the original error so callers can render the endpoint's
+          // auth failure when the refresh cookie is also expired.
+        }
+      }
+      throw error;
     }
 
     if (isRecord(payload) && "data" in payload && "error" in payload) {
@@ -159,6 +170,16 @@ export class ApiClient {
     }
 
     return payload as T;
+  }
+
+  private refreshSession() {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.request('/auth/refresh', { method: 'POST' }, undefined, false)
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+    return this.refreshPromise;
   }
 
   get<T>(path: string, query?: Query, options?: Omit<ApiRequestOptions, "method" | "body">) {
@@ -203,11 +224,15 @@ export type PaymentStatus =
   | "EXPIRED"
   | "CANCELLED"
   | "REFUNDED";
-export type PaymentMethod = "QR" | "REDIRECT";
+export type PaymentMethod = "MOMO" | "ZALOPAY" | "BANK_TRANSFER" | "CARD" | "VIETQR";
+/** @deprecated Accepted by older API deployments; new requests should use PaymentMethod. */
+export type LegacyPaymentMethod = "QR" | "REDIRECT";
 
 export interface AuthUser {
   id: string;
   username: string;
+  email?: string | null;
+  phone?: string | null;
   status?: AccountStatus;
 }
 
@@ -220,11 +245,7 @@ export interface RegisterRequest {
   email: string;
   phone: string;
   password: string;
-  fullName: string;
   verificationToken: string;
-  dateOfBirth: string;
-  gender: Gender;
-  city: string;
   acceptTerms: boolean;
   acceptPrivacy: boolean;
 }
@@ -275,11 +296,16 @@ export interface UserProfile {
   dateOfBirth?: string | null;
   gender?: Gender | null;
   city?: string | null;
+  address?: string | null;
+  profileCompletedAt?: string | null;
 }
 
 export interface AccountMe extends AuthUser {
   email?: string | null;
   phone?: string | null;
+  emailVerifiedAt?: string | null;
+  phoneVerifiedAt?: string | null;
+  hasPassword: boolean;
   profile: UserProfile;
   social: {
     google: boolean;
@@ -289,8 +315,16 @@ export interface AccountMe extends AuthUser {
 
 export interface UpdateAccountRequest extends Partial<UserProfile> {}
 
+export interface CompleteProfileRequest {
+  fullName: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  city?: string;
+  address?: string;
+}
+
 export interface ChangePasswordRequest {
-  currentPassword: string;
+  currentPassword?: string;
   newPassword: string;
 }
 
@@ -321,6 +355,14 @@ export interface WalletTransaction {
   referenceId?: string | null;
   createdAt: string;
   completedAt?: string | null;
+  payment?: {
+    paymentNo: string;
+    provider: string;
+    paymentMethod: PaymentMethod | string;
+    providerTransactionId?: string | null;
+    paidAt?: string | null;
+    status: PaymentStatus | string;
+  } | null;
 }
 
 export interface Paginated<T> {
@@ -328,6 +370,7 @@ export interface Paginated<T> {
   page: number;
   pageSize: number;
   total: number;
+  totalPages?: number;
 }
 
 export interface CoinPackage {
@@ -341,10 +384,14 @@ export interface CoinPackage {
 export interface Payment {
   paymentNo: string;
   status: PaymentStatus;
+  provider?: string;
+  providerTransactionId?: string | null;
   amountVnd: number | string;
   coinAmount: number | string;
   paymentMethod?: PaymentMethod | string;
   paymentUrl?: string | null;
+  qrPayload?: string | null;
+  displayMetadata?: Record<string, unknown> | null;
   createdAt?: string;
   paidAt?: string | null;
   expiredAt?: string | null;
@@ -352,7 +399,8 @@ export interface Payment {
 
 export interface CreatePaymentRequest {
   coinPackageId: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod | LegacyPaymentMethod;
+  idempotencyKey?: string;
 }
 
 export interface CreatePaymentResponse extends Payment {}
@@ -383,6 +431,12 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
     account: {
       me: () => client.get<AccountMe>("/account/me"),
       update: (input: UpdateAccountRequest) => client.patch<AccountMe>("/account/me", input),
+      completeProfile: (input: CompleteProfileRequest) => client.post<AccountMe>("/account/complete-profile", input),
+      uploadAvatar: (file: Blob | File) => {
+        const body = new FormData();
+        body.append("file", file);
+        return client.post<{ avatarUrl: string }>("/account/avatar", body);
+      },
       changePassword: (input: ChangePasswordRequest) =>
         client.post<void>("/account/change-password", input),
       changeEmail: (input: ChangeEmailRequest) =>
@@ -404,14 +458,52 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         status?: WalletTransactionStatus | "ALL";
         from?: string;
         to?: string;
+        search?: string;
       } = {}) =>
         client.get<Paginated<WalletTransaction>>("/wallet/transactions", {
           ...query,
           type: query.type === "ALL" ? undefined : query.type,
           status: query.status === "ALL" ? undefined : query.status,
+          from: optionalQuery(query.from),
+          to: optionalQuery(query.to),
+          search: optionalQuery(query.search),
         }),
       transaction: (transactionNo: string) =>
         client.get<WalletTransaction>(`/wallet/transactions/${encodeURIComponent(transactionNo)}`),
+      export: (query: {
+        type?: WalletTransactionType | "ALL";
+        status?: WalletTransactionStatus | "ALL";
+        from?: string;
+        to?: string;
+        search?: string;
+      } = {}) => client.get<string>("/wallet/transactions/export", {
+        ...query,
+        type: query.type === "ALL" ? undefined : query.type,
+        status: query.status === "ALL" ? undefined : query.status,
+        from: optionalQuery(query.from),
+        to: optionalQuery(query.to),
+        search: optionalQuery(query.search),
+      }),
+      exportTransactions: async (query: {
+        pageSize?: number;
+        type?: WalletTransactionType | "ALL";
+        status?: WalletTransactionStatus | "ALL";
+        from?: string;
+        to?: string;
+        search?: string;
+      } = {}) => {
+        const filters = { ...query };
+        delete filters.pageSize;
+        const csv = await client.get<string>("/wallet/transactions/export", {
+          ...filters,
+          type: filters.type === "ALL" ? undefined : filters.type,
+          status: filters.status === "ALL" ? undefined : filters.status,
+          from: optionalQuery(filters.from),
+          to: optionalQuery(filters.to),
+          search: optionalQuery(filters.search),
+        });
+        return new Blob([csv], { type: "text/csv;charset=utf-8" });
+      },
     },
     coinPackages: {
       list: () => client.get<CoinPackage[]>("/coin-packages"),
@@ -421,6 +513,8 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.post<CreatePaymentResponse>("/payments", input),
       get: (paymentNo: string) =>
         client.get<Payment>(`/payments/${encodeURIComponent(paymentNo)}`),
+      mockComplete: (paymentNo: string) =>
+        client.post<Payment>(`/payments/${encodeURIComponent(paymentNo)}/mock-complete`),
       list: () => client.get<Payment[]>("/payments"),
     },
   };
@@ -428,6 +522,11 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
 
 function clientBasePath(baseUrl = "/api/v1") {
   return baseUrl.replace(/\/$/, "");
+}
+
+function optionalQuery(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
 }
 
 export type ZenxApiClient = ReturnType<typeof createZenxApiClient>;

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard';
+import { DomainError, ErrorCode } from '../common/errors';
 import { CreatePaymentDto, PaymentCallbackDto } from './dto';
 import { PaymentService } from './payment.service';
 
@@ -15,10 +16,15 @@ export class PaymentController {
   @UseGuards(AuthGuard)
   @Get('payments/:paymentNo') get(@Req() request: AuthenticatedRequest, @Param('paymentNo') no: string) { return this.payments.get(request.user.sub, no); }
   @UseGuards(AuthGuard)
+  @Post('payments/:paymentNo/mock-complete') mockComplete(@Req() request: AuthenticatedRequest, @Param('paymentNo') no: string) { return this.payments.mockComplete(request.user.sub, no); }
+  @UseGuards(AuthGuard)
   @Get('payments') list(@Req() request: AuthenticatedRequest) { return this.payments.list(request.user.sub); }
 
   @Post('payments/:provider/callback')
-  callback(@Req() request: Request, @Headers('x-payment-signature') signature: string, @Body() dto: PaymentCallbackDto) {
+  callback(@Req() request: Request, @Headers('x-payment-signature') signature: string | undefined, @Body() dto: PaymentCallbackDto) {
+    if (!signature?.trim()) {
+      throw new DomainError(ErrorCode.INVALID_PAYMENT_CALLBACK, 'Payment callback signature is required', 400);
+    }
     const rawBody = (request as Request & { rawBody?: Buffer }).rawBody?.toString('utf8') ?? JSON.stringify(dto);
     return this.payments.callback(rawBody, signature, dto as unknown as Record<string, unknown>);
   }

@@ -1,112 +1,144 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useState } from "react";
-import type { WalletTransactionStatus, WalletTransactionType } from "@zenx-go/api-client";
-import { ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
-import { useWallet, useWalletTransactions } from "@/hooks/use-wallet";
-import { formatAmount, formatDate } from "@/lib/utils";
-import { getErrorMessage } from "@/lib/errors";
-import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { LinkButton } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import Link from 'next/link';
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Coins, WalletCards } from 'lucide-react';
+import { useWallet, useWalletTransactions } from '@/hooks/use-wallet';
+import { formatAmount, formatDate, isPositiveTransaction } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
+import { ZenxCoinGoldIcon } from '@/components/icons';
 
 export default function WalletPage() {
-  const [type, setType] = useState<WalletTransactionType | "ALL">("ALL");
-  const [status, setStatus] = useState<WalletTransactionStatus | "ALL">("ALL");
   const wallet = useWallet();
-  const transactions = useWalletTransactions({ type, status });
+  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="max-w-[1100px] mx-auto space-y-6 pb-10">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <p className="text-sm font-medium text-primary">Wallet</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Ví ZENX Coin</h1>
-          <p className="mt-2 text-muted-foreground">Theo dõi số dư và toàn bộ ledger giao dịch.</p>
+          <h1 className="text-xl font-bold text-slate-900">Số dư ví</h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Theo dõi số dư và các giao dịch gần đây trong tài khoản.
+          </p>
         </div>
-        <LinkButton href="/payment" size="lg"><Coins className="mr-2 size-4" /> Nạp Coin</LinkButton>
+        <Button asChild className="gap-2 font-semibold text-xs shadow-sm">
+          <Link href="/payment">
+            <Coins className="size-4" />
+            Nạp Coin
+          </Link>
+        </Button>
       </div>
 
       {wallet.isLoading ? (
-        <Skeleton className="h-44" />
+        <Skeleton className="h-44 rounded-2xl" />
       ) : wallet.isError ? (
-        <Alert>{getErrorMessage(wallet.error, "Không thể tải số dư ví.")}</Alert>
+        <Alert>{getErrorMessage(wallet.error, 'Không thể tải số dư ví.')}</Alert>
       ) : (
-        <Card className="overflow-hidden border-0 bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-soft">
-          <CardContent className="flex flex-col justify-between gap-8 p-7 sm:flex-row sm:items-end">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-blue-100">Số dư hiện tại</p>
-              <p className="mt-2 text-4xl font-semibold tracking-tight">{formatAmount(wallet.data?.balance ?? 0)}</p>
-              <p className="mt-2 text-sm text-blue-100">{wallet.data?.currency ?? "ZENX"} Coin</p>
+              <p className="text-xs font-semibold text-slate-500">Số dư hiện tại</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-4xl font-black text-slate-900 tracking-tight">
+                  {formatAmount(wallet.data?.balance)}
+                </span>
+                <span className="flex items-center gap-1 text-sm font-bold text-[#00873E]">
+                  <ZenxCoinGoldIcon className="size-4" /> ZENX Coin
+                </span>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur">
-              <Coins className="size-8 text-blue-100" />
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F7EC] text-[#00873E]">
+              <WalletCards className="size-7" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      <Card>
-        <CardHeader className="gap-4 sm:flex-row sm:items-end sm:justify-between">
+      {/* Recent Transactions */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Lịch sử giao dịch</CardTitle>
-            <CardDescription>Mỗi thay đổi số dư đều được ghi nhận trong ledger.</CardDescription>
+            <h2 className="text-base font-bold text-slate-900">Giao dịch gần đây</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Các thay đổi số dư mới nhất của bạn.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Select aria-label="Lọc theo loại" value={type} onChange={(event) => setType(event.target.value as typeof type)} className="w-auto min-w-32">
-              <option value="ALL">Tất cả loại</option>
-              <option value="TOPUP">Nạp</option>
-              <option value="CREDIT">Cộng</option>
-              <option value="DEBIT">Trừ</option>
-              <option value="REFUND">Hoàn</option>
-            </Select>
-            <Select aria-label="Lọc theo trạng thái" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className="w-auto min-w-32">
-              <option value="ALL">Tất cả trạng thái</option>
-              <option value="SUCCESS">Thành công</option>
-              <option value="PENDING">Đang xử lý</option>
-              <option value="FAILED">Thất bại</option>
-              <option value="REVERSED">Đã đảo</option>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
+          <Button asChild variant="zenx-outline" size="sm" className="text-xs font-semibold">
+            <Link href="/wallet/transactions">
+              Xem tất cả <ArrowRight className="ml-1.5 size-3.5" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="mt-6">
           {transactions.isLoading ? (
-            <div className="space-y-3"><Skeleton className="h-14" /><Skeleton className="h-14" /><Skeleton className="h-14" /></div>
+            <div className="space-y-3">
+              <Skeleton className="h-14 rounded-xl" />
+              <Skeleton className="h-14 rounded-xl" />
+              <Skeleton className="h-14 rounded-xl" />
+            </div>
           ) : transactions.isError ? (
-            <Alert>{getErrorMessage(transactions.error, "Không thể tải lịch sử giao dịch.")}</Alert>
+            <Alert>{getErrorMessage(transactions.error, 'Không thể tải lịch sử giao dịch.')}</Alert>
           ) : transactions.data?.items.length ? (
-            <div className="divide-y">
-              {transactions.data.items.map((transaction) => {
-                const positive = transaction.type === "TOPUP" || transaction.type === "CREDIT" || transaction.type === "REFUND";
+            <div className="divide-y divide-slate-100">
+              {transactions.data.items.slice(0, 5).map((transaction) => {
+                const isPositive = isPositiveTransaction(transaction.type);
                 return (
-                  <Link key={transaction.transactionNo} href={`/wallet/transactions/${encodeURIComponent(transaction.transactionNo)}`} className="flex items-center justify-between gap-4 py-4 transition-colors hover:bg-muted/40">
+                  <Link
+                    key={transaction.transactionNo}
+                    href={`/wallet/transactions?transaction=${encodeURIComponent(
+                      transaction.transactionNo,
+                    )}`}
+                    className="flex items-center justify-between gap-4 py-3.5 transition hover:bg-slate-50 -mx-2 px-2 rounded-lg"
+                  >
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${positive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                        {positive ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
+                      <span
+                        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                          isPositive
+                            ? 'bg-[#E8F7EC] text-[#00873E]'
+                            : 'bg-red-50 text-red-500'
+                        }`}
+                      >
+                        {isPositive ? (
+                          <ArrowDownLeft className="size-4" />
+                        ) : (
+                          <ArrowUpRight className="size-4" />
+                        )}
                       </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{transaction.description || transaction.type}</span>
-                        <span className="block text-xs text-muted-foreground">{transaction.transactionNo} · {formatDate(transaction.createdAt)}</span>
-                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-slate-900">
+                          {transaction.description || (isPositive ? 'Nạp Coin' : 'Trừ Coin')}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {formatDate(transaction.createdAt)}
+                        </p>
+                      </div>
                     </div>
-                    <span className="shrink-0 text-right">
-                      <span className={`block font-semibold ${positive ? "text-emerald-700" : "text-red-700"}`}>{positive ? "+" : "−"}{formatAmount(transaction.amount)}</span>
-                      <Badge variant={transaction.status === "SUCCESS" ? "success" : transaction.status === "FAILED" ? "destructive" : "warning"}>{transaction.status}</Badge>
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-xs font-bold ${
+                          isPositive ? 'text-[#00873E]' : 'text-red-500'
+                        }`}
+                      >
+                        {isPositive ? '+' : '-'}
+                        {formatAmount(transaction.amount)} ZENX
+                      </p>
+                      <div className="mt-1">
+                        <StatusBadge status={transaction.status} />
+                      </div>
+                    </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">Chưa có giao dịch phù hợp.</div>
+            <p className="py-10 text-center text-xs text-slate-400">Chưa có giao dịch nào.</p>
           )}
-          {transactions.data ? <p className="mt-5 text-xs text-muted-foreground">Hiển thị {transactions.data.items.length} / {transactions.data.total} giao dịch.</p> : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

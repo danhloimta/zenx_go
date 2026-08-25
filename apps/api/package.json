@@ -5,7 +5,7 @@
   "scripts": {
     "prebuild": "prisma generate",
     "build": "nest build",
-    "dev": "nest start --watch",
+    "dev": "nest start --watch --preserveWatchOutput",
     "start": "node dist/src/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
@@ -34,6 +34,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.6.1",
+    "express": "^5.2.1",
     "joi": "^17.13.3",
     "nestjs-pino": "^4.4.0",
     "pino-http": "^10.5.0",

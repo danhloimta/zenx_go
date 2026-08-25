@@ -6,9 +6,9 @@ import { ArrowLeft, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
-import { formatAmount, formatDate } from "@/lib/utils";
+import { formatAmount, formatDate, isPositiveTransaction, paymentMethodLabel, transactionTypeLabel } from "@/lib/utils";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,11 +26,11 @@ export default function TransactionDetailPage() {
   if (query.isError || !query.data) return <Alert>{getErrorMessage(query.error, "Không thể tải chi tiết giao dịch.")}</Alert>;
 
   const transaction = query.data;
-  const positive = transaction.type !== "DEBIT";
+  const positive = isPositiveTransaction(transaction.type);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Button asChild variant="ghost" size="sm"><Link href="/wallet"><ArrowLeft className="mr-2 size-4" /> Quay lại ví</Link></Button>
+      <Button asChild variant="ghost" size="sm"><Link href="/wallet/transactions"><ArrowLeft className="mr-2 size-4" /> Quay lại lịch sử giao dịch</Link></Button>
       <Card>
         <CardHeader>
           <CardTitle>Chi tiết giao dịch</CardTitle>
@@ -47,12 +47,14 @@ export default function TransactionDetailPage() {
             </div>
           </div>
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <Detail label="Loại" value={transaction.type} />
-            <Detail label="Trạng thái" value={<Badge variant={transaction.status === "SUCCESS" ? "success" : transaction.status === "FAILED" ? "destructive" : "warning"}>{transaction.status}</Badge>} />
+            <Detail label="Loại" value={transactionTypeLabel(transaction.type)} />
+            <Detail label="Trạng thái" value={<StatusBadge status={transaction.status} />} />
             <Detail label="Thời gian tạo" value={formatDate(transaction.createdAt)} />
             <Detail label="Hoàn tất lúc" value={formatDate(transaction.completedAt)} />
-            <Detail label="Số dư trước" value={formatAmount(transaction.balanceBefore ?? "—")} />
-            <Detail label="Số dư sau" value={formatAmount(transaction.balanceAfter ?? "—")} />
+            <Detail label="Số dư trước" value={formatAmount(transaction.balanceBefore, " ZENX")} />
+            <Detail label="Số dư sau" value={formatAmount(transaction.balanceAfter, " ZENX")} />
+            <Detail label="Kênh thanh toán" value={paymentMethodLabel(transaction.payment?.paymentMethod)} />
+            <Detail label="Mã payment" value={transaction.payment?.paymentNo ?? "—"} />
             <Detail label="Reference" value={transaction.referenceId ? `${transaction.referenceType ?? ""} · ${transaction.referenceId}` : "—"} />
             <Detail label="Mô tả" value={transaction.description || "—"} />
           </dl>

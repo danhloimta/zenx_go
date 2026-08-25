@@ -44,8 +44,7 @@ export class AuthService {
         phone: dto.phone.trim(), phoneNormalized, passwordHash, status: AccountStatus.ACTIVE,
         phoneVerifiedAt: new Date(),
         profile: { create: {
-          fullName: dto.fullName.trim(), dateOfBirth: new Date(dto.dateOfBirth), gender: dto.gender,
-          city: dto.city.trim(), termsVersion: this.config.getOrThrow('termsVersion'),
+          fullName: dto.username.trim(), gender: 'UNSPECIFIED', termsVersion: this.config.getOrThrow('termsVersion'),
           privacyVersion: this.config.getOrThrow('privacyVersion'), acceptedAt: new Date(),
         } },
         wallet: { create: { currency: 'ZENX', balance: 0n } },
@@ -56,14 +55,39 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthTokens> {
-    const identity = normalizeUsername(dto.username);
-    const user = await this.prisma.user.findUnique({ where: { usernameNormalized: identity }, include: { profile: true } });
+    const identity = dto.username.trim();
+    const usernameNormalized = normalizeUsername(identity);
+    const emailNormalized = normalizeEmail(identity);
+    const user = await this.prisma.user.findFirst({ where: { OR: [{ usernameNormalized }, { emailNormalized }] }, include: { profile: true } });
     if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) {
-      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Invalid username or password', 401);
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Invalid username/email or password', 401);
     }
     if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
     if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
     return this.issueTokens(user.id, user.username, user);
+  }
+
+  async loginWithSocial(userId: string): Promise<AuthTokens> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
+    if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    return this.issueTokens(user.id, user.username, user);
+  }
+
+  async verifyAccessToken(token?: string): Promise<{ sub: string; username: string }> {
+    if (!token) throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
+    let payload: { sub: string; username: string };
+    try {
+      payload = await this.jwt.verifyAsync<{ sub: string; username: string }>(token);
+    } catch {
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { status: true } });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
+    if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    return payload;
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {

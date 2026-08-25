@@ -41,6 +41,8 @@ model UserProfile {
   dateOfBirth    DateTime? @map("date_of_birth") @db.Date
   gender         String    @default("UNSPECIFIED") @db.VarChar(16)
   city           String?   @db.NVarChar(120)
+  address        String?   @db.NVarChar(255)
+  profileCompletedAt DateTime? @map("profile_completed_at")
   termsVersion   String    @map("terms_version") @db.NVarChar(32)
   privacyVersion String    @map("privacy_version") @db.NVarChar(32)
   acceptedAt     DateTime  @map("accepted_at")
@@ -152,6 +154,7 @@ model WalletTransaction {
 
   @@index([walletId, createdAt])
   @@index([userId, createdAt])
+  @@index([userId, idempotencyKey])
   @@map("wallet_transactions")
 }
 
@@ -181,6 +184,7 @@ model Payment {
   provider              String             @db.VarChar(64)
   paymentMethod         String             @map("payment_method") @db.VarChar(32)
   providerTransactionId String?            @map("provider_transaction_id") @db.VarChar(255)
+  idempotencyKey        String?            @map("idempotency_key") @db.VarChar(255)
   providerPayload       String?            @map("provider_payload") @db.NVarChar(4000)
   status                String             @default("CREATED") @db.VarChar(16)
   createdAt             DateTime           @default(now()) @map("created_at")
@@ -192,6 +196,7 @@ model Payment {
   walletTransactions    WalletTransaction[]
 
   @@index([userId, createdAt])
+  @@index([userId, idempotencyKey])
   @@index([status, createdAt])
   @@map("payments")
 }

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
@@ -24,7 +25,13 @@ import { randomUUID } from 'node:crypto';
         redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 30 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [{
+        ttl: config.get<number>('rateLimitTtlMs') ?? 60_000,
+        limit: config.get<number>('rateLimitMax') ?? 30,
+      }],
+    }),
     HealthModule,
     AuthModule,
     OtpModule,

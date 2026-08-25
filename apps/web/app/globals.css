@@ -3,23 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
+  --background: 150 20% 98%;
+  --foreground: 222 28% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 214 32% 91%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 214 95% 93%;
-  --accent-foreground: 221 83% 40%;
+  --card-foreground: 222 28% 11%;
+  --primary: 147 100% 26.5%; /* #00873E */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 140 27% 94%;
+  --secondary-foreground: 147 100% 23%;
+  --muted: 150 18% 96%;
+  --muted-foreground: 215 12% 45%;
+  --accent: 140 33% 94%;
+  --accent-foreground: 147 100% 23%;
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214 32% 87%;
-  --input: 214 32% 87%;
-  --ring: 221 83% 53%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 19% 88%;
+  --input: 214 19% 84%;
+  --ring: 147 100% 26.5%;
   --radius: 0.75rem;
 }
 
@@ -28,8 +28,9 @@
 }
 
 body {
-  @apply bg-background text-foreground antialiased;
+  @apply bg-[#f8fafc] text-foreground antialiased;
   min-height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 button,
@@ -42,4 +43,42 @@ textarea {
 
 ::selection {
   @apply bg-primary/20 text-foreground;
+}
+
+input[type="date"] {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+input[type="date"]::-webkit-datetime-edit {
+  display: inline-flex;
+  padding: 0;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  cursor: pointer;
+  opacity: 0.6;
+  font-size: 18px;
+  transition: opacity 0.2s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+@layer utilities {
+  .shadow-soft {
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  }
+
+  .shadow-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
 }

@@ -2,22 +2,23 @@ import Link from "next/link";
 import { cloneElement, isValidElement, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "default" | "outline" | "secondary" | "ghost" | "destructive";
+type ButtonVariant = "default" | "outline" | "secondary" | "ghost" | "destructive" | "zenx-outline";
 type ButtonSize = "default" | "sm" | "lg" | "icon";
 
 const variants: Record<ButtonVariant, string> = {
-  default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
-  outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-  ghost: "hover:bg-accent hover:text-accent-foreground",
-  destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+  default: "bg-[#00873E] text-white shadow-sm hover:bg-[#007234]",
+  outline: "border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+  "zenx-outline": "border border-[#00873E] bg-white text-[#00873E] hover:bg-[#E8F7EC]",
+  secondary: "bg-[#E8F7EC] text-[#00873E] hover:bg-[#D9F2DF]",
+  ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+  destructive: "bg-red-600 text-white hover:bg-red-700",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  default: "h-10 px-4 py-2",
-  sm: "h-9 rounded-md px-3 text-sm",
-  lg: "h-11 rounded-lg px-8",
-  icon: "size-10",
+  default: "h-11 px-5 py-2 text-sm",
+  sm: "h-9 rounded-lg px-3.5 text-xs font-medium",
+  lg: "h-12 rounded-lg px-8 text-base",
+  icon: "size-10 rounded-lg",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,7 +33,7 @@ export function Button({ className, variant = "default", size = "default", asChi
     if (isValidElement<{ className?: string }>(child)) {
       return cloneElement(child, {
         className: cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
           variants[variant],
           sizes[size],
           child.props.className,
@@ -44,7 +45,7 @@ export function Button({ className, variant = "default", size = "default", asChi
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,
@@ -71,7 +72,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20",
         variants[variant],
         sizes[size],
         className,

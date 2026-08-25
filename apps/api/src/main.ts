@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import { AppModule } from './app.module';
 import { ApiErrorFilter } from './common/error.filter';
 import { ResponseInterceptor } from './common/response.interceptor';
@@ -14,6 +15,7 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
   app.use(cookieParser());
+  app.use('/uploads', express.static(config.getOrThrow<string>('uploadDir')));
   app.setGlobalPrefix('api/v1');
   app.enableCors({ origin: config.getOrThrow<string>('webOrigin'), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidUnknownValues: true }));

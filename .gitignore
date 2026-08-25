@@ -2,6 +2,8 @@ node_modules
 .pnpm-store
 dist
 .next
+.next-e2e
+.next-release
 coverage
 .env
 .env.*
@@ -10,3 +12,4 @@ coverage
 docker-data
 playwright-report
 test-results
+.turbo

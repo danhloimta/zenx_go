@@ -1,16 +1,12 @@
-import { Gender, OtpChannel, OtpPurpose } from '../common/domain';
-import { IsBoolean, IsDateString, IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { OtpChannel, OtpPurpose } from '../common/domain';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString() @MinLength(3) username!: string;
   @IsEmail() email!: string;
   @IsString() @Matches(/^\+?[0-9\s().-]{8,20}$/) phone!: string;
   @IsString() @MinLength(8) password!: string;
-  @IsString() @MinLength(1) fullName!: string;
   @IsString() verificationToken!: string;
-  @IsDateString() dateOfBirth!: string;
-  @IsEnum(Gender) gender!: Gender;
-  @IsString() city!: string;
   @IsBoolean() acceptTerms!: boolean;
   @IsBoolean() acceptPrivacy!: boolean;
 }

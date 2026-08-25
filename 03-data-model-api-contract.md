@@ -285,6 +285,7 @@ coin_amount
 
 provider
 payment_method
+idempotency_key
 
 provider_transaction_id
 
@@ -312,6 +313,7 @@ Constraint nên có:
 
 ```text
 provider_transaction_id UNIQUE
+user_id + idempotency_key UNIQUE (khi idempotency_key có giá trị)
 ```
 
 nếu provider đảm bảo ID ổn định.
@@ -596,6 +598,9 @@ Response:
     "username": "player01",
     "email": "player@example.com",
     "phone": "+84901234567",
+    "emailVerifiedAt": "2026-01-01T00:00:00.000Z",
+    "phoneVerifiedAt": "2026-01-01T00:00:00.000Z",
+    "hasPassword": true,
     "profile": {
       "fullName": "Player One",
       "dateOfBirth": "2000-01-01",
@@ -799,7 +804,8 @@ Request:
 ```json
 {
   "coinPackageId": "pkg_100",
-  "paymentMethod": "QR"
+  "paymentMethod": "QR",
+  "idempotencyKey": "client-generated-request-key"
 }
 ```
 
@@ -848,6 +854,14 @@ Lịch sử payment của user.
 
 Endpoint dành cho payment provider.
 
+Header bắt buộc:
+
+```text
+x-payment-signature: <signature>
+```
+
+Chữ ký không nằm trong JSON body; body chỉ chứa `providerTransactionId`, `paymentNo` và `status`.
+
 Rule:
 
 1. Verify signature.
@@ -859,6 +873,8 @@ Rule:
    - cộng Coin;
    - commit atomically.
 6. Duplicate callback không được cộng Coin lần hai.
+
+Ở môi trường demo dùng `PAYMENT_PROVIDER=mock`, response không chứa checkout URL bên ngoài; payment chỉ được hoàn tất qua mock callback.
 
 ---
 

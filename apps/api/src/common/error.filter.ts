@@ -44,7 +44,7 @@ export class ApiErrorFilter implements ExceptionFilter {
       if (typeof payload === 'string') message = payload;
       else if (payload && typeof payload === 'object') {
         const body = payload as { message?: string | string[]; error?: string };
-        code = body.error ?? `HTTP_${status}`;
+        code = body.error ? normalizeHttpErrorCode(body.error) : `HTTP_${status}`;
         message = Array.isArray(body.message) ? body.message.join(', ') : body.message ?? message;
         details = Array.isArray(body.message) ? body.message : undefined;
       }
@@ -58,4 +58,12 @@ export class ApiErrorFilter implements ExceptionFilter {
       meta: { requestId: request.id },
     });
   }
+}
+
+function normalizeHttpErrorCode(error: string) {
+  return error
+    .trim()
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .replace(/\s+/g, '_')
+    .toUpperCase();
 }

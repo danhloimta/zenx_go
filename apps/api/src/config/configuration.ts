@@ -14,4 +14,26 @@ export default () => ({
   otpEmailProvider: process.env.OTP_EMAIL_PROVIDER ?? 'mock',
   otpMockFixedCode: process.env.OTP_MOCK_FIXED_CODE,
   paymentProvider: process.env.PAYMENT_PROVIDER ?? 'mock',
+  uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
+  rateLimitTtlMs: Number(process.env.RATE_LIMIT_TTL_MS ?? 60_000),
+  rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 30),
+  oauthStateSecret: process.env.OAUTH_STATE_SECRET ?? process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret-change-me-32',
+  oauth: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI,
+      authorizationUrl: process.env.GOOGLE_AUTHORIZATION_URL,
+      tokenUrl: process.env.GOOGLE_TOKEN_URL,
+      userInfoUrl: process.env.GOOGLE_USERINFO_URL,
+    },
+    facebook: {
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      redirectUri: process.env.FACEBOOK_REDIRECT_URI,
+      authorizationUrl: process.env.FACEBOOK_AUTHORIZATION_URL,
+      tokenUrl: process.env.FACEBOOK_TOKEN_URL,
+      userInfoUrl: process.env.FACEBOOK_USERINFO_URL,
+    },
+  },
 });

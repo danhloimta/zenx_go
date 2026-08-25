@@ -5,9 +5,10 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { OtpModule } from '../otp/otp.module';
+import { SocialModule } from '../social/social.module';
 
 @Module({
-  imports: [OtpModule, JwtModule.registerAsync({ inject: [ConfigService], useFactory: (config: ConfigService) => ({ secret: config.getOrThrow('jwtAccessSecret') }) })],
+  imports: [OtpModule, SocialModule, JwtModule.registerAsync({ inject: [ConfigService], useFactory: (config: ConfigService) => ({ secret: config.getOrThrow('jwtAccessSecret') }) })],
   controllers: [AuthController],
   providers: [AuthService, AuthGuard],
   exports: [AuthService, AuthGuard, JwtModule],

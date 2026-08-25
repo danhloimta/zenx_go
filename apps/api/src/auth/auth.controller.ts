@@ -1,14 +1,17 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { ACCESS_COOKIE, REFRESH_COOKIE, ACCESS_TTL_SECONDS, REFRESH_TTL_SECONDS } from '../common/constants';
 import { AuthGuard, AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto, LoginDto, RefreshDto, RegisterDto, ResetPasswordDto } from './dto';
+import { SocialProvider } from '../common/domain';
+import { DomainError } from '../common/errors';
+import { OAuthMode, SocialService } from '../social/social.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService, private readonly config: ConfigService) {}
+  constructor(private readonly auth: AuthService, private readonly config: ConfigService, private readonly social: SocialService) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -44,16 +47,97 @@ export class AuthController {
   me(@Req() request: AuthenticatedRequest) { return { userId: request.user.sub, username: request.user.username }; }
 
   @Get('google')
-  google() { return { data: { provider: 'GOOGLE', status: 'adapter_pending' } }; }
+  google(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string) {
+    return this.startOAuth('GOOGLE', request, response, mode);
+  }
 
   @Get('google/callback')
-  googleCallback() { return { data: { provider: 'GOOGLE', status: 'adapter_pending' } }; }
+  googleCallback(@Req() request: Request, @Res() response: Response, @Query('code') code?: string, @Query('state') state?: string, @Query('error') error?: string) {
+    return this.completeOAuth('GOOGLE', request, response, code, state, error);
+  }
 
   @Get('facebook')
-  facebook() { return { data: { provider: 'FACEBOOK', status: 'adapter_pending' } }; }
+  facebook(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string) {
+    return this.startOAuth('FACEBOOK', request, response, mode);
+  }
 
   @Get('facebook/callback')
-  facebookCallback() { return { data: { provider: 'FACEBOOK', status: 'adapter_pending' } }; }
+  facebookCallback(@Req() request: Request, @Res() response: Response, @Query('code') code?: string, @Query('state') state?: string, @Query('error') error?: string) {
+    return this.completeOAuth('FACEBOOK', request, response, code, state, error);
+  }
+
+  private async startOAuth(provider: SocialProvider, request: Request, response: Response, rawMode?: string) {
+    const mode: OAuthMode = rawMode === 'link' ? 'link' : 'login';
+    try {
+      let userId: string | undefined;
+      if (mode === 'link') {
+        const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
+        userId = access.sub;
+      }
+      const authorization = this.social.getAuthorizationUrl(provider, mode, userId);
+      const stateCookieName = this.social.stateCookieName(provider);
+      response.cookie(stateCookieName, this.social.appendState(request.cookies?.[stateCookieName], authorization.state), {
+        ...this.cookieOptions(),
+        maxAge: 10 * 60 * 1000,
+        path: `/api/v1/auth/${provider.toLowerCase()}`,
+      });
+      return response.redirect(authorization.url);
+    } catch (error) {
+      return this.redirectOAuthError(response, mode, this.errorCode(error));
+    }
+  }
+
+  private async completeOAuth(provider: SocialProvider, request: Request, response: Response, code?: string, state?: string, providerError?: string) {
+    const mode: OAuthMode = 'login';
+    const stateCookie = this.social.stateCookieName(provider);
+    const cookieState = request.cookies?.[stateCookie] as string | undefined;
+    let oauthState: ReturnType<SocialService['verifyState']> | undefined;
+    try {
+      oauthState = this.social.verifyState(provider, state, cookieState);
+      const remainingState = this.social.removeState(cookieState, state!);
+      if (remainingState) {
+        response.cookie(stateCookie, remainingState, {
+          ...this.cookieOptions(),
+          maxAge: 10 * 60 * 1000,
+          path: `/api/v1/auth/${provider.toLowerCase()}`,
+        });
+      } else {
+        response.clearCookie(stateCookie, { ...this.cookieOptions(), path: `/api/v1/auth/${provider.toLowerCase()}` });
+      }
+      if (providerError) return this.redirectOAuthError(response, oauthState.mode, 'provider_cancelled');
+      const profile = await this.social.exchangeCode(provider, code ?? '');
+      if (oauthState.mode === 'link') {
+        const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
+        if (access.sub !== oauthState.userId) throw new DomainError('INVALID_OAUTH_STATE', 'OAuth session does not belong to the signed-in user', 401);
+        await this.social.linkIdentity(oauthState.userId!, provider, profile);
+        return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}/account/social?social=linked&provider=${provider.toLowerCase()}`);
+      }
+
+      const userId = await this.social.loginIdentity(provider, profile);
+      const tokens = await this.auth.loginWithSocial(userId);
+      this.withCookies(response, tokens);
+      return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}/account`);
+    } catch (error) {
+      return this.redirectOAuthError(response, oauthState?.mode ?? mode, this.errorCode(error));
+    }
+  }
+
+  private redirectOAuthError(response: Response, mode: OAuthMode, code: string) {
+    const path = mode === 'link' ? '/account/social' : '/auth/login';
+    return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}${path}?social_error=${encodeURIComponent(code)}`);
+  }
+
+  private errorCode(error: unknown) {
+    if (error instanceof DomainError) {
+      if (error.code === 'SOCIAL_NOT_CONFIGURED') return 'not_configured';
+      if (error.code === 'SOCIAL_NOT_LINKED') return 'not_linked';
+      if (error.code === 'SOCIAL_ALREADY_LINKED') return 'already_linked';
+      if (error.code === 'SOCIAL_LINKED_TO_ANOTHER_ACCOUNT') return 'linked_to_another_account';
+      if (error.code === 'CANNOT_UNLINK_LAST_LOGIN_METHOD') return 'last_login_method';
+      if (error.code === 'INVALID_OAUTH_STATE') return 'invalid_state';
+    }
+    return 'oauth_failed';
+  }
 
   private withCookies(response: Response, tokens: { accessToken: string; refreshToken: string; user: unknown }) {
     response.cookie(ACCESS_COOKIE, tokens.accessToken, { ...this.cookieOptions(), maxAge: ACCESS_TTL_SECONDS * 1000 });

@@ -1,7 +1,7 @@
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
-  parserOptions: { project: './tsconfig.json' },
+  parserOptions: { project: ['./tsconfig.json', './tsconfig.eslint.json'] },
   plugins: ['@typescript-eslint'],
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
   ignorePatterns: ['dist', 'prisma/generated'],

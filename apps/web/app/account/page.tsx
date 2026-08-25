@@ -1,361 +1,342 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
-import { api } from "@/lib/api";
-import { getErrorMessage } from "@/lib/errors";
-import { useAccount } from "@/hooks/use-account";
-import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import Link from 'next/link';
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Coins,
+  CreditCard,
+  KeyRound,
+  Lock,
+  Mail,
+  Phone,
+  ShieldCheck,
+  UserRound,
+  Wallet,
+} from 'lucide-react';
+import { useAccount } from '@/hooks/use-account';
+import { useWallet, useWalletTransactions } from '@/hooks/use-wallet';
+import { formatAmount, formatDate, mediaUrl, multiplyIntegerAmount } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
+import { ZenxCoinGoldIcon, GoogleIcon, FacebookIcon } from '@/components/icons';
 
-const profileSchema = z.object({
-  fullName: z.string().trim().min(2, "Vui lòng nhập họ tên."),
-  avatarUrl: z.string().url("Avatar cần là URL hợp lệ.").or(z.literal("")),
-  dateOfBirth: z.string(),
-  gender: z.enum(["MALE", "FEMALE", "OTHER", "UNSPECIFIED"]),
-  city: z.string().trim().min(2, "Vui lòng nhập tỉnh/thành phố."),
-});
-type ProfileValues = z.infer<typeof profileSchema>;
-
-const passwordSchema = z
-  .object({
-    currentPassword: z.string(),
-    newPassword: z.string().min(8, "Mật khẩu mới cần ít nhất 8 ký tự."),
-    confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu."),
-  })
-  .refine((values) => values.newPassword === values.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Mật khẩu nhập lại chưa khớp.",
-  });
-type PasswordValues = z.infer<typeof passwordSchema>;
-
-const contactSchema = z.object({
-  value: z.string().trim().min(1, "Vui lòng nhập giá trị mới."),
-  otpCode: z.string().trim().length(6, "Mã OTP gồm 6 chữ số."),
-});
-type ContactValues = z.infer<typeof contactSchema>;
-
-export default function AccountPage() {
+export default function AccountOverviewPage() {
   const account = useAccount();
+  const wallet = useWallet();
+  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' });
 
-  if (account.isLoading) return <AccountLoading />;
-  if (account.isError || !account.data) {
+  const user = account.data;
+  const securityChecks = [Boolean(user?.emailVerifiedAt), Boolean(user?.phoneVerifiedAt), Boolean(user?.hasPassword)];
+  const securityLevel = securityChecks.every(Boolean) ? 'Tốt' : securityChecks.some(Boolean) ? 'Cơ bản' : 'Cần tăng cường';
+
+  if (account.isLoading) {
     return (
-      <Alert>
-        Không thể tải tài khoản. Vui lòng <Link className="font-medium underline" href="/auth/login">đăng nhập lại</Link>.
-      </Alert>
+      <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+        <Skeleton className="h-44 rounded-2xl" />
+        <div className="grid gap-6 sm:grid-cols-3">
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+        </div>
+        <Skeleton className="h-72 rounded-2xl" />
+      </div>
     );
   }
 
-  return <AccountContent account={account.data} />;
-}
-
-function AccountContent({ account }: { account: NonNullable<ReturnType<typeof useAccount>["data"]> }) {
-  const queryClient = useQueryClient();
-  const profileForm = useForm<ProfileValues>({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      fullName: account.profile.fullName ?? "",
-      avatarUrl: account.profile.avatarUrl ?? "",
-      dateOfBirth: account.profile.dateOfBirth ?? "",
-      gender: account.profile.gender ?? "UNSPECIFIED",
-      city: account.profile.city ?? "",
-    },
-  });
-  const passwordForm = useForm<PasswordValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
-  });
-  const emailForm = useForm<ContactValues>({ resolver: zodResolver(contactSchema), defaultValues: { value: "", otpCode: "" } });
-  const phoneForm = useForm<ContactValues>({ resolver: zodResolver(contactSchema), defaultValues: { value: "", otpCode: "" } });
-
-  useEffect(() => {
-    profileForm.reset({
-      fullName: account.profile.fullName ?? "",
-      avatarUrl: account.profile.avatarUrl ?? "",
-      dateOfBirth: account.profile.dateOfBirth ?? "",
-      gender: account.profile.gender ?? "UNSPECIFIED",
-      city: account.profile.city ?? "",
-    });
-  }, [account, profileForm]);
-
-  const updateProfile = useMutation({
-    mutationFn: api.account.update,
-    onSuccess: () => {
-      toast.success("Đã cập nhật hồ sơ.");
-      void queryClient.invalidateQueries({ queryKey: ["account", "me"] });
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-  const changePassword = useMutation({
-    mutationFn: ({ confirmPassword: _confirmPassword, ...values }: PasswordValues) => api.account.changePassword(values),
-    onSuccess: () => {
-      toast.success("Đã đổi mật khẩu.");
-      passwordForm.reset();
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-  const changeEmail = useMutation({
-    mutationFn: async (values: ContactValues) => {
-      const verification = await api.otp.verify({ channel: "EMAIL", purpose: "CHANGE_EMAIL", destination: values.value, code: values.otpCode });
-      return api.account.changeEmail({ newEmail: values.value, verificationToken: verification.verificationToken });
-    },
-    onSuccess: () => {
-      toast.success("Đã gửi yêu cầu đổi email.");
-      emailForm.reset();
-      void queryClient.invalidateQueries({ queryKey: ["account", "me"] });
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-  const changePhone = useMutation({
-    mutationFn: async (values: ContactValues) => {
-      const verification = await api.otp.verify({ channel: "SMS", purpose: "CHANGE_PHONE", destination: values.value, code: values.otpCode });
-      return api.account.changePhone({ newPhone: values.value, verificationToken: verification.verificationToken });
-    },
-    onSuccess: () => {
-      toast.success("Đã gửi yêu cầu đổi số điện thoại.");
-      phoneForm.reset();
-      void queryClient.invalidateQueries({ queryKey: ["account", "me"] });
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-  const unlink = useMutation({
-    mutationFn: api.social.unlink,
-    onSuccess: () => {
-      toast.success("Đã hủy liên kết.");
-      void queryClient.invalidateQueries({ queryKey: ["account", "me"] });
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-  const sendContactOtp = useMutation({
-    mutationFn: (input: { channel: "EMAIL" | "SMS"; purpose: "CHANGE_EMAIL" | "CHANGE_PHONE"; destination: string }) => api.otp.send(input),
-    onSuccess: (result) => toast.success(`Đã gửi OTP. Mã có hiệu lực trong ${Math.round(result.expiresIn / 60)} phút.`),
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm font-medium text-primary">Tài khoản</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Xin chào, {account.profile.fullName || account.username}</h1>
-        <p className="mt-2 text-muted-foreground">Quản lý thông tin và phương thức đăng nhập của bạn.</p>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin cá nhân</CardTitle>
-            <CardDescription>Cập nhật thông tin hiển thị của tài khoản.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="grid gap-5 sm:grid-cols-2" onSubmit={profileForm.handleSubmit((values) => updateProfile.mutate(values))}>
-              <div className="sm:col-span-2">
-                <FormField label="Username" htmlFor="account-username" hint="Username là định danh đăng nhập và không đổi trong form này.">
-                  <Input id="account-username" value={account.username} disabled />
-                </FormField>
+    <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+      {/* 1. Welcome Hero Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-r from-white via-white to-[#F0FAF2] p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="relative flex size-16 sm:size-20 shrink-0 items-center justify-center overflow-hidden rounded-full ring-4 ring-[#E8F7EC] bg-slate-100">
+              {mediaUrl(user?.profile.avatarUrl) ? (
+                <img
+                  src={mediaUrl(user?.profile.avatarUrl)}
+                  alt="Avatar"
+                  className="size-full object-cover"
+                />
+              ) : (
+                <UserRound className="size-8 sm:size-10 text-[#00873E]" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+                  Xin chào, {user?.profile.fullName || user?.username || 'bạn'}!
+                </h1>
+                <span className="inline-flex items-center rounded-full bg-[#E8F7EC] px-2.5 py-0.5 text-xs font-bold text-[#00873E]">
+                  Đang hoạt động
+                </span>
               </div>
-              <FormField label="Họ và tên" htmlFor="account-fullName" error={profileForm.formState.errors.fullName?.message}>
-                <Input id="account-fullName" {...profileForm.register("fullName")} />
-              </FormField>
-              <FormField label="Ngày sinh" htmlFor="account-dateOfBirth" error={profileForm.formState.errors.dateOfBirth?.message}>
-                <Input id="account-dateOfBirth" type="date" {...profileForm.register("dateOfBirth")} />
-              </FormField>
-              <FormField label="Giới tính" htmlFor="account-gender" error={profileForm.formState.errors.gender?.message}>
-                <Select id="account-gender" {...profileForm.register("gender")}>
-                  <option value="UNSPECIFIED">Chưa xác định</option>
-                  <option value="MALE">Nam</option>
-                  <option value="FEMALE">Nữ</option>
-                  <option value="OTHER">Khác</option>
-                </Select>
-              </FormField>
-              <FormField label="Tỉnh/Thành phố" htmlFor="account-city" error={profileForm.formState.errors.city?.message}>
-                <Input id="account-city" {...profileForm.register("city")} />
-              </FormField>
-              <div className="sm:col-span-2">
-                <FormField label="Avatar URL" htmlFor="account-avatarUrl" error={profileForm.formState.errors.avatarUrl?.message}>
-                  <Input id="account-avatarUrl" placeholder="https://…" {...profileForm.register("avatarUrl")} />
-                </FormField>
+              <p className="mt-1 text-xs text-slate-500">
+                ID: {user?.id ? user.id.slice(0, 10) : '—'} · Thành viên ZENX GO
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Email: {user?.email ?? 'Chưa cập nhật'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2.5">
+            <Button asChild size="sm" className="gap-2 text-xs font-semibold shadow-sm">
+              <Link href="/payment">
+                <Coins className="size-4" />
+                Nạp Coin
+              </Link>
+            </Button>
+            <Button asChild variant="zenx-outline" size="sm" className="gap-2 text-xs font-semibold">
+              <Link href="/account/profile">
+                <UserRound className="size-4" />
+                Hồ sơ cá nhân
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Key Stats Overview Cards */}
+      <div className="grid gap-5 sm:grid-cols-3">
+        {/* Wallet Balance Card */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Số dư ví ZENX</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-black text-slate-900 tracking-tight">
+                  {wallet.isLoading ? '—' : wallet.data ? formatAmount(wallet.data.balance) : '—'}
+                </span>
+                <span className="flex items-center gap-1 text-xs font-bold text-[#00873E]">
+                  <ZenxCoinGoldIcon className="size-3.5" /> ZENX
+                </span>
               </div>
-              <div className="sm:col-span-2">
-                <Button type="submit" disabled={updateProfile.isPending}>
-                  {updateProfile.isPending ? "Đang lưu…" : "Lưu thay đổi"}
-                </Button>
+              <p className="mt-1 text-xs text-slate-400 font-medium">
+                {wallet.data ? `≈ ${formatAmount(multiplyIntegerAmount(wallet.data.balance, BigInt(20)))} VND` : 'Chưa có dữ liệu'}
+              </p>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#E8F7EC] text-[#00873E]">
+              <Wallet className="size-5" />
+            </div>
+          </div>
+          <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <Link href="/wallet" className="font-semibold text-slate-700 hover:text-[#00873E] flex items-center gap-1">
+              Chi tiết số dư <ArrowRight className="size-3.5" />
+            </Link>
+            <Link href="/payment" className="font-bold text-[#00873E] hover:underline">
+              Nạp ngay +
+            </Link>
+          </div>
+        </div>
+
+        {/* Security Status Card */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Trạng thái bảo mật</p>
+              <p className="mt-2 text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck className="size-5 text-[#00873E]" />
+                Mức độ bảo vệ: {securityLevel}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
+                  <Mail className="size-2.5 text-[#00873E]" /> Email {securityChecks[0] ? '✓' : '—'}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
+                  <Phone className="size-2.5 text-[#00873E]" /> SĐT {securityChecks[1] ? '✓' : '—'}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
+                  <Lock className="size-2.5 text-[#00873E]" /> Mật khẩu {securityChecks[2] ? '✓' : '—'}
+                </span>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#E8F7EC] text-[#00873E]">
+              <ShieldCheck className="size-5" />
+            </div>
+          </div>
+          <div className="mt-5 pt-3 border-t border-slate-100 text-xs">
+            <Link href="/account/security" className="font-semibold text-slate-700 hover:text-[#00873E] flex items-center gap-1">
+              Kiểm tra bảo mật <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin đăng nhập</CardTitle>
-            <CardDescription>Thông tin liên hệ và trạng thái xác thực.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <InfoRow label="Email" value={account.email ?? "Chưa cập nhật"} />
-            <InfoRow label="Số điện thoại" value={account.phone ?? "Chưa cập nhật"} />
-            <InfoRow label="Trạng thái" value={<Badge variant={account.status === "ACTIVE" ? "success" : "warning"}>{account.status ?? "PENDING"}</Badge>} />
-          </CardContent>
-        </Card>
+        {/* Social Accounts Card */}
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Liên kết tài khoản</p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <GoogleIcon className="size-4 shrink-0" />
+                  <span className="font-semibold text-slate-800">Google:</span>
+                  <span className={user?.social.google ? 'font-bold text-[#00873E] text-[11px]' : 'text-slate-400 text-[11px]'}>
+                    {user?.social.google ? 'Đã liên kết' : 'Chưa liên kết'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <FacebookIcon className="size-4 shrink-0" />
+                  <span className="font-semibold text-slate-800">Facebook:</span>
+                  <span className="text-slate-400 text-[11px]">
+                    {user?.social.facebook ? 'Đã liên kết' : 'Chưa liên kết'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#E8F7EC] text-[#00873E]">
+              <UserRound className="size-5" />
+            </div>
+          </div>
+          <div className="mt-5 pt-3 border-t border-slate-100 text-xs">
+            <Link href="/account/profile" className="font-semibold text-slate-700 hover:text-[#00873E] flex items-center gap-1">
+              Quản lý liên kết <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Đổi mật khẩu</CardTitle>
-            <CardDescription>Tài khoản social-only có thể để trống mật khẩu hiện tại khi thiết lập lần đầu.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-5" onSubmit={passwordForm.handleSubmit((values) => changePassword.mutate(values))}>
-              <FormField label="Mật khẩu hiện tại" htmlFor="currentPassword" error={passwordForm.formState.errors.currentPassword?.message}>
-                <Input id="currentPassword" type="password" autoComplete="current-password" {...passwordForm.register("currentPassword")} />
-              </FormField>
-              <FormField label="Mật khẩu mới" htmlFor="newPassword" error={passwordForm.formState.errors.newPassword?.message}>
-                <Input id="newPassword" type="password" autoComplete="new-password" {...passwordForm.register("newPassword")} />
-              </FormField>
-              <FormField label="Nhập lại mật khẩu mới" htmlFor="confirmPassword" error={passwordForm.formState.errors.confirmPassword?.message}>
-                <Input id="confirmPassword" type="password" autoComplete="new-password" {...passwordForm.register("confirmPassword")} />
-              </FormField>
-              <Button type="submit" disabled={changePassword.isPending}>
-                {changePassword.isPending ? "Đang cập nhật…" : "Đổi mật khẩu"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Liên kết social</CardTitle>
-            <CardDescription>Không tự động liên kết chỉ vì email social trùng tài khoản.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <SocialRow
-              name="Google"
-              linked={account.social.google}
-              onUnlink={() => unlink.mutate("google")}
-              unlinking={unlink.isPending && unlink.variables === "google"}
-            />
-            <SocialRow
-              name="Facebook"
-              linked={account.social.facebook}
-              onUnlink={() => unlink.mutate("facebook")}
-              unlinking={unlink.isPending && unlink.variables === "facebook"}
-            />
-          </CardContent>
-        </Card>
+      {/* 3. Quick Actions Grid */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <h2 className="text-base font-bold text-slate-900 mb-4">Lối tắt thao tác nhanh</h2>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <QuickActionCard
+            href="/payment"
+            icon={<Coins className="size-5 text-[#00873E]" />}
+            title="Nạp Coin"
+            desc="Nạp thêm ZENX Coin vào ví"
+          />
+          <QuickActionCard
+            href="/wallet/transactions"
+            icon={<CreditCard className="size-5 text-[#00873E]" />}
+            title="Lịch sử giao dịch"
+            desc="Tra cứu biến động số dư"
+          />
+          <QuickActionCard
+            href="/account/profile"
+            icon={<UserRound className="size-5 text-[#00873E]" />}
+            title="Cập nhật hồ sơ"
+            desc="Sửa họ tên, ngày sinh, địa chỉ"
+          />
+          <QuickActionCard
+            href="/account/change-password"
+            icon={<KeyRound className="size-5 text-[#00873E]" />}
+            title="Đổi mật khẩu"
+            desc="Bảo vệ tài khoản định kỳ"
+          />
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <ContactCard
-          title="Đổi email"
-          description="Nhập email mới và mã OTP xác nhận email."
-          label="Email mới"
-          inputType="email"
-          form={emailForm}
-          onSubmit={(values) => changeEmail.mutate(values)}
-          onSend={(value) => sendContactOtp.mutate({ channel: "EMAIL", purpose: "CHANGE_EMAIL", destination: value })}
-          pending={changeEmail.isPending}
-        />
-        <ContactCard
-          title="Đổi số điện thoại"
-          description="Nhập số điện thoại mới và mã OTP xác nhận."
-          label="Số điện thoại mới"
-          inputType="tel"
-          form={phoneForm}
-          onSubmit={(values) => changePhone.mutate(values)}
-          onSend={(value) => sendContactOtp.mutate({ channel: "SMS", purpose: "CHANGE_PHONE", destination: value })}
-          pending={changePhone.isPending}
-        />
+      {/* 4. Recent Transactions */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Giao dịch gần đây</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Các biến động số dư mới nhất trong tài khoản của bạn.
+            </p>
+          </div>
+          <Button asChild variant="zenx-outline" size="sm" className="text-xs font-semibold">
+            <Link href="/wallet/transactions">
+              Xem tất cả <ArrowRight className="ml-1.5 size-3.5" />
+            </Link>
+          </Button>
+        </div>
+
+        <div>
+          {transactions.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-14 rounded-xl" />
+              <Skeleton className="h-14 rounded-xl" />
+              <Skeleton className="h-14 rounded-xl" />
+            </div>
+          ) : transactions.isError ? (
+            <p className="py-6 text-center text-xs text-red-500">Không thể tải lịch sử giao dịch.</p>
+          ) : transactions.data?.items.length ? (
+            <div className="divide-y divide-slate-100">
+              {transactions.data.items.slice(0, 5).map((transaction) => {
+                const isPositive = transaction.type !== 'DEBIT';
+                return (
+                  <Link
+                    key={transaction.transactionNo}
+                    href={`/wallet/transactions?transaction=${encodeURIComponent(
+                      transaction.transactionNo,
+                    )}`}
+                    className="flex items-center justify-between gap-4 py-3.5 transition hover:bg-slate-50 -mx-2 px-2 rounded-lg"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                          isPositive ? 'bg-[#E8F7EC] text-[#00873E]' : 'bg-red-50 text-red-500'
+                        }`}
+                      >
+                        {isPositive ? (
+                          <ArrowDownLeft className="size-4" />
+                        ) : (
+                          <ArrowUpRight className="size-4" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-slate-900">
+                          {transaction.description || (isPositive ? 'Nạp Coin' : 'Trừ Coin')}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {formatDate(transaction.createdAt)} · Mã: {transaction.transactionNo}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-xs font-bold ${
+                          isPositive ? 'text-[#00873E]' : 'text-red-500'
+                        }`}
+                      >
+                        {isPositive ? '+' : '-'}
+                        {formatAmount(transaction.amount)} ZENX
+                      </p>
+                      <div className="mt-1">
+                        <StatusBadge status={transaction.status} />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-xs text-slate-400">Chưa có giao dịch nào.</p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function AccountLoading() {
-  return (
-    <div className="space-y-6">
-      <Skeleton className="h-12 w-72" />
-      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <Skeleton className="h-[420px]" />
-        <Skeleton className="h-[220px]" />
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b pb-3 last:border-0 last:pb-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
-    </div>
-  );
-}
-
-function SocialRow({ name, linked, onUnlink, unlinking }: { name: string; linked: boolean; onUnlink: () => void; unlinking: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border p-3">
-      <div>
-        <p className="font-medium">{name}</p>
-        <p className="text-xs text-muted-foreground">{linked ? "Đã liên kết" : "Chưa liên kết"}</p>
-      </div>
-      {linked ? (
-        <Button variant="outline" size="sm" onClick={onUnlink} disabled={unlinking}>{unlinking ? "Đang hủy…" : "Hủy liên kết"}</Button>
-      ) : (
-        <Button asChild variant="outline" size="sm"><a href={api.auth.oauthUrl(name.toLowerCase() as "google" | "facebook", "link")}>Liên kết</a></Button>
-      )}
-    </div>
-  );
-}
-
-function ContactCard({
+function QuickActionCard({
+  href,
+  icon,
   title,
-  description,
-  label,
-  inputType,
-  form,
-  onSubmit,
-  onSend,
-  pending,
+  desc,
 }: {
+  href: string;
+  icon: React.ReactNode;
   title: string;
-  description: string;
-  label: string;
-  inputType: "email" | "tel";
-  form: ReturnType<typeof useForm<ContactValues>>;
-  onSubmit: (values: ContactValues) => void;
-  onSend: (value: string) => void;
-  pending: boolean;
+  desc: string;
 }) {
   return (
-    <Card>
-      <CardHeader><CardTitle>{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader>
-      <CardContent>
-        <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-          <FormField label={label} htmlFor={`${inputType}-value`} error={form.formState.errors.value?.message}>
-            <div className="flex gap-2">
-              <Input id={`${inputType}-value`} type={inputType} {...form.register("value")} />
-              <Button type="button" variant="outline" className="shrink-0" onClick={() => onSend(form.getValues("value"))} disabled={!form.getValues("value")}>
-                Gửi OTP
-              </Button>
-            </div>
-          </FormField>
-          <FormField label="Mã OTP" htmlFor={`${inputType}-otp`} error={form.formState.errors.otpCode?.message}>
-            <Input id={`${inputType}-otp`} inputMode="numeric" maxLength={6} {...form.register("otpCode")} />
-          </FormField>
-          <Button type="submit" variant="outline" disabled={pending}>{pending ? "Đang gửi…" : "Xác nhận thay đổi"}</Button>
-        </form>
-      </CardContent>
-    </Card>
+    <Link
+      href={href}
+      className="group flex flex-col justify-between rounded-xl border border-slate-200 p-4 transition-all hover:border-[#00873E] hover:bg-[#FAFDFB] hover:shadow-xs"
+    >
+      <div className="flex size-10 items-center justify-center rounded-xl bg-[#E8F7EC] group-hover:scale-105 transition-transform">
+        {icon}
+      </div>
+      <div className="mt-3">
+        <p className="text-xs font-bold text-slate-900 group-hover:text-[#00873E] transition-colors">
+          {title}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-500 leading-tight">{desc}</p>
+      </div>
+    </Link>
   );
 }

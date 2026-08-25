@@ -16,4 +16,6 @@ export const WalletTransactionStatus = { PENDING: 'PENDING', SUCCESS: 'SUCCESS',
 export type WalletTransactionStatus = (typeof WalletTransactionStatus)[keyof typeof WalletTransactionStatus];
 export const PaymentStatus = { CREATED: 'CREATED', PENDING: 'PENDING', SUCCESS: 'SUCCESS', FAILED: 'FAILED', EXPIRED: 'EXPIRED', CANCELLED: 'CANCELLED', REFUNDED: 'REFUNDED' } as const;
 export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
+export const PaymentMethod = { MOMO: 'MOMO', ZALOPAY: 'ZALOPAY', BANK_TRANSFER: 'BANK_TRANSFER', CARD: 'CARD', VIETQR: 'VIETQR' } as const;
+export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 export const CoinPackageStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
