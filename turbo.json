@@ -17,6 +17,7 @@
         "JWT_ACCESS_SECRET",
         "JWT_REFRESH_SECRET",
         "NEXT_PUBLIC_API_BASE_URL",
+        "NEXT_DIST_DIR",
         "NEXT_TELEMETRY_DISABLED",
         "NODE_ENV",
         "OTP_EMAIL_PROVIDER",

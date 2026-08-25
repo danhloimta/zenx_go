@@ -77,6 +77,7 @@ const apiPort = await findAvailablePort(requestedApiPort, reservedPorts);
 reservedPorts.add(apiPort);
 const webPort = await findAvailablePort(requestedWebPort, reservedPorts);
 const apiBaseUrl = localApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL ?? fileEnv.NEXT_PUBLIC_API_BASE_URL, apiPort);
+const devDistDir = process.env.NEXT_DIST_DIR ?? '.next-dev';
 
 if (apiPort !== requestedApiPort || webPort !== requestedWebPort) console.log(`[dev] Port conflict detected; using API ${apiPort} and web ${webPort}.`);
 else console.log(`[dev] Using API ${apiPort} and web ${webPort}.`);
@@ -84,7 +85,7 @@ else console.log(`[dev] Using API ${apiPort} and web ${webPort}.`);
 const turboCommand = process.platform === 'win32' ? `${rootDir}/node_modules/.bin/turbo.cmd` : `${rootDir}/node_modules/.bin/turbo`;
 const child = spawn(turboCommand, ['dev'], {
   cwd: rootDir,
-  env: { ...process.env, API_PORT: String(apiPort), PORT: String(webPort), WEB_ORIGIN: `http://localhost:${webPort}`, NEXT_PUBLIC_API_BASE_URL: apiBaseUrl },
+  env: { ...process.env, API_PORT: String(apiPort), PORT: String(webPort), WEB_ORIGIN: `http://localhost:${webPort}`, NEXT_PUBLIC_API_BASE_URL: apiBaseUrl, NEXT_DIST_DIR: devDistDir },
   stdio: 'inherit',
 });
 
