@@ -8,7 +8,13 @@ import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 
-export function LogoutButton() {
+export function LogoutButton({
+  className,
+  variant = "ghost",
+}: {
+  className?: string;
+  variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "zenx-outline";
+}) {
   const router = useRouter();
   const logout = useMutation({
     mutationFn: api.auth.logout,
@@ -20,9 +26,15 @@ export function LogoutButton() {
   });
 
   return (
-    <Button variant="ghost" size="sm" onClick={() => logout.mutate()} disabled={logout.isPending}>
-      <LogOut className="mr-2 size-4" />
-      {logout.isPending ? "Đang thoát…" : "Đăng xuất"}
+    <Button
+      variant={variant}
+      size="sm"
+      className={className || "text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors h-9 px-3 rounded-xl"}
+      onClick={() => logout.mutate()}
+      disabled={logout.isPending}
+    >
+      <LogOut className="size-4" />
+      <span>{logout.isPending ? "Đang thoát…" : "Đăng xuất"}</span>
     </Button>
   );
 }

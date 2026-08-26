@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { User } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -41,6 +42,19 @@ export default function LoginPage() {
     onError: (error) =>
       toast.error(getErrorMessage(error, 'Tên đăng nhập hoặc mật khẩu không đúng.')),
   });
+
+  useEffect(() => {
+    const socialError = new URLSearchParams(window.location.search).get('social_error');
+    if (!socialError) return;
+    const messages: Record<string, string> = {
+      not_linked: 'Tài khoản Google chưa được liên kết với ZENX GO. Hãy đăng nhập bằng mật khẩu rồi liên kết Google trong phần Tài khoản.',
+      not_configured: 'Nhà cung cấp đăng nhập chưa được cấu hình.',
+      provider_cancelled: 'Đăng nhập Google đã bị hủy.',
+      invalid_state: 'Phiên đăng nhập Google đã hết hạn. Vui lòng thử lại.',
+      oauth_failed: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.',
+    };
+    toast.error(messages[socialError] ?? messages.oauth_failed);
+  }, []);
 
   return (
     <div className="w-full max-w-[1120px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-soft">

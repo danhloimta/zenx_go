@@ -84,7 +84,7 @@ export class PaymentService {
         },
       });
       const payment = await this.prisma.payment.findUniqueOrThrow({ where: { id: created.id } });
-      return this.toPublicPayment(payment, providerPayment.paymentUrl, providerPayment.qrPayload, providerPayment.qrImageUrl, providerPayment.displayMetadata);
+      return this.toPublicPayment(payment);
     } catch {
       const failed = await this.prisma.payment.updateMany({ where: { id: created.id, status: PaymentStatus.CREATED }, data: { status: PaymentStatus.FAILED } });
       if (failed.count === 0) return this.toPublicPayment(await this.prisma.payment.findUniqueOrThrow({ where: { id: created.id } }));
@@ -244,27 +244,43 @@ export class PaymentService {
   private toPublicPayment(payment: {
     providerPayload: string | null;
     paymentNo: string;
-    [key: string]: unknown;
-  }, paymentUrl?: string | null, qrPayload?: string, qrImageUrl?: string | null, displayMetadata?: Record<string, unknown>) {
+    status: string;
+    provider: string;
+    amountVnd: bigint;
+    coinAmount: bigint;
+    paymentMethod: string;
+    createdAt: Date;
+    paidAt: Date | null;
+    expiredAt: Date | null;
+  }) {
     let payload: StoredProviderPayload = {};
     if (payment.providerPayload) {
       try { payload = JSON.parse(payment.providerPayload) as StoredProviderPayload; } catch { payload = {}; }
     }
-    const { id: _id, userId: _userId, coinPackageId: _coinPackageId, updatedAt: _updatedAt, idempotencyKey: _idempotencyKey, providerPayload, ...safePayment } = payment;
-    void _id;
-    void _userId;
-    void _coinPackageId;
-    void _updatedAt;
-    void _idempotencyKey;
-    void providerPayload;
-    const isMockProvider = safePayment.provider === 'mock';
-    const provider = safePayment.provider === 'sepay' ? this.sepay : this.mock;
+    const result = {
+      paymentNo: payment.paymentNo,
+      status: payment.status,
+      provider: payment.provider,
+      amountVnd: payment.amountVnd,
+      coinAmount: payment.coinAmount,
+      paymentMethod: payment.paymentMethod,
+      createdAt: payment.createdAt,
+      paidAt: payment.paidAt,
+      expiredAt: payment.expiredAt,
+    };
+    const awaitingPayment = payment.status === PaymentStatus.CREATED || payment.status === PaymentStatus.PENDING;
+    if (!awaitingPayment) return result;
+    if (payment.provider === 'mock' && payload.qrPayload) return { ...result, qrPayload: payload.qrPayload };
+    if (payment.provider !== 'sepay') return result;
+
+    const metadata = payload.displayMetadata ?? this.sepay.getDisplayMetadata(this.normalizePaymentMethod(payment.paymentMethod));
+    const bankAccount = typeof metadata.bankAccount === 'string' ? metadata.bankAccount : undefined;
+    const bankCode = typeof metadata.bankCode === 'string' ? metadata.bankCode : undefined;
+    const accountHolder = typeof metadata.accountHolder === 'string' ? metadata.accountHolder : undefined;
     return {
-      ...safePayment,
-      paymentUrl: isMockProvider ? null : paymentUrl ?? null,
-      qrPayload: qrPayload ?? payload.qrPayload ?? null,
-      qrImageUrl: qrImageUrl ?? payload.qrImageUrl ?? null,
-      displayMetadata: displayMetadata ?? payload.displayMetadata ?? provider.getDisplayMetadata(this.normalizePaymentMethod(String(safePayment.paymentMethod))),
+      ...result,
+      ...(payload.qrImageUrl ? { qrImageUrl: payload.qrImageUrl } : {}),
+      ...(bankAccount && bankCode && accountHolder ? { bankTransfer: { bankAccount, bankCode, accountHolder } } : {}),
     };
   }
 

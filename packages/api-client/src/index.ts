@@ -386,14 +386,16 @@ export interface Payment {
   paymentNo: string;
   status: PaymentStatus;
   provider?: string;
-  providerTransactionId?: string | null;
   amountVnd: number | string;
   coinAmount: number | string;
   paymentMethod?: PaymentMethod | string;
-  paymentUrl?: string | null;
   qrImageUrl?: string | null;
   qrPayload?: string | null;
-  displayMetadata?: Record<string, unknown> | null;
+  bankTransfer?: {
+    bankAccount: string;
+    bankCode: string;
+    accountHolder: string;
+  } | null;
   createdAt?: string;
   paidAt?: string | null;
   expiredAt?: string | null;

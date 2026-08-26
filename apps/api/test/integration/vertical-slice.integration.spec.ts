@@ -115,8 +115,9 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const selected = packages.body.data[0];
     const created = await http().post('/payments').set('Cookie', cookies).send({ coinPackageId: selected.id, paymentMethod: 'QR' });
     const payment = created.body.data;
-    expect(payment.paymentUrl).toBeNull();
-    const payload = { providerTransactionId: payment.providerTransactionId, paymentNo: payment.paymentNo, status: 'SUCCESS' };
+    expect(payment).not.toHaveProperty('paymentUrl');
+    expect(payment).not.toHaveProperty('providerTransactionId');
+    const payload = { providerTransactionId: `mock-${payment.paymentNo}`, paymentNo: payment.paymentNo, status: 'SUCCESS' };
     const rawBody = JSON.stringify(payload);
     const signature = createHash('sha256').update(rawBody).digest('hex');
     const callback = () => http().post('/payments/mock/callback').set('Origin', 'http://localhost:3000').set('x-payment-signature', signature).set('Content-Type', 'application/json').send(rawBody);
@@ -157,7 +158,7 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const packages = await http().get('/coin-packages');
     const created = await http().post('/payments').set('Cookie', cookies).send({ coinPackageId: packages.body.data[1].id, paymentMethod: 'REDIRECT' });
     const payment = created.body.data;
-    const failed = { providerTransactionId: payment.providerTransactionId, paymentNo: payment.paymentNo, status: 'FAILED' };
+    const failed = { providerTransactionId: `mock-${payment.paymentNo}`, paymentNo: payment.paymentNo, status: 'FAILED' };
     const failedRaw = JSON.stringify(failed);
     const failedSignature = createHash('sha256').update(failedRaw).digest('hex');
     await http().post('/payments/mock/callback').set('x-payment-signature', failedSignature).set('Content-Type', 'application/json').send(failedRaw);
@@ -174,7 +175,7 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const packages = await http().get('/coin-packages');
     const created = await http().post('/payments').set('Cookie', cookies).send({ coinPackageId: packages.body.data[2].id, paymentMethod: 'MOMO' });
     const payment = created.body.data;
-    const payload = { providerTransactionId: payment.providerTransactionId, paymentNo: payment.paymentNo, status: 'SUCCESS' };
+    const payload = { providerTransactionId: `mock-${payment.paymentNo}`, paymentNo: payment.paymentNo, status: 'SUCCESS' };
     const rawBody = JSON.stringify(payload);
     const signature = createHash('sha256').update(rawBody).digest('hex');
     const withoutHeader = await http().post('/payments/mock/callback').set('Content-Type', 'application/json').send(rawBody);
@@ -185,7 +186,7 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const expired = await http().get(`/payments/${payment.paymentNo}`).set('Cookie', cookies);
     expect(expired.status).toBe(200);
     expect(expired.body.data.status).toBe('EXPIRED');
-    expect(expired.body.data.paymentUrl).toBeNull();
+    expect(expired.body.data).not.toHaveProperty('paymentUrl');
 
     const callback = await http().post('/payments/mock/callback').set('x-payment-signature', signature).set('Content-Type', 'application/json').send(rawBody);
     expect(callback.status).toBe(201);

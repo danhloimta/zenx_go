@@ -5,10 +5,10 @@ import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Clock3, Copy, ExternalLink, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Copy, XCircle } from "lucide-react";
 import { usePayment } from "@/hooks/use-payment";
 import { api } from "@/lib/api";
-import { formatAmount, formatDate, paymentMethodLabel } from "@/lib/utils";
+import { formatAmount, formatDate, getBankName, paymentMethodLabel } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/status-badge";
@@ -63,7 +63,6 @@ export default function PaymentDetailPage() {
           {item.qrImageUrl && !isSuccess && !isFailed ? <SepayQrDetails payment={item} /> : null}
           {!item.qrImageUrl && item.qrPayload && !isSuccess && !isFailed ? <MockQrDetails payload={item.qrPayload} /> : null}
           {!isSuccess && !isFailed ? <div className="grid gap-3 sm:grid-cols-2">
-            {item.paymentUrl ? <Button asChild variant="outline"><a href={item.paymentUrl} target="_blank" rel="noreferrer">Mở cổng thanh toán <ExternalLink className="ml-2 size-4" /></a></Button> : null}
             {canCompleteMock ? <Button onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? "Đang xác nhận…" : "Hoàn tất thanh toán mẫu"}</Button> : null}
           </div> : null}
           {canCompleteMock ? <p className="text-center text-xs text-amber-700">Đây là payment mô phỏng dành cho môi trường demo.</p> : null}
@@ -104,10 +103,10 @@ function MockQrDetails({ payload }: { payload: string }) {
 }
 
 function SepayQrDetails({ payment }: { payment: NonNullable<ReturnType<typeof usePayment>["data"]> }) {
-  const metadata = payment.displayMetadata ?? {};
-  const bankAccount = typeof metadata.bankAccount === "string" ? metadata.bankAccount : "—";
-  const bankCode = typeof metadata.bankCode === "string" ? metadata.bankCode : "—";
-  const accountHolder = typeof metadata.accountHolder === "string" ? metadata.accountHolder : "—";
+  const bankAccount = payment.bankTransfer?.bankAccount ?? "—";
+  const bankCode = payment.bankTransfer?.bankCode ?? "—";
+  const accountHolder = payment.bankTransfer?.accountHolder ?? "—";
+  const bankName = getBankName(bankCode);
 
   const copyValue = async (value: string, label: string) => {
     try {
@@ -123,8 +122,8 @@ function SepayQrDetails({ payment }: { payment: NonNullable<ReturnType<typeof us
       <p className="text-center text-sm font-semibold">Quét QR để chuyển khoản</p>
       <img src={payment.qrImageUrl ?? undefined} alt="Mã QR thanh toán VietQR" className="mx-auto mt-4 size-64 rounded-lg bg-white object-contain p-2" />
       <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
-        <CopyDetail label="Ngân hàng" value={bankCode} />
-        <CopyDetail label="Chủ tài khoản" value={accountHolder} />
+        <CopyDetail label="Ngân hàng" value={bankName} onCopy={() => copyValue(bankName, "tên ngân hàng")} />
+        <CopyDetail label="Chủ tài khoản" value={accountHolder} onCopy={() => copyValue(accountHolder, "tên chủ tài khoản")} />
         <CopyDetail label="Số tài khoản" value={bankAccount} onCopy={() => copyValue(bankAccount, "số tài khoản")} />
         <CopyDetail label="Nội dung chuyển khoản" value={payment.paymentNo} onCopy={() => copyValue(payment.paymentNo, "nội dung chuyển khoản")} />
       </dl>

@@ -87,7 +87,15 @@ describe('SePay VietQR integration', () => {
     expect(first.status).toBe(201);
     expect(second.status).toBe(201);
     expect(second.body.data.paymentNo).toBe(first.body.data.paymentNo);
-    expect(first.body.data).toMatchObject({ provider: 'sepay', paymentMethod: 'VIETQR', status: 'PENDING', providerTransactionId: null });
+    expect(first.body.data).toMatchObject({ provider: 'sepay', paymentMethod: 'VIETQR', status: 'PENDING' });
+    expect(first.body.data).not.toHaveProperty('providerTransactionId');
+    expect(first.body.data).not.toHaveProperty('paymentUrl');
+    expect(first.body.data).not.toHaveProperty('displayMetadata');
+    expect(first.body.data.bankTransfer).toEqual({ bankAccount, bankCode: 'Vietcombank', accountHolder: 'ZENX GO' });
+    expect(Object.keys(first.body.data).sort()).toEqual([
+      'amountVnd', 'bankTransfer', 'coinAmount', 'createdAt', 'expiredAt', 'paidAt',
+      'paymentMethod', 'paymentNo', 'provider', 'qrImageUrl', 'status',
+    ].sort());
     expect(first.body.data.paymentNo).toMatch(/^ZENX[0-9A-F]{12}$/);
     const qr = new URL(first.body.data.qrImageUrl);
     expect(qr.searchParams.get('acc')).toBe(bankAccount);
@@ -127,6 +135,11 @@ describe('SePay VietQR integration', () => {
     const stored = await prisma.payment.findUniqueOrThrow({ where: { paymentNo: payment.paymentNo } });
     expect(stored).toMatchObject({ status: 'SUCCESS', providerTransactionId: String(payload.id) });
     expect(stored.paidAt).toBeTruthy();
+    const publicPayment = await api().get(`/payments/${payment.paymentNo}`).set('Cookie', cookies);
+    expect(Object.keys(publicPayment.body.data).sort()).toEqual([
+      'amountVnd', 'coinAmount', 'createdAt', 'expiredAt', 'paidAt',
+      'paymentMethod', 'paymentNo', 'provider', 'status',
+    ].sort());
     await expect(prisma.walletTransaction.count({ where: { userId, paymentId: stored.id, type: 'TOPUP' } })).resolves.toBe(1);
     await expect(prisma.wallet.findUniqueOrThrow({ where: { userId } })).resolves.toMatchObject({ balance: BigInt(selectedPackage.coinAmount) });
 

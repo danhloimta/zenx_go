@@ -54,7 +54,9 @@ export class OtpService {
     if (latest) throw new DomainError(ErrorCode.OTP_RATE_LIMITED, 'Please wait before requesting another code', 429);
     await this.prisma.otpRequest.updateMany({ where: { destinationNormalized, purpose, status: OtpStatus.PENDING }, data: { status: OtpStatus.EXPIRED } });
     const fixedCode = this.config.get<string>('otpMockFixedCode');
-    const code = process.env.NODE_ENV === 'test' && fixedCode ? fixedCode : randomInt(100000, 1000000).toString();
+    const nodeEnv = this.config.get<string>('nodeEnv') ?? process.env.NODE_ENV ?? 'development';
+    const isMockDemo = this.config.get<boolean>('demoMode') === true && this.config.get<string>('otpSmsProvider') === 'mock';
+    const code = fixedCode && (nodeEnv === 'test' || isMockDemo) ? fixedCode : randomInt(100000, 1000000).toString();
     const request = await this.prisma.otpRequest.create({ data: { userId: input.userId, channel: input.channel, purpose, destination: input.destination, destinationNormalized, codeHash: await argon2.hash(code), expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000), resendAfter: new Date(Date.now() + OTP_RESEND_SECONDS * 1000) } });
     if (input.channel === OtpChannel.EMAIL && purpose === OtpPurpose.RESET_PASSWORD) await this.mail.sendPasswordReset({ destination: input.destination, code, requestId: request.id });
     else if (input.channel === OtpChannel.EMAIL) await this.mail.sendOtp({ destination: input.destination, code, purpose, requestId: request.id });

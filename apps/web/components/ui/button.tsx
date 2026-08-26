@@ -33,9 +33,10 @@ export function Button({ className, variant = "default", size = "default", asChi
     if (isValidElement<{ className?: string }>(child)) {
       return cloneElement(child, {
         className: cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
           variants[variant],
           sizes[size],
+          className,
           child.props.className,
         ),
       });
@@ -45,7 +46,7 @@ export function Button({ className, variant = "default", size = "default", asChi
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20 disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className,
@@ -72,7 +73,7 @@ export function LinkButton({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20",
+        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00873E]/20",
         variants[variant],
         sizes[size],
         className,

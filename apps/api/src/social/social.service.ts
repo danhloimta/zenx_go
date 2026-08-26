@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { SocialProvider } from '../common/domain';
+import { AccountStatus, SocialProvider } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
+import { normalizeEmail, normalizeUsername } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
 
 export type OAuthMode = 'login' | 'link';
@@ -148,9 +150,73 @@ export class SocialService {
 
   async loginIdentity(provider: SocialProvider, profile: SocialProfile) {
     const identity = await this.prisma.socialIdentity.findUnique({ where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } } });
-    if (!identity) throw new DomainError(ErrorCode.SOCIAL_NOT_LINKED, 'Social account is not linked to a ZENX GO account', 404);
-    await this.prisma.socialIdentity.update({ where: { id: identity.id }, data: { lastLoginAt: new Date() } });
-    return identity.userId;
+    if (identity) {
+      await this.prisma.socialIdentity.update({ where: { id: identity.id }, data: { lastLoginAt: new Date() } });
+      return identity.userId;
+    }
+
+    const email = profile.email?.trim();
+    if (!email) throw new DomainError(ErrorCode.SOCIAL_OAUTH_FAILED, 'Social provider did not return an email address', 400);
+    const emailNormalized = normalizeEmail(email);
+    const existingUser = await this.prisma.user.findUnique({ where: { emailNormalized }, select: { id: true } });
+    if (existingUser) throw new DomainError(ErrorCode.SOCIAL_NOT_LINKED, 'Social account is not linked to the existing ZENX GO account', 404);
+
+    try {
+      const created = await this.prisma.$transaction(async (transaction) => {
+        const raceIdentity = await transaction.socialIdentity.findUnique({ where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } } });
+        if (raceIdentity) {
+          await transaction.socialIdentity.update({ where: { id: raceIdentity.id }, data: { lastLoginAt: new Date() } });
+          return raceIdentity.userId;
+        }
+
+        const username = await this.nextSocialUsername(transaction, provider, profile.providerUserId);
+        const now = new Date();
+        const fullName = profile.name?.trim() || email.split('@')[0] || `${provider.toLowerCase()} user`;
+        const user = await transaction.user.create({
+          data: {
+            username,
+            usernameNormalized: normalizeUsername(username),
+            email,
+            emailNormalized,
+            phone: null,
+            phoneNormalized: null,
+            emailVerifiedAt: profile.emailVerified ? now : null,
+            status: AccountStatus.ACTIVE,
+            profile: {
+              create: {
+                fullName,
+                avatarUrl: profile.avatarUrl,
+                gender: 'UNSPECIFIED',
+                termsVersion: this.config.getOrThrow<string>('termsVersion'),
+                privacyVersion: this.config.getOrThrow<string>('privacyVersion'),
+                acceptedAt: now,
+              },
+            },
+            wallet: { create: { currency: 'ZENX', balance: 0n } },
+            socialIdentities: {
+              create: {
+                provider,
+                providerUserId: profile.providerUserId,
+                emailAtLinkTime: email,
+                lastLoginAt: now,
+              },
+            },
+          },
+          select: { id: true },
+        });
+        return user.id;
+      });
+      return created;
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        const concurrentIdentity = await this.prisma.socialIdentity.findUnique({ where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } } });
+        if (concurrentIdentity) {
+          await this.prisma.socialIdentity.update({ where: { id: concurrentIdentity.id }, data: { lastLoginAt: new Date() } });
+          return concurrentIdentity.userId;
+        }
+      }
+      throw error;
+    }
   }
 
   async link(userId: string, provider: SocialProvider) {
@@ -200,22 +266,36 @@ export class SocialService {
       return {
         clientId: this.config.get<string>('oauth.google.clientId'),
         clientSecret: this.config.get<string>('oauth.google.clientSecret'),
-        redirectUri: this.config.get<string>('oauth.google.redirectUri') ?? 'http://localhost:4000/api/v1/auth/google/callback',
-        authorizationUrl: this.config.get<string>('oauth.google.authorizationUrl') ?? 'https://accounts.google.com/o/oauth2/v2/auth',
-        tokenUrl: this.config.get<string>('oauth.google.tokenUrl') ?? 'https://oauth2.googleapis.com/token',
-        userInfoUrl: this.config.get<string>('oauth.google.userInfoUrl') ?? 'https://openidconnect.googleapis.com/v1/userinfo',
+        redirectUri: this.config.get<string>('oauth.google.redirectUri') || 'http://localhost:4000/api/v1/auth/google/callback',
+        authorizationUrl: this.config.get<string>('oauth.google.authorizationUrl') || 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: this.config.get<string>('oauth.google.tokenUrl') || 'https://oauth2.googleapis.com/token',
+        userInfoUrl: this.config.get<string>('oauth.google.userInfoUrl') || 'https://openidconnect.googleapis.com/v1/userinfo',
         scope: 'openid email profile',
       };
     }
     return {
       clientId: this.config.get<string>('oauth.facebook.clientId'),
       clientSecret: this.config.get<string>('oauth.facebook.clientSecret'),
-      redirectUri: this.config.get<string>('oauth.facebook.redirectUri') ?? 'http://localhost:4000/api/v1/auth/facebook/callback',
-      authorizationUrl: this.config.get<string>('oauth.facebook.authorizationUrl') ?? 'https://www.facebook.com/v19.0/dialog/oauth',
-      tokenUrl: this.config.get<string>('oauth.facebook.tokenUrl') ?? 'https://graph.facebook.com/v19.0/oauth/access_token',
-      userInfoUrl: this.config.get<string>('oauth.facebook.userInfoUrl') ?? 'https://graph.facebook.com/me?fields=id,name,email,picture',
+      redirectUri: this.config.get<string>('oauth.facebook.redirectUri') || 'http://localhost:4000/api/v1/auth/facebook/callback',
+      authorizationUrl: this.config.get<string>('oauth.facebook.authorizationUrl') || 'https://www.facebook.com/v19.0/dialog/oauth',
+      tokenUrl: this.config.get<string>('oauth.facebook.tokenUrl') || 'https://graph.facebook.com/v19.0/oauth/access_token',
+      userInfoUrl: this.config.get<string>('oauth.facebook.userInfoUrl') || 'https://graph.facebook.com/me?fields=id,name,email,picture',
       scope: 'email,public_profile',
     };
+  }
+
+  private async nextSocialUsername(client: PrismaService | Prisma.TransactionClient, provider: SocialProvider, providerUserId: string) {
+    const base = `${provider.toLowerCase()}_${providerUserId}`.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 56) || 'social_user';
+    for (let suffix = 0; ; suffix += 1) {
+      const suffixText = suffix === 0 ? '' : `_${suffix}`;
+      const username = `${base.slice(0, 64 - suffixText.length)}${suffixText}`;
+      const existing = await client.user.findUnique({ where: { usernameNormalized: normalizeUsername(username) }, select: { id: true } });
+      if (!existing) return username;
+    }
+  }
+
+  private isUniqueConstraintError(error: unknown): error is { code: string } {
+    return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2002';
   }
 
   private async fetchProfile(provider: SocialProvider, accessToken: string): Promise<SocialProfile> {

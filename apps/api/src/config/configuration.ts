@@ -12,6 +12,7 @@ export default () => ({
   otpSmsProvider: process.env.OTP_SMS_PROVIDER ?? 'mock',
   otpZaloProvider: process.env.OTP_ZALO_PROVIDER ?? 'mock',
   otpEmailProvider: process.env.OTP_EMAIL_PROVIDER ?? 'mock',
+  demoMode: process.env.DEMO_MODE === 'true',
   otpMockFixedCode: process.env.OTP_MOCK_FIXED_CODE,
   paymentProvider: process.env.PAYMENT_PROVIDER ?? 'mock',
   sepay: {
@@ -25,7 +26,7 @@ export default () => ({
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
   rateLimitTtlMs: Number(process.env.RATE_LIMIT_TTL_MS ?? 60_000),
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 30),
-  oauthStateSecret: process.env.OAUTH_STATE_SECRET ?? process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret-change-me-32',
+  oauthStateSecret: process.env.OAUTH_STATE_SECRET || process.env.JWT_REFRESH_SECRET || 'development-refresh-secret-change-me-32',
   oauth: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,

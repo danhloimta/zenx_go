@@ -89,16 +89,16 @@ export default function ReportIssuePage() {
               {createTicket.isError ? <Alert className="mt-6">{getErrorMessage(createTicket.error, 'Không thể gửi yêu cầu hỗ trợ.')}</Alert> : null}
 
               <form className="mt-8 space-y-5" onSubmit={form.handleSubmit((values) => createTicket.mutate(values))}>
-                <FormField label="Danh mục" htmlFor="support-category" error={form.formState.errors.categoryId?.message}>
+                <FormField label="Danh mục" htmlFor="support-category" required error={form.formState.errors.categoryId?.message}>
                   <Select id="support-category" disabled={faqQuery.isLoading || !categories.length} {...form.register('categoryId')}>
                     <option value="">Chọn danh mục</option>
                     {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </Select>
                 </FormField>
-                <FormField label="Tiêu đề" htmlFor="support-subject" error={form.formState.errors.subject?.message}>
+                <FormField label="Tiêu đề" htmlFor="support-subject" required error={form.formState.errors.subject?.message}>
                   <div className="relative"><FileText className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input id="support-subject" placeholder="Ví dụ: Đã thanh toán nhưng chưa nhận được Coin" className="pl-10" maxLength={160} {...form.register('subject')} /></div>
                 </FormField>
-                <FormField label="Mô tả vấn đề" htmlFor="support-description" error={form.formState.errors.description?.message} hint="Không gửi mật khẩu, mã OTP hoặc thông tin thanh toán nhạy cảm.">
+                <FormField label="Mô tả vấn đề" htmlFor="support-description" required error={form.formState.errors.description?.message} hint="Không gửi mật khẩu, mã OTP hoặc thông tin thanh toán nhạy cảm.">
                   <Textarea id="support-description" placeholder="Hãy cho chúng tôi biết điều gì đã xảy ra..." className="min-h-40 resize-y" maxLength={4000} {...form.register('description')} />
                 </FormField>
                 <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:justify-end">
