@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Clock3, ExternalLink, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock3, Copy, ExternalLink, XCircle } from "lucide-react";
 import { usePayment } from "@/hooks/use-payment";
 import { api } from "@/lib/api";
 import { formatAmount, formatDate, paymentMethodLabel } from "@/lib/utils";
@@ -20,7 +21,12 @@ export default function PaymentDetailPage() {
   const paymentNo = decodeURIComponent(params.paymentNo);
   const payment = usePayment(paymentNo);
   const queryClient = useQueryClient();
+  const paymentConfig = useQuery({ queryKey: ["payment-config"], queryFn: api.payments.config, retry: false });
   const complete = useMutation({ mutationFn: () => api.payments.mockComplete(paymentNo), onSuccess: () => { toast.success("Đã xác nhận thanh toán giả lập."); void queryClient.invalidateQueries({ queryKey: ["payment", paymentNo] }); void queryClient.invalidateQueries({ queryKey: ["wallet"] }); }, onError: (error) => toast.error(getErrorMessage(error)) });
+
+  useEffect(() => {
+    if (payment.data?.status === "SUCCESS") void queryClient.invalidateQueries({ queryKey: ["wallet"] });
+  }, [payment.data?.status, queryClient]);
 
   if (payment.isLoading) return <Skeleton className="mx-auto h-96 max-w-2xl" />;
   if (payment.isError || !payment.data) return <Alert>{getErrorMessage(payment.error, "Không thể tải payment.")}</Alert>;
@@ -30,6 +36,7 @@ export default function PaymentDetailPage() {
   const isExpired = item.status === "EXPIRED";
   const isFailed = ["FAILED", "EXPIRED", "CANCELLED", "REFUNDED"].includes(item.status);
   const isMock = item.provider === "mock";
+  const canCompleteMock = isMock && paymentConfig.data?.allowMockCompletion === true;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -53,12 +60,13 @@ export default function PaymentDetailPage() {
             <Detail label="Thanh toán lúc" value={formatDate(item.paidAt)} />
             <Detail label="Hết hạn lúc" value={formatDate(item.expiredAt)} />
           </dl>
-          {item.qrPayload && !isSuccess && !isFailed ? <MockQrDetails payload={item.qrPayload} /> : null}
+          {item.qrImageUrl && !isSuccess && !isFailed ? <SepayQrDetails payment={item} /> : null}
+          {!item.qrImageUrl && item.qrPayload && !isSuccess && !isFailed ? <MockQrDetails payload={item.qrPayload} /> : null}
           {!isSuccess && !isFailed ? <div className="grid gap-3 sm:grid-cols-2">
             {item.paymentUrl ? <Button asChild variant="outline"><a href={item.paymentUrl} target="_blank" rel="noreferrer">Mở cổng thanh toán <ExternalLink className="ml-2 size-4" /></a></Button> : null}
-            {isMock ? <Button onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? "Đang xác nhận…" : "Hoàn tất thanh toán mẫu"}</Button> : null}
+            {canCompleteMock ? <Button onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? "Đang xác nhận…" : "Hoàn tất thanh toán mẫu"}</Button> : null}
           </div> : null}
-          {isMock ? <p className="text-center text-xs text-amber-700">Đây là payment mô phỏng dành cho môi trường demo.</p> : null}
+          {canCompleteMock ? <p className="text-center text-xs text-amber-700">Đây là payment mô phỏng dành cho môi trường demo.</p> : null}
           <p className="text-center text-xs text-muted-foreground">ZENX Coin chỉ được cộng sau khi hệ thống xác minh callback từ payment provider.</p>
         </CardContent>
       </Card>
@@ -91,6 +99,48 @@ function MockQrDetails({ payload }: { payload: string }) {
       ) : (
         <p className="mt-2 break-all text-center text-xs text-slate-500">Mã tham chiếu: {payload}</p>
       )}
+    </div>
+  );
+}
+
+function SepayQrDetails({ payment }: { payment: NonNullable<ReturnType<typeof usePayment>["data"]> }) {
+  const metadata = payment.displayMetadata ?? {};
+  const bankAccount = typeof metadata.bankAccount === "string" ? metadata.bankAccount : "—";
+  const bankCode = typeof metadata.bankCode === "string" ? metadata.bankCode : "—";
+  const accountHolder = typeof metadata.accountHolder === "string" ? metadata.accountHolder : "—";
+
+  const copyValue = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`Đã sao chép ${label}.`);
+    } catch {
+      toast.error(`Không thể sao chép ${label}.`);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border bg-slate-50 p-4">
+      <p className="text-center text-sm font-semibold">Quét QR để chuyển khoản</p>
+      <img src={payment.qrImageUrl ?? undefined} alt="Mã QR thanh toán VietQR" className="mx-auto mt-4 size-64 rounded-lg bg-white object-contain p-2" />
+      <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
+        <CopyDetail label="Ngân hàng" value={bankCode} />
+        <CopyDetail label="Chủ tài khoản" value={accountHolder} />
+        <CopyDetail label="Số tài khoản" value={bankAccount} onCopy={() => copyValue(bankAccount, "số tài khoản")} />
+        <CopyDetail label="Nội dung chuyển khoản" value={payment.paymentNo} onCopy={() => copyValue(payment.paymentNo, "nội dung chuyển khoản")} />
+      </dl>
+      <p className="mt-4 text-center text-xs text-slate-500">Vui lòng chuyển đúng số tiền và giữ nguyên nội dung chuyển khoản để hệ thống tự động cộng Coin.</p>
+    </div>
+  );
+}
+
+function CopyDetail({ label, value, onCopy }: { label: string; value: string; onCopy?: () => void }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="mt-1 flex items-center gap-1 font-medium">
+        <span className="break-all">{value}</span>
+        {onCopy ? <button type="button" aria-label={`Sao chép ${label.toLowerCase()}`} onClick={onCopy} className="shrink-0 rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900"><Copy className="size-3.5" /></button> : null}
+      </dd>
     </div>
   );
 }

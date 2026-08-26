@@ -25,6 +25,8 @@ The web app runs at `http://localhost:3000`, the API at `http://localhost:4000`,
 
 The default OTP and payment implementations are mocks. The mock OTP provider logs a development code and the mock payment provider exposes deterministic callback data for local development.
 
+To enable SePay VietQR, set `PAYMENT_PROVIDER=sepay`, then fill `SEPAY_BANK_ACCOUNT`, `SEPAY_BANK_CODE`, `SEPAY_ACCOUNT_HOLDER`, and `SEPAY_WEBHOOK_SECRET` in `.env`. In both SePay Test and Live settings, configure the payment-code structure as alphanumeric with the same 2–5 character prefix as `SEPAY_TRANSFER_PREFIX` and an exact 12-character suffix. SePay should POST signed callbacks to `/api/v1/webhooks/sepay`; the webhook endpoint requires the HMAC-SHA256 headers documented by SePay.
+
 ## Quality gates
 
 ```bash

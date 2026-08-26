@@ -10,6 +10,7 @@ export class PaymentController {
   constructor(private readonly payments: PaymentService) {}
 
   @Get('coin-packages') packages() { return this.payments.listPackages(); }
+  @Get('payment-config') config() { return this.payments.getConfig(); }
 
   @UseGuards(AuthGuard)
   @Post('payments') create(@Req() request: AuthenticatedRequest, @Body() dto: CreatePaymentDto) { return this.payments.create(request.user.sub, dto); }

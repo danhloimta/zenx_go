@@ -390,6 +390,7 @@ export interface Payment {
   coinAmount: number | string;
   paymentMethod?: PaymentMethod | string;
   paymentUrl?: string | null;
+  qrImageUrl?: string | null;
   qrPayload?: string | null;
   displayMetadata?: Record<string, unknown> | null;
   createdAt?: string;
@@ -404,6 +405,13 @@ export interface CreatePaymentRequest {
 }
 
 export interface CreatePaymentResponse extends Payment {}
+
+export interface PaymentConfig {
+  provider: string;
+  methods: PaymentMethod[];
+  isDemo: boolean;
+  allowMockCompletion: boolean;
+}
 
 export function createZenxApiClient(options: ApiClientOptions = {}) {
   const client = new ApiClient(options);
@@ -509,6 +517,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       list: () => client.get<CoinPackage[]>("/coin-packages"),
     },
     payments: {
+      config: () => client.get<PaymentConfig>("/payment-config"),
       create: (input: CreatePaymentRequest) =>
         client.post<CreatePaymentResponse>("/payments", input),
       get: (paymentNo: string) =>

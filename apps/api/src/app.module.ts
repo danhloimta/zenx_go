@@ -22,7 +22,7 @@ import { randomUUID } from 'node:crypto';
     LoggerModule.forRoot({
       pinoHttp: {
         genReqId: (request) => request.headers['x-request-id']?.toString() ?? randomUUID(),
-        redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
+        redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-sepay-signature"]', 'res.headers["set-cookie"]'],
       },
     }),
     ThrottlerModule.forRootAsync({

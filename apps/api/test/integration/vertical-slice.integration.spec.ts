@@ -208,6 +208,17 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     expect(first.body.data).not.toHaveProperty('coinPackageId');
     expect(first.body.data).not.toHaveProperty('idempotencyKey');
     await expect(prisma.payment.count({ where: { userId, idempotencyKey } })).resolves.toBe(1);
+
+    const concurrentKey = `payment-idempotency-concurrent-${Date.now()}`;
+    const concurrentInput = { ...input, idempotencyKey: concurrentKey };
+    const [concurrentA, concurrentB] = await Promise.all([
+      http().post('/payments').set('Cookie', cookies).send(concurrentInput),
+      http().post('/payments').set('Cookie', cookies).send(concurrentInput),
+    ]);
+    expect(concurrentA.status).toBe(201);
+    expect(concurrentB.status).toBe(201);
+    expect(concurrentB.body.data.paymentNo).toBe(concurrentA.body.data.paymentNo);
+    await expect(prisma.payment.count({ where: { userId, idempotencyKey: concurrentKey } })).resolves.toBe(1);
   });
 
   it('keeps transaction pagination deterministic across pages', async () => {

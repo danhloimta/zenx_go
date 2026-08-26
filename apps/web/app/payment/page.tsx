@@ -90,6 +90,11 @@ export default function PaymentPage() {
     queryFn: api.coinPackages.list,
     retry: false,
   });
+  const paymentConfig = useQuery({
+    queryKey: ['payment-config'],
+    queryFn: api.payments.config,
+    retry: false,
+  });
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -98,6 +103,9 @@ export default function PaymentPage() {
 
   const selectedId = form.watch('coinPackageId');
   const selectedMethod = form.watch('paymentMethod');
+  const availableMethods = paymentConfig.data
+    ? methods.filter((method) => paymentConfig.data.methods.includes(method.value))
+    : [];
 
   // Auto-select first package if none selected once data arrives
   const selected = packages.data?.find((item) => item.id === selectedId) || packages.data?.[0];
@@ -110,6 +118,15 @@ export default function PaymentPage() {
       form.setValue('coinPackageId', firstPackage.id, { shouldValidate: true });
     }
   }, [form, packages.data]);
+
+  useEffect(() => {
+    const configuredMethods = paymentConfig.data?.methods;
+    if (!configuredMethods?.length) return;
+    const currentMethod = form.getValues('paymentMethod');
+    if (!configuredMethods.includes(currentMethod)) {
+      form.setValue('paymentMethod', configuredMethods[0], { shouldValidate: true });
+    }
+  }, [form, paymentConfig.data]);
 
   const createPayment = useMutation({
     mutationFn: api.payments.create,
@@ -162,21 +179,24 @@ export default function PaymentPage() {
         </div>
       </div>
 
-      <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+      {paymentConfig.data?.isDemo ? <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
         <span><strong>Chế độ demo:</strong> các phương thức thanh toán bên dưới chỉ mô phỏng giao dịch, chưa kết nối cổng thanh toán thật.</span>
-      </div>
+      </div> : null}
 
       {wallet.isError ? <Alert>{getErrorMessage(wallet.error, 'Không thể tải số dư ví.')}</Alert> : null}
 
       <form
-          onSubmit={form.handleSubmit((values) =>
+          onSubmit={form.handleSubmit((values) => {
+            const configuredMethods = paymentConfig.data?.methods ?? [];
+            const paymentMethod = configuredMethods.includes(values.paymentMethod) ? values.paymentMethod : configuredMethods[0];
+            if (!paymentMethod) return;
             createPayment.mutate({
               coinPackageId: selected?.id || values.coinPackageId,
-              paymentMethod: values.paymentMethod,
+              paymentMethod,
               idempotencyKey: idempotencyKey.current,
-            }),
-        )}
+            });
+          })}
         className="grid gap-6 lg:grid-cols-[1fr_360px]"
       >
         {/* Left Column: Choose Package & Payment Method */}
@@ -264,7 +284,9 @@ export default function PaymentPage() {
               2. Chọn phương thức thanh toán
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {methods.map((method) => {
+              {paymentConfig.isLoading ? <Skeleton className="h-20 rounded-xl sm:col-span-2" /> : null}
+              {paymentConfig.isError ? <div className="sm:col-span-2"><Alert>Không thể tải cấu hình thanh toán.</Alert></div> : null}
+              {availableMethods.map((method) => {
                 const IconComponent = method.icon;
                 const isSelected = selectedMethod === method.value;
                 return (
@@ -372,7 +394,7 @@ export default function PaymentPage() {
                 <Button
                   type="submit"
                   className="mt-4 h-12 w-full text-sm font-semibold shadow-sm gap-2"
-                  disabled={createPayment.isPending}
+                  disabled={createPayment.isPending || !paymentConfig.isSuccess || availableMethods.length === 0}
                 >
                   <Lock className="size-4" />
                   {createPayment.isPending ? 'Đang tạo đơn…' : 'Thanh toán'}
