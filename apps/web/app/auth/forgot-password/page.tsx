@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
@@ -10,7 +9,6 @@ import {
   KeyRound,
   Mail,
   RefreshCw,
-  ShieldCheck,
 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -29,7 +27,6 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
-  const router = useRouter();
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 

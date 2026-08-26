@@ -5,13 +5,11 @@ import { useMemo, useState } from 'react';
 import {
   ArrowRight,
   Check,
-  CheckCircle2,
   ChevronDown,
   CircleHelp,
   Clock,
   Copy,
   Headset,
-  HelpCircle,
   Mail,
   MessageSquare,
   MessageSquarePlus,

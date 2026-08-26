@@ -23,7 +23,8 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
   const swagger = new DocumentBuilder().setTitle('ZENX GO API').setDescription('ZENX GO Phase 1').setVersion('1.0').addCookieAuth('zenx_access').build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
-  await app.listen(config.getOrThrow<number>('port'), '0.0.0.0');
+  const host = config.get<string>('nodeEnv') === 'production' ? '127.0.0.1' : '0.0.0.0';
+  await app.listen(config.getOrThrow<number>('port'), host);
 }
 
 void bootstrap();

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Coins, LockKeyhole, Sparkles, UserRound, WalletCards, Zap } from 'lucide-react';
+import { ArrowRight, Coins, LockKeyhole, Sparkles, UserRound } from 'lucide-react';
 import { BrandLogo } from '@/components/brand-logo';
 import { PageFooter } from '@/components/page-footer';
 import { Button } from '@/components/ui/button';

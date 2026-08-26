@@ -2,13 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import {
   AlertCircle,
-  ArrowLeft,
   Check,
-  CheckCircle2,
-  Lock,
   Mail,
   RefreshCw,
   ShieldCheck,

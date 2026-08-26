@@ -7,7 +7,6 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  Lock,
   Mail,
   Phone,
   RefreshCw,
@@ -30,7 +29,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 
 const schema = z
   .object({
