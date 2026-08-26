@@ -19,3 +19,6 @@ export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
 export const PaymentMethod = { MOMO: 'MOMO', ZALOPAY: 'ZALOPAY', BANK_TRANSFER: 'BANK_TRANSFER', CARD: 'CARD', VIETQR: 'VIETQR' } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 export const CoinPackageStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
+export const SupportStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
+export const SupportTicketStatus = { NEW: 'NEW', IN_PROGRESS: 'IN_PROGRESS', RESOLVED: 'RESOLVED', CLOSED: 'CLOSED' } as const;
+export type SupportTicketStatus = (typeof SupportTicketStatus)[keyof typeof SupportTicketStatus];

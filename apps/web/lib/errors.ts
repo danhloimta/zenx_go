@@ -19,6 +19,8 @@ const messages: Record<string, string> = {
   EXPORT_LIMIT_EXCEEDED: "Có quá nhiều giao dịch để xuất cùng lúc. Hãy thu hẹp bộ lọc rồi thử lại.",
   UNAUTHORIZED: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
   FORBIDDEN: "Tài khoản không được phép thực hiện thao tác này.",
+  SUPPORT_CATEGORY_NOT_FOUND: "Danh mục hỗ trợ không tồn tại hoặc đã tạm dừng.",
+  SUPPORT_TICKET_NOT_FOUND: "Không tìm thấy yêu cầu hỗ trợ.",
 };
 
 export function getErrorMessage(error: unknown, fallback = "Đã có lỗi xảy ra. Vui lòng thử lại.") {

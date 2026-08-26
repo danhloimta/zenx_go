@@ -227,6 +227,7 @@ export type PaymentStatus =
 export type PaymentMethod = "MOMO" | "ZALOPAY" | "BANK_TRANSFER" | "CARD" | "VIETQR";
 /** @deprecated Accepted by older API deployments; new requests should use PaymentMethod. */
 export type LegacyPaymentMethod = "QR" | "REDIRECT";
+export type SupportTicketStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
 
 export interface AuthUser {
   id: string;
@@ -413,6 +414,40 @@ export interface PaymentConfig {
   allowMockCompletion: boolean;
 }
 
+export interface SupportFaq {
+  id: string;
+  categoryId: string;
+  question: string;
+  answer: string;
+}
+
+export interface SupportCategory {
+  id: string;
+  code: string;
+  name: string;
+  faqs: SupportFaq[];
+}
+
+export interface SupportFaqResponse {
+  categories: SupportCategory[];
+}
+
+export interface SupportTicket {
+  ticketNo: string;
+  subject: string;
+  description: string;
+  status: SupportTicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  category: Pick<SupportCategory, "id" | "code" | "name">;
+}
+
+export interface CreateSupportTicketRequest {
+  categoryId: string;
+  subject: string;
+  description: string;
+}
+
 export function createZenxApiClient(options: ApiClientOptions = {}) {
   const client = new ApiClient(options);
 
@@ -525,6 +560,15 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       mockComplete: (paymentNo: string) =>
         client.post<Payment>(`/payments/${encodeURIComponent(paymentNo)}/mock-complete`),
       list: () => client.get<Payment[]>("/payments"),
+    },
+    support: {
+      faqs: () => client.get<SupportFaqResponse>("/support/faqs"),
+      createTicket: (input: CreateSupportTicketRequest) =>
+        client.post<SupportTicket>("/support/tickets", input),
+      tickets: (query: { page?: number; pageSize?: number; status?: SupportTicketStatus } = {}) =>
+        client.get<Paginated<SupportTicket>>("/support/tickets", query),
+      ticket: (ticketNo: string) =>
+        client.get<SupportTicket>(`/support/tickets/${encodeURIComponent(ticketNo)}`),
     },
   };
 }

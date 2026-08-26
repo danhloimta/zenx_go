@@ -28,6 +28,7 @@ model User {
   walletTransactions WalletTransaction[]
   refreshSessions    RefreshSession[]
   otpRequests        OtpRequest[]
+  supportTickets     SupportTicket[]
 
   @@index([status])
   @@map("users")
@@ -199,4 +200,53 @@ model Payment {
   @@index([userId, idempotencyKey])
   @@index([status, createdAt])
   @@map("payments")
+}
+
+model SupportCategory {
+  id         String          @id @default(uuid()) @db.UniqueIdentifier
+  code       String          @unique @db.VarChar(32)
+  name       String          @db.NVarChar(80)
+  status     String          @default("ACTIVE") @db.VarChar(16)
+  sortOrder  Int             @default(0) @map("sort_order")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  faqs       SupportFaq[]
+  tickets    SupportTicket[]
+
+  @@index([status, sortOrder])
+  @@map("support_categories")
+}
+
+model SupportFaq {
+  id          String          @id @default(uuid()) @db.UniqueIdentifier
+  categoryId  String          @map("category_id") @db.UniqueIdentifier
+  question    String          @db.NVarChar(500)
+  answer      String          @db.NVarChar(4000)
+  status      String          @default("ACTIVE") @db.VarChar(16)
+  sortOrder   Int             @default(0) @map("sort_order")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  category    SupportCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, question])
+  @@index([categoryId, status, sortOrder])
+  @@map("support_faqs")
+}
+
+model SupportTicket {
+  id          String          @id @default(uuid()) @db.UniqueIdentifier
+  ticketNo    String          @unique @map("ticket_no") @db.VarChar(40)
+  userId      String          @map("user_id") @db.UniqueIdentifier
+  categoryId  String          @map("category_id") @db.UniqueIdentifier
+  subject     String          @db.NVarChar(160)
+  description String          @db.NVarChar(4000)
+  status      String          @default("NEW") @db.VarChar(16)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  user        User            @relation(fields: [userId], references: [id], onDelete: NoAction)
+  category    SupportCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+
+  @@index([userId, createdAt])
+  @@index([userId, status, createdAt])
+  @@map("support_tickets")
 }

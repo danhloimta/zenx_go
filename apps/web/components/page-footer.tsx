@@ -21,7 +21,7 @@ export function PageFooter({ app = false }: { app?: boolean }) {
           <Link href="mailto:support@zenxgo.vn" className="hover:text-[#00873E] transition-colors">
             Liên hệ
           </Link>
-          <Link href="mailto:support@zenxgo.vn" className="hover:text-[#00873E] transition-colors">
+          <Link href="/support" className="hover:text-[#00873E] transition-colors">
             Hỗ trợ
           </Link>
         </nav>

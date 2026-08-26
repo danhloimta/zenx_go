@@ -14,6 +14,7 @@ import {
   KeyRound,
   Link2,
   Mail,
+  MessageCircle,
   Menu,
   Phone,
   ShieldCheck,
@@ -47,7 +48,13 @@ const groups = [
       { href: '/wallet/transactions', label: 'Lịch sử giao dịch', icon: Clock3 },
     ],
   },
-  { title: 'HỖ TRỢ', items: [{ href: '#support', label: 'Câu hỏi thường gặp', icon: CircleHelp }] },
+  {
+    title: 'HỖ TRỢ',
+    items: [
+      { href: '/support', label: 'Trung tâm hỗ trợ', icon: CircleHelp },
+      { href: '/account/support', label: 'Yêu cầu của tôi', icon: MessageCircle },
+    ],
+  },
 ];
 
 export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -252,6 +259,7 @@ function pageTitle(pathname: string) {
   if (pathname.startsWith('/payment')) return 'Nạp Coin';
   if (pathname.startsWith('/wallet/transactions')) return 'Lịch sử giao dịch';
   if (pathname.startsWith('/wallet')) return 'Số dư';
+  if (pathname.startsWith('/account/support')) return 'Yêu cầu hỗ trợ';
   if (pathname.includes('change-password')) return 'Đổi mật khẩu';
   if (pathname.includes('social')) return 'Liên kết tài khoản';
   if (pathname.includes('security')) return 'Bảo mật';
