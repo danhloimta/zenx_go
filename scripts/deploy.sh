@@ -48,6 +48,7 @@ readonly DEPLOY_COMMIT="$(git rev-parse --short=12 HEAD)"
 
 log "Running local quality gates for $DEPLOY_COMMIT"
 pnpm install --frozen-lockfile
+pnpm db:generate
 pnpm lint
 pnpm typecheck
 if [[ "${SKIP_TESTS:-0}" != "1" ]]; then

@@ -10,10 +10,11 @@ coverage
 .env.*
 !.env.example
 *.log
+*.tsbuildinfo
+apps/web/next-env.d.ts
 docker-data
 playwright-report
 test-results
 .turbo
 .DS_Store
 */.DS_Store
-
