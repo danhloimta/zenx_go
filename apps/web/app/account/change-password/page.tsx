@@ -9,7 +9,6 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
-  CheckCircle2,
   Info,
   KeyRound,
   Lock,
