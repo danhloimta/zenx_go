@@ -45,10 +45,10 @@ describe('Game catalog API (SQL Server)', () => {
     expect(filtered.body.data.items).toHaveLength(1);
     expect(filtered.body.data.items[0]).toMatchObject({ slug: 'luc-dia-dam-me', subdomain: 'lucdia' });
 
-    const orion = await http().get('/api/v1/games?genre=SHOOTER&platform=PC&status=CONCEPT');
+    const orion = await http().get('/api/v1/games?genre=SHOOTER&platform=PC&status=LIVE');
     expect(orion.status).toBe(200);
     expect(orion.body.data.items).toHaveLength(1);
-    expect(orion.body.data.items[0]).toMatchObject({ slug: 'chien-tuyen-orion', subdomain: 'orion', recordType: 'DEMO' });
+    expect(orion.body.data.items[0]).toMatchObject({ slug: 'chien-tuyen-orion', subdomain: 'orion', recordType: 'REAL', lifecycleStatus: 'LIVE' });
   });
 
   it('resolves by subdomain and exposes only published content', async () => {
@@ -60,15 +60,15 @@ describe('Game catalog API (SQL Server)', () => {
 
     const article = await http().get('/api/v1/games/luc-dia-dam-me/articles/world-remake');
     expect(article.status).toBe(200);
-    expect(article.body.data.contentHtml).toContain('<h1>World Remake</h1>');
+    expect(article.body.data.contentHtml).toContain('<h1>Bản đồ đã mở rộng</h1>');
     expect(article.body.data.content).toBeUndefined();
     expect(article.body.data.related.length).toBeGreaterThan(0);
 
     const orion = await http().get('/api/v1/games/by-subdomain/orion');
     expect(orion.status).toBe(200);
     expect(orion.body.data).toMatchObject({ slug: 'chien-tuyen-orion', subdomain: 'orion', themePreset: 'SCI_FI_SHOOTER', heroDesktopUrl: '/images/games/chien-tuyen-orion/hero-desktop.webp', heroMobileUrl: '/images/games/chien-tuyen-orion/hero-mobile.webp' });
-    expect(orion.body.data.featureConfig.sections).toEqual(['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ARTICLE_GRID', 'COMMUNITY_CTA']);
-    expect(orion.body.data.featureConfig.routes).toEqual(['NEWS']);
+    expect(orion.body.data.featureConfig.sections).toEqual(['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ROADMAP_PREVIEW', 'ARTICLE_GRID', 'COMMUNITY_CTA']);
+    expect(orion.body.data.featureConfig.routes).toEqual(['ABOUT', 'NEWS', 'ROADMAP']);
   });
 
   it('returns clear 404s for unknown slug and subdomain', async () => {
@@ -80,17 +80,11 @@ describe('Game catalog API (SQL Server)', () => {
     expect(host.body.error.code).toBe('GAME_NOT_FOUND');
   });
 
-  it('hides demo records when their public flag is disabled', async () => {
-    await prisma.game.updateMany({ where: { recordType: 'DEMO' }, data: { isPublic: false } });
-    try {
-      const response = await http().get('/api/v1/games');
-      expect(response.status).toBe(200);
-      expect(response.body.data.items.map((item: { slug: string }) => item.slug)).toEqual(['luc-dia-dam-me']);
-      const orion = await http().get('/api/v1/games/by-subdomain/orion');
-      expect(orion.status).toBe(404);
-    } finally {
-      await prisma.game.updateMany({ where: { recordType: 'DEMO' }, data: { isPublic: true } });
-    }
+  it('lists all four seed games as public live products', async () => {
+    const response = await http().get('/api/v1/games?status=LIVE');
+    expect(response.status).toBe(200);
+    expect(response.body.data.items).toHaveLength(4);
+    expect(response.body.data.items.every((item: { recordType: string; lifecycleStatus: string }) => item.recordType === 'REAL' && item.lifecycleStatus === 'LIVE')).toBe(true);
   });
 
   it('allows state-changing requests from a public game host but rejects lookalike domains', async () => {

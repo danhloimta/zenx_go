@@ -65,7 +65,7 @@ export default function PaymentDetailPage() {
           {!isSuccess && !isFailed ? <div className="grid gap-3 sm:grid-cols-2">
             {canCompleteMock ? <Button onClick={() => complete.mutate()} disabled={complete.isPending}>{complete.isPending ? "Đang xác nhận…" : "Hoàn tất thanh toán mẫu"}</Button> : null}
           </div> : null}
-          {canCompleteMock ? <p className="text-center text-xs text-amber-700">Đây là payment mô phỏng dành cho môi trường demo.</p> : null}
+          {canCompleteMock ? <p className="text-center text-xs text-amber-700">Đây là payment mô phỏng dành cho môi trường kiểm thử.</p> : null}
           <p className="text-center text-xs text-muted-foreground">ZENX Coin chỉ được cộng sau khi hệ thống xác minh callback từ payment provider.</p>
         </CardContent>
       </Card>

@@ -6,7 +6,7 @@ import { getPortalEventsPage, getPortalGames } from '@/lib/game-api';
 
 export const metadata: Metadata = {
   title: 'Sự kiện & Hoạt động nổi bật | ZENX GO',
-  description: 'Khám phá các sự kiện đăng ký sớm, Alpha Test, quà tân thủ và ưu đãi mới nhất từ hệ sinh thái game ZENX GO.',
+  description: 'Khám phá các mùa vận hành, hoạt động cộng đồng, phần thưởng và lịch sự kiện mới nhất từ hệ sinh thái game ZENX GO.',
 };
 
 const STATUSES = [
@@ -44,7 +44,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Searc
               </h1>
 
               <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl">
-                Tham gia Alpha Test, nhận quà tân thủ, đăng ký sớm và đồng hành cùng các thế giới game trong từng cột mốc ra mắt.
+                Theo dõi mùa hiện tại, tham gia hoạt động cộng đồng và đồng hành cùng các thế giới game trong từng sự kiện.
               </p>
             </div>
           </div>

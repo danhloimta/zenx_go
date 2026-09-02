@@ -189,7 +189,7 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">
-                  Quà đăng ký sớm (Pre-register)
+                  Quà chào mừng thành viên
                 </p>
                 <p className="text-xs font-bold text-slate-200 truncate">
                   {game.preRegisterReward}
@@ -212,7 +212,7 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
             {registered ? (
               <div className="w-full sm:w-auto flex items-center justify-center gap-2 h-11 px-6 rounded-2xl bg-emerald-950 border border-emerald-500 text-emerald-300 text-xs font-bold shadow-lg">
                 <CheckCircle2 className="size-4" />
-                <span>Đã đăng ký nhận thông báo!</span>
+                <span>Đã đăng ký theo dõi!</span>
               </div>
             ) : (
               <Button
@@ -220,7 +220,7 @@ export function GameDetailModal({ game, onClose }: GameDetailModalProps) {
                 onClick={() => setRegistered(true)}
                 className="w-full sm:w-auto h-11 px-7 rounded-2xl bg-[#00873E] hover:bg-[#007335] text-white font-bold text-xs shadow-xl shadow-emerald-950/60 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>Đăng ký nhận thông báo sớm</span>
+                <span>Theo dõi cập nhật</span>
                 <ArrowRight className="size-4" />
               </Button>
             )}

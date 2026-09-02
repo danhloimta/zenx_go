@@ -4,8 +4,8 @@
 
 Seed data phục vụ ba mục tiêu:
 
-1. Cung cấp nội dung thật đủ sâu cho Lục Địa Đam Mê.
-2. Kiểm tra Game Hub với nhiều thể loại, nền tảng và trạng thái.
+1. Cung cấp nội dung thật đủ sâu cho bốn game đang hoạt động.
+2. Kiểm tra Game Hub với nhiều thể loại và nền tảng.
 3. Kiểm tra khả năng đổi theme/section mà chưa cần CMS.
 
 Không seed quá nhiều game trong MVP. Bốn game là đủ để kiểm chứng UX.
@@ -22,7 +22,7 @@ name: Lục Địa Đam Mê
 slug: luc-dia-dam-me
 subdomain: lucdia
 recordType: REAL
-tagline: Một thế giới đang được xây dựng lại.
+tagline: Lục địa huyền thoại đã trở lại.
 genres:
   - MMORPG
   - FANTASY
@@ -36,9 +36,10 @@ platforms:
   - PC
   - MOBILE
   - WEB
-lifecycleStatus: IN_DEVELOPMENT
+isPublic: true
+lifecycleStatus: LIVE
 operationalStatus: AVAILABLE
-releaseYear: 2027
+releaseYear: 2026
 featured: true
 primaryGame: true
 sortOrder: 1
@@ -56,8 +57,8 @@ home: true
 about: true
 news: true
 roadmap: true
-developmentProgress: true
-downloads: coming_soon
+developmentProgress: false
+downloads: false
 servers: false
 leaderboard: false
 giftcode: false
@@ -66,36 +67,38 @@ gameTopup: false
 
 ### 2.2 Vương Triều Hỏa Long
 
-Game concept dùng để kiểm tra template chiến thuật; không công bố như sản phẩm thật.
+Game chiến thuật đang hoạt động với nội dung mùa và chiến trường liên minh.
 
 ```yaml
 code: VTHL
 name: Vương Triều Hỏa Long
 slug: vuong-trieu-hoa-long
 subdomain: hoalong
-recordType: DEMO
-tagline: Xây dựng vương triều, thống lĩnh chiến trường.
+recordType: REAL
+tagline: Dựng vương triều. Hiệu triệu Long Thần.
 genres:
   - STRATEGY
   - SLG
 platforms:
   - MOBILE
   - WEB
-lifecycleStatus: COMING_SOON
+isPublic: true
+lifecycleStatus: LIVE
 operationalStatus: AVAILABLE
-featured: false
+releaseYear: 2026
+featured: true
 primaryGame: false
 sortOrder: 2
 themePreset: DARK_STRATEGY
 ```
 
-Feature flags MVP:
+Feature flags:
 
 ```yaml
 home: true
-about: false
-news: false
-roadmap: false
+about: true
+news: true
+roadmap: true
 downloads: false
 servers: false
 leaderboard: false
@@ -105,50 +108,54 @@ gameTopup: false
 
 ### 2.3 Thị Trấn Mây
 
-Game concept dùng để kiểm tra template casual/mobile; không công bố như sản phẩm thật.
+Game mô phỏng thư giãn đang hoạt động với mùa vụ và hoạt động cộng đồng.
 
 ```yaml
 code: TTM
 name: Thị Trấn Mây
 slug: thi-tran-may
 subdomain: thitranmay
-recordType: DEMO
-tagline: Xây một góc nhỏ trên những tầng mây.
+recordType: REAL
+tagline: Sống chậm giữa những tầng mây.
 genres:
   - CASUAL
   - SIMULATION
 platforms:
   - MOBILE
   - WEB
-lifecycleStatus: CONCEPT
+isPublic: true
+lifecycleStatus: LIVE
 operationalStatus: AVAILABLE
-featured: false
+releaseYear: 2026
+featured: true
 primaryGame: false
 sortOrder: 3
 themePreset: PLAYFUL_CASUAL
 ```
 
-Feature flags giống game demo chiến thuật và chỉ bật homepage.
+Feature flags giống các game còn lại và bật đầy đủ các route nội dung.
 
 ### 2.4 Chiến Tuyến Orion
 
-Game concept dùng để kiểm tra template tactical shooter; không công bố như sản phẩm thật.
+Game bắn súng chiến thuật đang hoạt động với mùa xếp hạng và chiến trường liên tục.
 
 ```yaml
 code: CTO
 name: Chiến Tuyến Orion
 slug: chien-tuyen-orion
 subdomain: orion
-recordType: DEMO
-tagline: Biệt đội tinh nhuệ bảo vệ thuộc địa không gian.
+recordType: REAL
+tagline: Tập hợp biệt đội. Giữ vững chiến tuyến.
 genres:
   - SHOOTER
 platforms:
   - PC
   - MOBILE
-lifecycleStatus: CONCEPT
+isPublic: true
+lifecycleStatus: LIVE
 operationalStatus: AVAILABLE
-featured: false
+releaseYear: 2026
+featured: true
 primaryGame: false
 sortOrder: 4
 themePreset: SCI_FI_SHOOTER
@@ -158,9 +165,9 @@ Feature flags MVP:
 
 ```yaml
 home: true
-about: false
-news: false
-roadmap: false
+about: true
+news: true
+roadmap: true
 downloads: false
 servers: false
 leaderboard: false
@@ -204,12 +211,12 @@ COMING_SOON
 SUNSET
 ```
 
-Lifecycle quyết định nội dung/CTA:
+Lifecycle quyết định nội dung/CTA cho các game tương lai; bốn game seed hiện tại đều ở `LIVE`:
 
-- `IN_DEVELOPMENT` → Roadmap, Development Updates, Theo dõi dự án.
-- `INTERNAL_TEST`/`CLOSED_BETA` → Đăng ký test.
-- `OPEN_BETA`/`LIVE` → Chơi ngay hoặc Tải game.
-- `COMING_SOON` → Theo dõi thông báo.
+- `IN_DEVELOPMENT` → Roadmap và nhật ký vận hành nội bộ.
+- `INTERNAL_TEST`/`CLOSED_BETA` → Chỉ hiển thị cho nhóm được cấp quyền.
+- `OPEN_BETA`/`LIVE` → Nội dung hoạt động và cập nhật cộng đồng.
+- `COMING_SOON` → Theo dõi thông báo trước khi mở dịch vụ.
 - `SUNSET` → Thông báo đóng dịch vụ và hỗ trợ.
 
 ### Operational
@@ -223,27 +230,27 @@ UNAVAILABLE
 
 Operational status chỉ phản ánh tình trạng truy cập/vận hành hiện tại.
 
-## 5. Roadmap seed Lục Địa Đam Mê
+## 5. Roadmap seed
 
 | Thứ tự | Tên | Thời gian | Trạng thái |
 |---:|---|---|---|
-| 1 | Foundation / Lên ý tưởng | Q2/2026 | `COMPLETED` |
-| 2 | Dựng lại Lục địa / World Remake | 08/2026 | `IN_PROGRESS` |
-| 3 | UI/UX 2.0 | 09/2026 | `IN_PROGRESS` |
-| 4 | Test nội bộ | 10/2026 | `UPCOMING` |
-| 5 | Test cộng đồng | 11/2026 | `PLANNED` |
-| 6 | Chuẩn bị ra mắt | 12/2026 | `PLANNED` |
-| 7 | Chính thức ra mắt | 2027 | `PLANNED` |
+| 1 | Season hiện tại mở cửa | 07–09/2026 | `COMPLETED` |
+| 2 | Bản đồ và hoạt động liên vùng | 08/2026 | `COMPLETED` |
+| 3 | Cân bằng và vận hành mùa | 09/2026 | `IN_PROGRESS` |
+| 4 | Sự kiện cộng đồng tiếp theo | 10/2026 | `UPCOMING` |
+| 5 | Mùa kế tiếp | 11/2026 | `PLANNED` |
+| 6 | Nội dung mở rộng | 12/2026 | `PLANNED` |
 
 Mỗi milestone hỗ trợ danh sách checklist ngắn. Checklist chỉ phục vụ hiển thị trong MVP, chưa cần workflow quản lý tiến độ.
 
-## 6. Article seed Lục Địa Đam Mê
+## 6. Article seed
 
-Seed tối thiểu ba Development Updates từ nội dung đang có:
+Seed 16 bài viết đã xuất bản, phân bổ theo game và đủ bốn category:
 
-1. `Không gian gameplay là ưu tiên` — category `DEVELOPMENT_UPDATE`.
-2. `World Remake` — category `DEVELOPMENT_UPDATE`.
-3. `Character Update` — category `DEVELOPMENT_UPDATE`.
+1. Lục Địa Đam Mê: 7 bài về Season 6, công thành chiến, cân bằng, bản đồ, cánh/thần thú, bảo trì và thị trường.
+2. Vương Triều Hỏa Long: 3 bài về Mùa Liên Minh, Long Thần hệ Hỏa và Phòng thủ Hoàng Thành.
+3. Thị Trấn Mây: 3 bài về Quảng trường, mùa vụ và tuyến khinh khí cầu.
+4. Chiến Tuyến Orion: 3 bài về Ranked Season 1, ba vai trò và kho trang bị năng lượng.
 
 Mỗi article cần:
 
@@ -319,12 +326,14 @@ MEDIA_GALLERY
 COMMUNITY_CTA
 ```
 
-Lục Địa Đam Mê bật đầy đủ các section trên. Ba game demo chỉ bật:
+Các game dùng section theo theme; bốn seed game đều bật:
 
 ```text
 HERO
 GAME_INTRODUCTION
 FEATURE_GRID
+ROADMAP_PREVIEW
+ARTICLE_GRID
 COMMUNITY_CTA
 ```
 
@@ -340,9 +349,9 @@ COMMUNITY_CTA
 - Tối thiểu bốn gallery images.
 - Favicon/app icon.
 
-### Mỗi game demo
+### Mỗi game
 
-- Một logo placeholder.
+- Một logo chính thức.
 - Một hero image desktop/mobile-safe.
 - Một cover card.
 - Ba feature illustrations hoặc một bộ icon nhất quán.
@@ -353,6 +362,6 @@ Tất cả asset cần có quyền sử dụng rõ ràng và được tối ưu 
 
 - Seed production phải idempotent theo `code`, `slug` hoặc khóa tự nhiên ổn định.
 - Không xóa game/content hiện có khi chạy lại seed.
-- Game demo mặc định `isPublic=false` trên production cho đến khi chủ động bật.
-- Environment test/dev có thể public game demo để chạy E2E.
+- Bốn game seed hiện tại `isPublic=true` trên mọi môi trường.
+- Game mới có thể dùng `isPublic=false` cho tới khi nội dung được duyệt.
 - Không seed credential, API key, link download giả hoặc dữ liệu người dùng.

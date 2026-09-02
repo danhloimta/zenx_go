@@ -35,7 +35,7 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
     name: 'Discord',
     tag: 'Cộng đồng sôi động nhất',
     tagColor: 'blue',
-    desc: 'Trò chuyện voice, tìm đồng đội săn boss, tham gia test sớm và nhận thông báo cập nhật trực tiếp từ Dev team.',
+    desc: 'Trò chuyện voice, tìm đồng đội săn boss, tham gia hoạt động mùa và nhận thông báo trực tiếp từ đội ngũ vận hành.',
     url: process.env.NEXT_PUBLIC_DISCORD_URL,
     stats: '12,500+ Thành viên',
     cta: 'Tham gia Discord',
@@ -59,7 +59,7 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
     name: 'YouTube Channel',
     tag: 'Trailer & Dev Log',
     tagColor: 'red',
-    desc: 'Theo dõi video trailer điện ảnh, nhật ký phát triển tính năng mới, phỏng vấn đội ngũ và hướng dẫn tân thủ.',
+    desc: 'Theo dõi trailer, bản tin vận hành tính năng mới, phỏng vấn đội ngũ và hướng dẫn tân thủ.',
     url: process.env.NEXT_PUBLIC_YOUTUBE_URL,
     stats: '45+ Video chất lượng',
     cta: 'Đăng ký kênh',
@@ -92,7 +92,7 @@ const COMMUNITY_PILLARS = [
   {
     icon: Radio,
     title: 'Lắng nghe phản hồi',
-    desc: 'Mọi ý kiến đóng góp cho Alpha Test và tính năng mới đều được Dev Team ghi nhận và phản hồi.',
+    desc: 'Mọi ý kiến đóng góp cho mùa hiện tại và tính năng mới đều được đội ngũ ghi nhận và phản hồi.',
   },
   {
     icon: ShieldCheck,
@@ -116,11 +116,11 @@ export default async function CommunityPage() {
               </span>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-                Cùng xây dựng những thế giới đáng nhớ
+                Cùng trải nghiệm những thế giới đáng nhớ
               </h1>
 
               <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl">
-                Kết nối với hàng chục ngàn người chơi đam mê, theo dõi tiến độ phát triển và góp tiếng nói trực tiếp vào hành trình của từng tựa game trong hệ sinh thái.
+                Kết nối với hàng chục ngàn người chơi đam mê, theo dõi lịch vận hành và góp tiếng nói trực tiếp cho từng tựa game trong hệ sinh thái.
               </p>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default async function CommunityPage() {
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 max-w-md">
-                Lựa chọn nền tảng bạn thường dùng để kết nối và nhận thông báo sớm nhất.
+                Lựa chọn nền tảng bạn thường dùng để kết nối và nhận thông báo mới nhất.
               </p>
             </div>
 

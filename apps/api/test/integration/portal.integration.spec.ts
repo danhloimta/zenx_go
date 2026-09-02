@@ -34,12 +34,12 @@ describe('Portal content API (SQL Server)', () => {
   it('returns homepage data from public games, published articles and active events', async () => {
     const response = await http().get('/api/v1/portal/home');
     expect(response.status).toBe(200);
-    expect(response.body.data.announcement).toMatchObject({ code: 'ALPHA_TEST_LDDM_2026', ctaPath: '/events/alpha-test-luc-dia-dam-me' });
+    expect(response.body.data.announcement).toMatchObject({ code: 'SEASON6_LDDM_2026', ctaPath: '/events/season-6-luc-dia-dam-me' });
     expect(response.body.data.heroGames.map((game: { slug: string }) => game.slug)).toContain('luc-dia-dam-me');
     expect(response.body.data.games.map((game: { slug: string }) => game.slug)).toEqual(['luc-dia-dam-me', 'vuong-trieu-hoa-long', 'thi-tran-may', 'chien-tuyen-orion']);
     expect(response.body.data.latestArticles[0]).toMatchObject({ game: { slug: 'chien-tuyen-orion', subdomain: 'orion' }, href: 'http://orion.localhost:3000/tin-tuc/bao-cao-chien-tuyen-vanh-dai-orion' });
     expect(response.body.data.latestArticles).toHaveLength(3);
-    expect(response.body.data.activeEvents.map((event: { slug: string }) => event.slug)).toContain('alpha-test-luc-dia-dam-me');
+    expect(response.body.data.activeEvents.map((event: { slug: string }) => event.slug)).toContain('season-6-luc-dia-dam-me');
 
     const allNews = await http().get('/api/v1/portal/news?pageSize=30');
     expect(allNews.body.data.total).toBe(16);
@@ -63,10 +63,10 @@ describe('Portal content API (SQL Server)', () => {
     expect(active.body.data.total).toBe(3);
     expect(active.body.data.items.every((item: { status: string }) => item.status === 'ACTIVE')).toBe(true);
 
-    const detail = await http().get('/api/v1/portal/events/alpha-test-luc-dia-dam-me');
+    const detail = await http().get('/api/v1/portal/events/season-6-luc-dia-dam-me');
     expect(detail.status).toBe(200);
-    expect(detail.body.data).toMatchObject({ title: 'Alpha Test Lục Địa Đam Mê', game: { subdomain: 'lucdia' } });
-    expect(detail.body.data.contentHtml).toContain('<h1>Alpha Test Lục Địa Đam Mê</h1>');
+    expect(detail.body.data).toMatchObject({ title: 'Season 6 Lục Địa Đam Mê', game: { subdomain: 'lucdia' } });
+    expect(detail.body.data.contentHtml).toContain('<h1>Season 6 Lục Địa Đam Mê</h1>');
     expect(detail.body.data.content).toBeUndefined();
   });
 

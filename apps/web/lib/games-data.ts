@@ -50,7 +50,7 @@ export interface GameItem {
 
 export interface NewsItem {
   id: string;
-  category: 'Tiến độ phát triển' | 'Thông báo' | 'Sự kiện' | 'Bảo trì';
+  category: 'Cập nhật vận hành' | 'Thông báo' | 'Sự kiện' | 'Bảo trì';
   categoryColor: 'emerald' | 'blue' | 'amber' | 'purple';
   gameTitle: string;
   title: string;
@@ -67,7 +67,7 @@ export function formatCategoryLabel(category?: string | null): string {
     case 'DEVELOPMENT_UPDATE':
     case 'Development Update':
     case 'Tiến độ phát triển':
-      return 'Tiến độ phát triển';
+      return 'Cập nhật vận hành';
     case 'ANNOUNCEMENT':
     case 'Announcement':
     case 'Thông báo':
@@ -163,7 +163,7 @@ export function gameItemFromSummary(summary: GameSummary): GameItem {
       avatar: summary.iconUrl ?? '',
     },
     ctaText: summary.primaryCtaLabel ?? 'Truy cập trang chủ',
-    roadmapUrl: summary.secondaryCtaPath ? gameUrl(summary.subdomain, summary.secondaryCtaPath) : websiteUrl,
+    roadmapUrl: gameUrl(summary.subdomain, '/roadmap'),
     primaryCtaText: summary.primaryCtaLabel ?? 'Truy cập trang chủ',
     primaryCtaUrl: summary.primaryCtaPath ? gameUrl(summary.subdomain, summary.primaryCtaPath) : websiteUrl,
     secondaryCtaText: summary.secondaryCtaLabel ?? 'Khám phá thêm',
@@ -181,7 +181,7 @@ export function newsItemFromArticle(article: GameArticleSummary): NewsItem {
       ? 'Sự kiện'
       : article.category === 'MAINTENANCE'
         ? 'Bảo trì'
-        : 'Tiến độ phát triển') as NewsItem['category'];
+        : 'Cập nhật vận hành') as NewsItem['category'];
   const categoryColor = category === 'Thông báo' ? 'blue' : category === 'Sự kiện' ? 'amber' : category === 'Bảo trì' ? 'purple' : 'emerald';
   const gameTitle = article.game?.name ?? 'ZENX GO';
   const href = article.href ?? (article.game ? gameUrl(article.game.subdomain, `/tin-tuc/${article.slug}`) : `/news/${article.slug}`);

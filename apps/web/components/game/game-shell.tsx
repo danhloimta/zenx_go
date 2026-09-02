@@ -26,12 +26,15 @@ function GameFrame({ children }: { children: React.ReactNode }) {
   currentUrl.search = searchParams.toString();
   const loginUrl = `${portalUrl('/auth/login')}?returnTo=${encodeURIComponent(currentUrl.toString())}`;
   const theme = game.theme;
-  const isFullWebsite = game.recordType !== 'DEMO';
   const isThiTranMay = game.slug === 'thi-tran-may';
   const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
   const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
   const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
-  const routeEnabled = (route: 'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD', section: string) => game.featureConfig.sections.includes(section) && (isFullWebsite || game.featureConfig.routes?.includes(route) === true);
+  const routeEnabled = (route: 'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD', section: string) => {
+    if (!game.featureConfig.sections.includes(section)) return false;
+    const configuredRoutes = game.featureConfig.routes;
+    return configuredRoutes ? configuredRoutes.includes(route) : game.recordType !== 'DEMO';
+  };
 
   const thiTranMayNav = [
     ['#gioi-thieu', 'Giới thiệu'],
@@ -39,6 +42,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
     ['#y-tuong', 'Ý tưởng trải nghiệm'],
     ['#nen-tang', 'Nền tảng'],
     ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
+    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
   ];
 
   const lucDiaDamMeNav = [
@@ -52,12 +56,14 @@ function GameFrame({ children }: { children: React.ReactNode }) {
     ['#gioi-thieu', 'Giới thiệu'],
     ['#chien-truong', 'Chiến trường'],
     ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
+    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
   ];
 
   const orionNav = [
     ['#binh-chung', 'Binh chủng'],
     ['#chien-dia', 'Chiến địa'],
     ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
+    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
   ];
 
   const standardNavItems = [
@@ -65,7 +71,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
     ['/gioi-thieu', 'Giới thiệu', routeEnabled('ABOUT', 'GAME_INTRODUCTION')],
     ['/tin-tuc', 'Tin tức', routeEnabled('NEWS', 'ARTICLE_GRID')],
     ['/roadmap', 'Roadmap', routeEnabled('ROADMAP', 'ROADMAP_PREVIEW')],
-    ['/tai-game', 'Tải game', routeEnabled('DOWNLOAD', 'PLATFORM_CARDS')],
+    ['/tai-game', 'Tải game', routeEnabled('DOWNLOAD', 'PLATFORM_CARDS') && game.featureConfig.downloads === true],
   ].filter(([, , visible]) => visible) as Array<[string, string, boolean]>;
 
   const handleScroll = (href: string) => {
@@ -182,19 +188,19 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-2.5">
                   {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-amber-500/30" /> : null}
                   <span className="text-base sm:text-xl font-bold font-serif tracking-wide text-white">VƯƠNG TRIỀU HỎA LONG</span>
-                  <span className="rounded-full bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 text-[10px] uppercase font-sans font-bold text-amber-300">Demo</span>
+                  <span className="rounded-full bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 text-[10px] uppercase font-sans font-bold text-amber-300">Đang hoạt động</span>
                 </div>
               ) : isOrion ? (
                 <div className="flex items-center gap-2.5">
                   {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-cyan-500/30" /> : null}
                   <span className="text-base sm:text-lg font-black tracking-wider text-white uppercase font-mono">CHIẾN TUYẾN ORION</span>
-                  <span className="rounded-full bg-cyan-950/90 border border-cyan-500/40 px-2 py-0.5 text-[10px] uppercase font-mono font-bold text-cyan-300">DEMO</span>
+                  <span className="rounded-full bg-cyan-950/90 border border-cyan-500/40 px-2 py-0.5 text-[10px] uppercase font-mono font-bold text-cyan-300">Đang hoạt động</span>
                 </div>
               ) : (
                 <>
                   {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover" /> : null}
                   <span className="text-base sm:text-lg font-black tracking-tight">{game.name}</span>
-                  {game.recordType === 'DEMO' ? <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wider">Demo</span> : null}
+                  {game.lifecycleStatus === 'LIVE' ? <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wider">Đang hoạt động</span> : null}
                 </>
               )}
             </Link>
@@ -213,7 +219,6 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                   {label}
                 </button>
               ))}
-              {routeEnabled('NEWS', 'ARTICLE_GRID') ? <Link href={gameUrl(game.subdomain, '/tin-tuc')} className="hover:text-[#118a94] transition-colors">Tin tức</Link> : null}
             </nav>
           ) : isLucDiaDamMe ? (
             <nav className="hidden items-center gap-10 text-sm font-medium text-[#152238] md:flex font-serif">
@@ -253,7 +258,6 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                   {label}
                 </button>
               ))}
-              {routeEnabled('NEWS', 'ARTICLE_GRID') ? <Link href={gameUrl(game.subdomain, '/tin-tuc')} className="hover:text-cyan-400 transition-colors">Tin tức</Link> : null}
             </nav>
           ) : (
             <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
@@ -270,17 +274,17 @@ function GameFrame({ children }: { children: React.ReactNode }) {
             {isThiTranMay ? (
               <button
                 type="button"
-                onClick={() => handleScroll('#y-tuong')}
+                onClick={() => handleScroll('/tin-tuc')}
                 className="hidden sm:inline-flex min-h-10 items-center justify-center rounded-full border-2 border-[#118a94] bg-white px-6 text-sm font-bold text-[#118a94] hover:bg-[#118a94]/10 transition-colors shadow-xs"
               >
-                Khám phá concept
+                Xem tin tức
               </button>
             ) : isLucDiaDamMe ? (
               <Link
-                href={gameUrl(game.subdomain, '/tai-game')}
+                href={gameUrl(game.subdomain, '/tin-tuc')}
                 className="hidden sm:inline-flex min-h-10 items-center justify-center rounded-lg border border-[#c6aa73] bg-[#fbf7ee] px-6 text-xs font-semibold text-[#2a2115] hover:bg-[#f5eedc] transition-colors shadow-xs"
               >
-                Tải game
+                Xem tin tức
               </Link>
             ) : isHoaLong ? (
               account.data ? (
@@ -431,7 +435,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-xl font-black tracking-tight text-white">{game.name}</h3>
-              <p className="mt-1 text-xs text-slate-400">Game concept trong bộ thiết kế ZENX GO</p>
+              <p className="mt-1 text-xs text-slate-400">Website chính thức đang hoạt động trong hệ sinh thái ZENX GO</p>
             </div>
             <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
               <Link href={portalUrl('/games')} className="hover:text-white transition-colors">Game Hub</Link>
@@ -445,7 +449,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           </div>
           <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 gap-2">
             <p>© {new Date().getFullYear()} ZENX GO</p>
-            <p>Bản thiết kế minh họa — chưa phát hành.</p>
+            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
           </div>
         </footer>
       ) : isLucDiaDamMe ? (
@@ -476,7 +480,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-2xl font-black tracking-tight text-white font-serif">{game.name}</h3>
-              <p className="mt-1 text-xs text-amber-500/80">Concept chiến thuật mô phỏng thế giới rồng thiêng — ZENX GO</p>
+              <p className="mt-1 text-xs text-amber-500/80">Chiến thuật mô phỏng thế giới rồng thiêng — ZENX GO</p>
             </div>
             <div className="flex flex-wrap items-center gap-6 text-sm text-[#baa98a]">
               <Link href={portalUrl('/games')} className="hover:text-amber-300 transition-colors">Game Hub</Link>
@@ -490,7 +494,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           </div>
           <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-[#251b14] flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-[#7d6f58] gap-2">
             <p>© {new Date().getFullYear()} ZENX GO • Vương Triều Hỏa Long</p>
-            <p>Bản thiết kế minh họa — chưa phát hành.</p>
+            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
           </div>
         </footer>
       ) : isOrion ? (
@@ -498,7 +502,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
             <div>
               <h3 className="text-xl font-black tracking-tight text-white font-sans">{game.name}</h3>
-              <p className="mt-1 text-xs text-cyan-500/80">Concept game bắn súng chiến thuật không gian — ZENX GO</p>
+              <p className="mt-1 text-xs text-cyan-500/80">Game bắn súng chiến thuật không gian — ZENX GO</p>
             </div>
             <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300 font-sans">
               <Link href={portalUrl('/games')} className="hover:text-cyan-400 transition-colors">Game Hub</Link>
@@ -512,7 +516,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           </div>
           <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 gap-2">
             <p>© {new Date().getFullYear()} ZENX GO • CHIẾN TUYẾN ORION</p>
-            <p>Bản thiết kế minh họa — chưa phát hành.</p>
+            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
           </div>
         </footer>
       ) : (

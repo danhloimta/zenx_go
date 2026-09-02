@@ -2,7 +2,7 @@
   "version": 1,
   "game": "thi-tran-may",
   "design": "design/thi-tran-may-detail-v1.png",
-  "note": "Concept illustrations; AI reconstructions are not exact extracted layers or gameplay screenshots.",
+  "note": "World illustrations; AI reconstructions are not exact extracted layers or gameplay screenshots.",
   "slots": {
     "hero": "hero",
     "heroMobile": "heroMobile",

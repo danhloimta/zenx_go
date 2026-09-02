@@ -38,7 +38,7 @@ export async function getPortalGames(): Promise<GameItem[]> {
 
 const cachedPortalHome = unstable_cache(
   () => serverApi.portal.home(),
-  ['zenx-portal-home'],
+  ['zenx-portal-home-live-v1'],
   { revalidate: 60, tags: ['portal-home'] },
 );
 

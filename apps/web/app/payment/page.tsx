@@ -183,7 +183,7 @@ export default function PaymentPage() {
 
       {paymentConfig.data?.isDemo ? <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-        <span><strong>Chế độ demo:</strong> các phương thức thanh toán bên dưới chỉ mô phỏng giao dịch, chưa kết nối cổng thanh toán thật.</span>
+        <span><strong>Chế độ mô phỏng:</strong> các phương thức thanh toán bên dưới chỉ mô phỏng giao dịch, chưa kết nối cổng thanh toán thật.</span>
       </div> : null}
 
       {wallet.isError ? <Alert>{getErrorMessage(wallet.error, 'Không thể tải số dư ví.')}</Alert> : null}
@@ -252,7 +252,7 @@ export default function PaymentPage() {
                       );
                     })}
 
-                    {/* Custom amounts are intentionally outside the fixed-package demo scope. */}
+                    {/* Custom amounts are intentionally outside the fixed-package simulation scope. */}
                     <button
                       type="button"
                       disabled
@@ -262,7 +262,7 @@ export default function PaymentPage() {
                         <Pencil className="size-3.5" />
                       </div>
                       <p className="mt-2.5 text-sm font-bold text-slate-900">Nhập số lượng</p>
-                      <p className="mt-0.5 text-xs text-slate-400">Sắp ra mắt</p>
+                      <p className="mt-0.5 text-xs text-slate-400">Chưa hỗ trợ</p>
                     </button>
                   </>
                 ) : (

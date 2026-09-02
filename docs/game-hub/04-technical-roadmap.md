@@ -32,8 +32,8 @@ Browser
           ▼
        NestJS API
    ├── Existing Phase 1 modules
-   ├── Game Catalog
-   └── Game Content
+   ├── Game Catalog (bốn game public)
+   └── Game Content và live operations
           │
           ▼
      Prisma + SQL Server
@@ -79,6 +79,7 @@ Thay cấu hình đơn `WEB_ORIGIN` hiện tại bằng cấu hình có mục đ
 ```text
 PUBLIC_BASE_DOMAIN=zenxgo.io.vn
 PUBLIC_WEB_ORIGIN=https://zenxgo.io.vn
+PUBLIC_GAME_SUBDOMAINS=lucdia,hoalong,thitranmay,orion
 ALLOWED_WEB_ORIGINS=https://zenxgo.io.vn
 ALLOW_GAME_SUBDOMAINS=true
 COOKIE_DOMAIN=.zenxgo.io.vn
@@ -187,10 +188,10 @@ GET /api/v1/games/:slug/roadmap
 
 Yêu cầu:
 
-- Public endpoint chỉ trả game/content đang public.
+- Public endpoint chỉ trả game/content đang public và còn hiệu lực.
 - Không expose internal theme/admin fields không cần thiết.
 - Filter danh sách game theo genre, platform và lifecycle status.
-- Pagination API có thể thiết kế sẵn nhưng UI MVP chưa cần pagination.
+- Pagination API phục vụ trực tiếp UI tin tức/sự kiện.
 - Response dùng contract/type chung trong `packages/api-client`.
 
 ## 8. Frontend organization đề xuất
@@ -233,7 +234,7 @@ Tên route group/folder thực tế có thể điều chỉnh theo giới hạn 
 ### Milestone 1 — Game catalog foundation
 
 - Prisma migration cho Game, Genre, GameGenre, GameArticle, GameMilestone.
-- Seed bốn game và nội dung Lục Địa Đam Mê.
+- Seed bốn game LIVE và bộ nội dung cân bằng cho từng game.
 - Public API + API client types.
 - Unit/integration tests cho filter, visibility và unique hostname.
 
@@ -258,7 +259,7 @@ Tên route group/folder thực tế có thể điều chỉnh theo giới hạn 
 - Unknown/reserved/disabled hostname states.
 - Local preview route.
 
-Đầu ra: bốn subdomain resolve đúng dữ liệu và theme.
+Đầu ra: bốn subdomain resolve đúng dữ liệu, route và theme.
 
 ### Milestone 4 — Lục Địa Đam Mê UI
 
@@ -267,8 +268,8 @@ Tên route group/folder thực tế có thể điều chỉnh theo giới hạn 
 - Giới thiệu.
 - Tin tức và chi tiết bài.
 - Roadmap.
-- Tải game/Coming Soon.
-- Ba homepage demo.
+- Roadmap và lịch vận hành.
+- Route tải game chỉ mở khi có URL phân phối thật.
 
 Đầu ra: user journey Lục Địa Đam Mê hoàn chỉnh.
 
@@ -333,14 +334,14 @@ Phần này phải được thiết kế như nghiệp vụ tài chính, không 
 
 | Rủi ro | Kiểm soát |
 |---|---|
-| UI biến thành một template giống nhau cho mọi game | Theme preset + section composition + review bằng ba game demo đối lập |
+| UI biến thành một template giống nhau cho mọi game | Theme preset + section composition + review bằng bốn theme live đối lập |
 | Scope phình sang CMS/integration | Giữ seed-only và feature flags trong MVP |
 | Cookie/CORS sai khi thêm subdomain | Allowlist theo game public, test root/subdomain và không dùng wildcard origin |
 | Đổi domain gây sửa code hàng loạt | Central domain config, relative links và hostname utilities |
 | Nội dung trùng SEO | Canonical thuộc subdomain, portal chỉ catalog/preview |
 | Asset nặng làm giảm trải nghiệm | Responsive image, kích thước cố định, WebP/AVIF và performance budget |
 | Game server lỗi làm hỏng website | Mọi integration sau MVP đi qua adapter/cache và có degraded state |
-| Demo game bị hiểu nhầm là sản phẩm thật | `recordType=DEMO`, không public production mặc định |
+| Game mới bị public khi nội dung chưa duyệt | `isPublic=false` cho record mới, chỉ bật sau checklist nội dung |
 
 ## 12. Kế hoạch đổi domain sau này
 
@@ -364,4 +365,4 @@ Chỉ bắt đầu CMS/game integration khi:
 - Section/component API đã ổn định qua ít nhất ba theme seed.
 - Analytics cho các journey chính đã được định nghĩa.
 - Hostname routing và auth xuyên subdomain có automated tests.
-- Chủ sản phẩm xác nhận nội dung/asset chính thức và các game demo cần giữ hoặc bỏ.
+- Chủ sản phẩm xác nhận nội dung/asset chính thức và lịch live operations cho từng game.

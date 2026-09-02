@@ -65,7 +65,7 @@ export function CtaBannerSection() {
 
           {/* Subtitle */}
           <p className="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg drop-shadow-sm">
-            Tạo tài khoản ZENX GO để theo dõi dự án, nhận quà tặng tân thủ và sẵn sàng khi game chính thức mở cửa.
+            Tạo tài khoản ZENX GO để theo dõi lịch mùa, nhận thông báo vận hành và đồng hành cùng cộng đồng.
           </p>
 
           {/* Action CTAs */}
@@ -113,7 +113,7 @@ export function CtaBannerSection() {
             className="mt-4 sm:mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-emerald-400 transition-colors"
           >
             <Users className="size-3.5" />
-            <span>Tham gia cộng đồng ZENX GO</span>
+            <span>Tham gia cộng đồng</span>
             <ChevronRight className="size-3" />
           </Link>
         </div>

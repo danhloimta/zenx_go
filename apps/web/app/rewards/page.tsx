@@ -27,7 +27,7 @@ const VIP_TIERS = [
     minSpend: '0 Coin',
     perks: [
       'Tham gia tất cả thế giới game ZENX GO',
-      'Nhận giftcode tân thủ khi đăng ký sớm',
+      'Nhận quà chào mừng theo chương trình hiện hành',
       'Hỗ trợ kỹ thuật tiêu chuẩn qua Ticket',
     ],
   },
@@ -51,7 +51,7 @@ const VIP_TIERS = [
     perks: [
       'Tất cả quyền lợi của VIP Đồng',
       'Tặng +5% giá trị nạp Coin định kỳ',
-      'Ưu tiên mời tham gia Alpha/Beta Test sớm',
+      'Ưu tiên tham gia sự kiện và hoạt động mùa',
       'Quà tri ân sinh nhật tài khoản',
     ],
   },
@@ -74,8 +74,8 @@ const VIP_TIERS = [
 const REWARD_BENEFITS = [
   {
     icon: Gift,
-    title: 'Quà tân thủ đăng ký sớm',
-    desc: 'Nhận ngay Cánh Thiên Thần và 1,000 ZENX Coin tân thủ khi tham gia sự kiện mở rộng thế giới Lục Địa Đam Mê.',
+    title: 'Quà chào mừng cộng đồng',
+    desc: 'Theo dõi trang Sự kiện để nhận thông tin các phần quà chào mừng và hoạt động mùa của Lục Địa Đam Mê.',
     actionText: 'Xem sự kiện',
     actionHref: '/events',
   },
@@ -129,7 +129,7 @@ export default async function RewardsPage() {
                   href="/auth/register"
                   className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-xs sm:text-sm font-bold text-slate-700 shadow-xs hover:border-[#00873E]/40 hover:text-[#00873E] transition-all"
                 >
-                  <Gift className="size-4" /> Đăng ký nhận quà tân thủ
+                  <Gift className="size-4" /> Xem quyền lợi thành viên
                 </Link>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default async function RewardsPage() {
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 max-w-md">
-                Tích lũy nạp ZENX Coin để tự động nâng hạng và nhận quyền lợi vĩnh viễn.
+                Các mốc quyền lợi được công bố minh bạch theo chính sách chương trình ZENX GO.
               </p>
             </div>
 
@@ -264,7 +264,7 @@ export default async function RewardsPage() {
                 Chính sách áp dụng ưu đãi
               </h3>
               <p className="mt-3 text-xs sm:text-sm leading-relaxed text-slate-600">
-                Toàn bộ các chiến dịch quà tân thủ, mã giftcode và chính sách tích lũy VIP sẽ được tự động cộng vào tài khoản ZENX GO khi hệ thống chính thức mở cửa. Đội ngũ cam kết minh bạch và công bằng cho mọi thành viên.
+                Các chương trình quà tặng, mã giftcode và quyền lợi VIP được cập nhật theo từng chiến dịch. Điều kiện áp dụng sẽ hiển thị rõ trên trang Sự kiện trước khi chương trình bắt đầu.
               </p>
             </div>
 

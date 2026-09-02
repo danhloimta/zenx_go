@@ -16,7 +16,7 @@ MVP phân bổ effort dự kiến:
 2. Mobile-first: không thiết kế desktop xong rồi thu nhỏ.
 3. One primary action: mỗi viewport/section có một hành động chính rõ ràng.
 4. Shared shell, distinct identity: dùng chung hệ thống component nhưng mỗi game phải có cá tính riêng.
-5. Progressive disclosure: chỉ hiển thị chức năng phù hợp với trạng thái phát triển của game.
+5. Progressive disclosure: chỉ hiển thị chức năng đã được cấu hình và đang vận hành của từng game.
 
 ## 2. User journeys bắt buộc
 
@@ -35,10 +35,10 @@ Vào zenxgo.io.vn
 
 ```text
 Vào subdomain
-→ Hiểu game là gì và đang ở giai đoạn nào
+→ Hiểu game là gì và hoạt động mùa hiện tại
 → Xem điểm nổi bật/nền tảng
 → Xem roadmap
-→ Đọc Development Update
+→ Đọc cập nhật vận hành
 → Theo dõi cộng đồng hoặc đăng ký tài khoản
 ```
 
@@ -56,8 +56,8 @@ Vào một trang trên lucdia.zenxgo.io.vn
 
 ```text
 Chọn game chiến thuật hoặc casual trên Game Hub
-→ Sang subdomain demo
-→ Nhìn thấy cùng cấu trúc sử dụng nhưng visual identity khác biệt
+→ Sang subdomain game
+→ Nhìn thấy cùng cấu trúc nội dung nhưng visual identity khác biệt
 ```
 
 ## 3. Scope domain chính
@@ -89,13 +89,13 @@ Chọn game chiến thuật hoặc casual trên Game Hub
 #### Danh sách game
 
 - Card responsive.
-- Trạng thái rõ: đang phát triển, sắp ra mắt, open beta, đang hoạt động, bảo trì.
+- Trạng thái rõ: đang hoạt động hoặc bảo trì; các trạng thái khác chỉ dành cho game tương lai.
 - Filter thể loại và nền tảng.
 - MVP dùng bốn game seed.
 
 #### Nội dung bổ trợ
 
-- Game sắp ra mắt.
+- Lịch sự kiện và cập nhật mới nhất.
 - Tin tức mới từ các game nếu còn đủ thời gian.
 - Footer với tài khoản, hỗ trợ, điều khoản và privacy.
 
@@ -129,7 +129,7 @@ Chỉ thực hiện thay đổi tối thiểu:
 - Responsive và focus states không bị regress.
 - Không redesign toàn bộ account/wallet trong cùng MVP.
 
-## 4. Scope subdomain Lục Địa Đam Mê
+## 4. Scope subdomain bốn game
 
 ### 4.1 Game shell dùng chung
 
@@ -145,21 +145,21 @@ Chỉ thực hiện thay đổi tối thiểu:
 
 Thứ tự section đề xuất:
 
-1. Hero và tagline `Một thế giới đang được xây dựng lại`.
-2. CTA `Khám phá dự án` và `Xem roadmap`.
+1. Hero và tagline của từng game đang hoạt động.
+2. CTA `Xem tin tức` và `Xem roadmap`.
 3. Giới thiệu ngắn về game.
-4. Platform cards: PC, Mobile, Web.
+4. Nền tảng hỗ trợ: PC, Mobile, Web theo cấu hình game.
 5. Điểm nổi bật: đa nền tảng, tái lập lục địa, phong cách hiện đại, cộng đồng.
 6. Roadmap preview.
-7. Development Updates.
-8. Development progress.
+7. Tin tức và cập nhật vận hành.
+8. Lịch mùa và trạng thái hoạt động.
 9. Gallery hoặc media strip.
 10. Community CTA.
 
 ### 4.3 Giới thiệu `/gioi-thieu`
 
-- Nguồn gốc DAMMEMU/DAMMe Interactive.
-- Triết lý xây dựng.
+- Nguồn gốc và định vị game.
+- Triết lý trải nghiệm.
 - Season 6.
 - Định hướng lối chơi.
 - Đối tượng người chơi.
@@ -169,9 +169,9 @@ Thứ tự section đề xuất:
 
 - Featured article.
 - Article grid.
-- Danh mục MVP: `Development Update`, `Thông báo`, `Sự kiện`.
+- Danh mục MVP: `Development Update`, `Thông báo`, `Sự kiện`, `Bảo trì`.
 - Loading skeleton, empty state và error state.
-- Không cần tìm kiếm/pagination khi dữ liệu ít.
+- Có filter game/category và pagination theo query string.
 
 ### 4.5 Chi tiết tin `/tin-tuc/[articleSlug]`
 
@@ -186,27 +186,25 @@ Thứ tự section đề xuất:
 - Timeline responsive.
 - Trạng thái `COMPLETED`, `IN_PROGRESS`, `UPCOMING`, `PLANNED`.
 - Mốc thời gian và checklist.
-- Development progress tổng quát.
+- Tiến độ các mốc vận hành và lịch cập nhật tiếp theo.
 
 ### 4.7 Tải game `/tai-game`
 
-- PC, Mobile, Web.
-- Trạng thái `COMING_SOON`.
-- Không cung cấp file giả.
-- CTA theo dõi dự án/cộng đồng.
-- Chuẩn bị UI cho version, dung lượng và system requirements nhưng chưa cần backend download trong MVP.
+- Route được ẩn cho tới khi có URL phân phối thật.
+- Không cung cấp file hoặc nút tải giả.
+- Khi mở lại, hiển thị version, dung lượng và yêu cầu hệ thống lấy từ dữ liệu chính thức.
 
-## 5. Scope ba game demo
+## 5. Scope bốn game public
 
-`hoalong`, `thitranmay` và `orion` chỉ cần:
+`lucdia`, `hoalong`, `thitranmay` và `orion` đều có:
 
 - Resolve được hostname.
 - Hero, giới thiệu ngắn, feature cards và CTA.
 - Theme khác Lục Địa Đam Mê.
-- Badge `Demo` hoặc `Concept`.
-- Không cần tin tức, roadmap, download và account-specific content.
+- Trạng thái `Đang hoạt động`.
+- Giới thiệu, tin tức, chi tiết bài và roadmap theo cấu hình.
 
-Mục tiêu của chúng là kiểm chứng component system, không phải tạo ba website game đầy đủ.
+Mỗi game dùng theme riêng nhưng chia sẻ shell, API contract và chuẩn canonical.
 
 ## 6. Component inventory
 
@@ -282,12 +280,12 @@ Mỗi bề mặt dữ liệu phải có:
 - Nền sáng lạnh, xanh xám, khoảng trắng rộng.
 - Chuyển động tinh tế; tránh hiệu ứng game portal dày đặc.
 
-### Game chiến thuật demo
+### Game chiến thuật
 
 - Tông tối/đỏ đồng.
 - Layout có cảm giác bản đồ, phe phái và mùa giải.
 
-### Game casual demo
+### Game casual
 
 - Màu sáng, hình khối bo tròn, typography thân thiện.
 - Section ngắn, CTA rõ và ưu tiên mobile.
@@ -300,7 +298,7 @@ Mỗi bề mặt dữ liệu phải có:
 - Filter game hoạt động và có URL chia sẻ được.
 - `lucdia`, `hoalong`, `thitranmay`, `orion` resolve đúng game.
 - Subdomain không hợp lệ trả về 404 rõ ràng.
-- Lục Địa Đam Mê có đủ năm nhóm trang đã định nghĩa.
+- Cả bốn game có đủ các nhóm trang đã bật: Giới thiệu, Tin tức và Roadmap.
 - Đăng nhập từ subdomain quay lại đúng URL ban đầu.
 - Account và wallet flow hiện có không regress.
 
@@ -308,7 +306,7 @@ Mỗi bề mặt dữ liệu phải có:
 
 - Hoàn chỉnh desktop và mobile, không có horizontal overflow.
 - Visual identity của bốn game phân biệt được ngay.
-- CTA thay đổi đúng theo lifecycle status.
+- CTA và nhãn trạng thái phản ánh đúng dữ liệu LIVE/AVAILABLE.
 - Navigation và filter dùng được bằng bàn phím.
 - Có loading, empty, error và unavailable states.
 - Không hard-code `lucdia` trong component dùng chung.

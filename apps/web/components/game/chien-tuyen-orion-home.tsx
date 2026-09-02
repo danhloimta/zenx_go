@@ -184,7 +184,7 @@ export function ChienTuyenOrionHome() {
             <div className="flex flex-wrap items-center gap-2 mb-3.5">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-widest bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 backdrop-blur-md shadow-lg">
                 <Radio className="size-3.5 animate-pulse text-cyan-400" />
-                SYS.ONLINE // DEMO PROTOTYPE
+                SYS.ONLINE // LIVE OPERATIONS
               </span>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#0d1f35] border border-cyan-800/60 text-cyan-200">
                 <Zap className="size-3 fill-current text-cyan-400" />
@@ -202,12 +202,12 @@ export function ChienTuyenOrionHome() {
 
             {/* Slogan */}
             <p className="mt-3 sm:mt-4 text-base sm:text-xl font-bold text-cyan-100/90 tracking-wide drop-shadow-sm font-mono">
-              [ TIÊN PHONG KHÔNG GIAN • CHIẾN TRANH LIÊN MINH ]
+              [ {game.tagline.toUpperCase()} ]
             </p>
 
             {/* Synopsis */}
             <p className="mt-2.5 text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg">
-              Concept game bắn súng chiến thuật khoa học viễn tưởng tốc độ cao, nơi các biệt đội đặc nhiệm trang bị bộ giáp phản lực Exoskeleton tranh giành tài nguyên lõi trong vành đai Orion.
+              Game bắn súng chiến thuật khoa học viễn tưởng tốc độ cao, nơi các biệt đội đặc nhiệm trang bị bộ giáp phản lực Exoskeleton tranh giành tài nguyên lõi trong vành đai Orion.
             </p>
 
             {/* CTA Buttons */}
@@ -553,7 +553,7 @@ export function ChienTuyenOrionHome() {
                     <div className="p-5 sm:p-6">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-600">
                         {article.category === 'DEVELOPMENT_UPDATE'
-                          ? 'Tiến độ phát triển'
+                          ? 'Cập nhật hệ thống'
                           : article.category === 'EVENT'
                             ? 'Sự kiện'
                             : 'Thông báo'}
@@ -590,7 +590,7 @@ export function ChienTuyenOrionHome() {
             <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-mono font-bold bg-cyan-950/90 border border-cyan-500/50 text-cyan-300 backdrop-blur-md shadow-lg mb-4">
                 <Radio className="size-3.5 text-cyan-400" />
-                JOIN THE FRONTLINE // EARLY ACCESS
+                JOIN THE FRONTLINE // LIVE OPERATIONS
               </span>
 
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
@@ -601,7 +601,7 @@ export function ChienTuyenOrionHome() {
               </h2>
 
               <p className="mt-3.5 text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg">
-                Tạo tài khoản ZENX GO ngay hôm nay để nhận thông báo sớm nhất khi đợt thử nghiệm Closed Beta của Chiến Tuyến Orion chính thức khởi động.
+                Tạo tài khoản ZENX GO để theo dõi lịch mùa, bảng xếp hạng và những cập nhật mới nhất của Chiến Tuyến Orion.
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">

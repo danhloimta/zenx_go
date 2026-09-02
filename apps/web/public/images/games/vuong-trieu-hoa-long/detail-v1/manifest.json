@@ -2,7 +2,7 @@
   "version": 1,
   "game": "vuong-trieu-hoa-long",
   "design": "design/vuong-trieu-hoa-long-detail-v1.png",
-  "note": "Concept illustrations; AI reconstructions are not exact extracted layers or gameplay screenshots.",
+  "note": "World illustrations; AI reconstructions are not exact extracted layers or gameplay screenshots.",
   "slots": {
     "hero": "hero",
     "heroMobile": "heroMobile",

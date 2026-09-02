@@ -177,7 +177,7 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
               className="inline-flex items-center justify-center gap-2 h-11 sm:h-12 px-5 sm:px-8 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all"
             >
               <Play className="size-4 fill-white text-white" />
-              <span>{currentGame.primaryCtaText ?? 'Khám phá dự án'}</span>
+              <span>{currentGame.primaryCtaText ?? 'Trang chủ game'}</span>
             </a>
 
             <a

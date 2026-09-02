@@ -7,6 +7,11 @@ function baseDomain() {
   try { return normalizeBaseDomain(new URL(process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? 'http://lvh.me:3000').hostname); } catch { return 'lvh.me'; }
 }
 
+function publicGameSubdomains() {
+  const configured = process.env.PUBLIC_GAME_SUBDOMAINS?.split(',').map((value) => normalizeHostname(value)).filter(Boolean);
+  return new Set(configured?.length ? configured : ['lucdia', 'hoalong', 'thitranmay', 'orion']);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/_')) return NextResponse.next();
@@ -25,7 +30,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(canonical);
   }
   if (host.kind !== 'GAME') {
-    return NextResponse.rewrite(new URL('/_host-error', request.url));
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
+  // Host classification accepts any direct subdomain; only configured public games may enter the game shell.
+  if (!publicGameSubdomains().has(host.subdomain ?? '')) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
+  // Distribution URLs are intentionally disabled until a real installer or play URL is configured.
+  // Returning the status here avoids a 200 response from a notFound() thrown after an internal rewrite.
+  if (pathname === '/tai-game' || pathname.startsWith('/tai-game/')) {
+    return new NextResponse('Not Found', { status: 404 });
   }
 
   const internalPath = `/game-site/${host.subdomain}${pathname === '/' ? '' : pathname}`;

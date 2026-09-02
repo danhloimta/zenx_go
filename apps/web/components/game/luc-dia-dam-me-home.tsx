@@ -92,7 +92,7 @@ export function LucDiaDamMeHome() {
 
             {/* Subtitle */}
             <p className="mt-2.5 sm:mt-3 text-xs sm:text-base text-[#1c2e44] font-medium leading-relaxed max-w-md font-serif drop-shadow-xs">
-              Một thế giới đang được xây dựng lại.
+              Lục địa huyền thoại đã trở lại.
             </p>
 
             {/* Divider */}
@@ -102,7 +102,7 @@ export function LucDiaDamMeHome() {
 
             {/* Status indicator */}
             <div className="flex items-center gap-2 text-xs font-bold text-[#1e523b]">
-              <span>Đang phát triển</span>
+              <span>Đang hoạt động</span>
               <span className="text-emerald-600 text-[10px]">◆</span>
             </div>
 
@@ -113,7 +113,7 @@ export function LucDiaDamMeHome() {
                 onClick={() => scrollToSection('gioi-thieu')}
                 className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-lg sm:rounded-xl bg-[#4b5638] hover:bg-[#3d472d] px-3.5 sm:px-5 text-xs font-medium text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
               >
-                <span>Khám phá dự án</span>
+                <span>Khám phá thế giới</span>
                 <ArrowRight className="size-3.5" />
               </button>
               <button
@@ -247,7 +247,7 @@ export function LucDiaDamMeHome() {
                 />
               </div>
               <p className="mt-2.5 text-center text-[11px] text-[#9d7d47] font-medium tracking-wide">
-                ✦ Hình ảnh minh họa định hướng ✦
+                ✦ Thư viện hình ảnh thế giới ✦
               </p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function LucDiaDamMeHome() {
         {/* Caption on Desktop */}
         <div className="hidden lg:block absolute bottom-4 right-12 z-10">
           <p className="text-xs text-[#9d7d47] font-medium tracking-wide drop-shadow-xs">
-            ✦ Hình ảnh minh họa định hướng ✦
+            ✦ Thư viện hình ảnh thế giới ✦
           </p>
         </div>
       </section>
@@ -319,7 +319,7 @@ export function LucDiaDamMeHome() {
               </svg>
               <span className="mt-3 font-medium text-base sm:text-lg text-[#15243b] font-serif">PC</span>
               <span className="mt-1 text-xs font-medium text-[#2e624a] flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang phát triển
+                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang hoạt động
               </span>
             </div>
 
@@ -331,7 +331,7 @@ export function LucDiaDamMeHome() {
               </svg>
               <span className="mt-3 font-medium text-base sm:text-lg text-[#15243b] font-serif">Mobile</span>
               <span className="mt-1 text-xs font-medium text-[#2e624a] flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang phát triển
+                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang hoạt động
               </span>
             </div>
 
@@ -343,7 +343,7 @@ export function LucDiaDamMeHome() {
               </svg>
               <span className="mt-3 font-medium text-base sm:text-lg text-[#15243b] font-serif">Web</span>
               <span className="mt-1 text-xs font-medium text-[#2e624a] flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang phát triển
+                <span className="size-1.5 rounded-full bg-emerald-600 inline-block" /> Đang hoạt động
               </span>
             </div>
           </div>
@@ -370,8 +370,8 @@ export function LucDiaDamMeHome() {
                 <div className="flex size-11 sm:size-12 items-center justify-center rounded-full bg-[#4b5638] text-white font-bold text-sm sm:text-base shadow-sm ring-4 sm:ring-6 ring-[#f0efe9]">
                   1
                 </div>
-                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Xây dựng thế giới</h3>
-                <p className="mt-1 text-[11px] sm:text-xs text-[#2e624a] font-medium">Đang triển khai</p>
+                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Thế giới đã mở cửa</h3>
+                <p className="mt-1 text-[11px] sm:text-xs text-[#2e624a] font-medium">Đã hoàn tất</p>
               </div>
 
               {/* Step 2 */}
@@ -379,8 +379,8 @@ export function LucDiaDamMeHome() {
                 <div className="flex size-11 sm:size-12 items-center justify-center rounded-full bg-[#4b5638] text-white font-bold text-sm sm:text-base shadow-sm ring-4 sm:ring-6 ring-[#f0efe9]">
                   2
                 </div>
-                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Hoàn thiện trải nghiệm</h3>
-                <p className="mt-1 text-[11px] sm:text-xs text-[#2e624a] font-medium">Đang triển khai</p>
+                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Season 6 vận hành</h3>
+                <p className="mt-1 text-[11px] sm:text-xs text-[#2e624a] font-medium">Đang hoạt động</p>
               </div>
 
               {/* Step 3 */}
@@ -388,8 +388,8 @@ export function LucDiaDamMeHome() {
                 <div className="flex size-11 sm:size-12 items-center justify-center rounded-full border border-[#b8c2ad] bg-white text-[#152238]/70 font-bold text-sm sm:text-base shadow-xs ring-4 sm:ring-6 ring-[#f0efe9]">
                   3
                 </div>
-                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Thử nghiệm</h3>
-                <p className="mt-1 text-[11px] sm:text-xs text-[#718294]">Dự kiến</p>
+                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Công thành chiến</h3>
+                <p className="mt-1 text-[11px] sm:text-xs text-[#2e624a]">Đang hoạt động</p>
               </div>
 
               {/* Step 4 */}
@@ -397,13 +397,13 @@ export function LucDiaDamMeHome() {
                 <div className="flex size-11 sm:size-12 items-center justify-center rounded-full border border-[#b8c2ad] bg-white text-[#152238]/70 font-bold text-sm sm:text-base shadow-xs ring-4 sm:ring-6 ring-[#f0efe9]">
                   4
                 </div>
-                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Ra mắt</h3>
-                <p className="mt-1 text-[11px] sm:text-xs text-[#718294]">Dự kiến</p>
+                <h3 className="mt-3.5 text-xs sm:text-sm font-medium text-[#152238] font-serif">Vùng trời mới</h3>
+                <p className="mt-1 text-[11px] sm:text-xs text-[#718294]">Cập nhật tiếp theo</p>
               </div>
             </div>
 
             <p className="mt-8 sm:mt-10 text-center text-xs text-[#718294]">
-              Lộ trình có thể thay đổi theo tiến độ phát triển.
+              Lịch vận hành được cập nhật theo từng mùa.
             </p>
           </div>
         </div>
@@ -413,7 +413,7 @@ export function LucDiaDamMeHome() {
       <section id="nhat-ky" className="py-14 sm:py-24">
         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl sm:text-3xl lg:text-[36px] font-normal tracking-tight text-[#152238] font-serif">
-            Nhật ký phát triển
+            Tin tức mới nhất
           </h2>
 
           {/* 3 Articles Grid */}
@@ -475,18 +475,18 @@ export function LucDiaDamMeHome() {
             Cùng viết tiếp hành trình đam mê.
           </h2>
           <p className="mt-3 sm:mt-4 text-xs sm:text-base lg:text-lg text-[#253952] font-serif leading-relaxed max-w-xl mx-auto font-medium">
-            Theo dõi những cập nhật mới nhất và đồng hành cùng dự án trong từng giai đoạn phát triển.
+            Theo dõi những cập nhật mới nhất và đồng hành cùng cộng đồng trong từng mùa vận hành.
           </p>
 
           {/* Centered Action Buttons */}
           <div className="mt-7 sm:mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto">
-            <button
-              type="button"
+            <Link
+              href={gameUrl(game.subdomain, '/tin-tuc')}
               className="inline-flex min-h-11 sm:min-h-12 items-center justify-center gap-2 rounded-xl border border-[#cbb37e] bg-[#50603c] px-8 text-xs sm:text-sm font-medium text-white shadow-md transition-all hover:bg-[#435231] active:scale-[0.98] cursor-pointer"
             >
-              <span>Theo dõi dự án</span>
+              <span>Xem tin tức</span>
               <span className="text-sm">🪶</span>
-            </button>
+            </Link>
             <Link
               href={portalUrl('/auth/register')}
               className="inline-flex min-h-11 sm:min-h-12 items-center justify-center gap-2 rounded-xl border border-[#c4ced7] bg-white/95 px-8 text-xs sm:text-sm font-medium text-[#15243b] shadow-md transition-all hover:bg-white active:scale-[0.98] font-serif backdrop-blur-sm"

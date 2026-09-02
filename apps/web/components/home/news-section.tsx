@@ -7,7 +7,7 @@ import { NewsItem } from '@/lib/games-data';
 
 const NEWS_CATEGORIES = [
   'Tất cả',
-  'Tiến độ phát triển',
+  'Cập nhật vận hành',
   'Thông báo',
   'Sự kiện',
   'Bảo trì',
@@ -42,7 +42,7 @@ export function NewsSection({ news, dataUnavailable = false }: { news: NewsItem[
           </h2>
 
           <p className="mt-1.5 text-xs sm:text-sm text-slate-500 max-w-lg">
-            Theo dõi tiến độ phát triển game, nhật ký dev log và thông báo sự kiện mới nhất.
+            Theo dõi lịch vận hành game, nhật ký cập nhật và thông báo sự kiện mới nhất.
           </p>
         </div>
 

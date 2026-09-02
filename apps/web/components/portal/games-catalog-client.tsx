@@ -35,9 +35,6 @@ const PLATFORMS = [
 
 const STATUSES = [
   { key: 'ALL', label: 'Tất cả trạng thái' },
-  { key: 'Đang phát triển', label: 'Đang phát triển' },
-  { key: 'Sắp ra mắt', label: 'Sắp ra mắt' },
-  { key: 'Concept', label: 'Concept' },
   { key: 'Đang hoạt động', label: 'Đang hoạt động' },
 ];
 

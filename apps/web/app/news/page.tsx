@@ -7,13 +7,13 @@ import { getPortalGames, getPortalNewsPage } from '@/lib/game-api';
 import { formatCategoryLabel } from '@/lib/games-data';
 
 export const metadata: Metadata = {
-  title: 'Tin tức & Nhật ký phát triển | ZENX GO',
-  description: 'Theo dõi tiến độ phát triển, nhật ký dev log, sự kiện và thông báo chính thức từ hệ sinh thái game ZENX GO.',
+  title: 'Tin tức & Nhật ký vận hành | ZENX GO',
+  description: 'Theo dõi lịch vận hành, nhật ký cập nhật, sự kiện và thông báo chính thức từ hệ sinh thái game ZENX GO.',
 };
 
 const CATEGORIES = [
   { value: '', label: 'Tất cả danh mục' },
-  { value: 'DEVELOPMENT_UPDATE', label: 'Tiến độ phát triển' },
+  { value: 'DEVELOPMENT_UPDATE', label: 'Cập nhật vận hành' },
   { value: 'ANNOUNCEMENT', label: 'Thông báo' },
   { value: 'EVENT', label: 'Sự kiện' },
   { value: 'MAINTENANCE', label: 'Bảo trì' },
@@ -46,7 +46,7 @@ export default async function PortalNewsPage({ searchParams }: { searchParams: S
               </h1>
 
               <p className="mt-3.5 text-sm sm:text-base text-slate-600 leading-relaxed max-w-2xl">
-                Theo dõi tiến độ phát triển, nhật ký dev log, sự kiện cộng đồng và thông báo chính thức từ từng tựa game trong hệ sinh thái.
+                Theo dõi lịch vận hành, cập nhật hệ thống, sự kiện cộng đồng và thông báo chính thức từ từng tựa game trong hệ sinh thái.
               </p>
             </div>
           </div>

@@ -43,7 +43,7 @@ CTA dùng background-image cùng `linear-gradient` đen; đây là nền trang t
 
 ## Nguồn và giới hạn
 
-Hero tái sử dụng key art gốc. Bốn ảnh fortress/dragon/battlefield/cta được tái tạo sạch bằng Image Generation từ mockup và key art: có thể khác chi tiết nhỏ, không phải tách layer nguyên bản. Không chứa chữ hay nút. Các ảnh chỉ là minh họa concept, không phải screenshot gameplay.
+Hero tái sử dụng key art gốc. Bốn ảnh fortress/dragon/battlefield/cta được tái tạo sạch bằng Image Generation từ mockup và key art: có thể khác chi tiết nhỏ, không phải tách layer nguyên bản. Không chứa chữ hay nút. Các ảnh là minh họa thế giới, không phải screenshot gameplay.
 
 Ảnh nguồn PNG và prompt đầy đủ nằm tại `design/resources/hoa-long-detail-v1/` trong repository.
 Xuất lại WebP (cần Node và ImageMagick):

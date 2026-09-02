@@ -6,7 +6,7 @@
 - Domain production hiện tại: `https://zenxgo.io.vn`.
 - Domain có thể thay đổi trong tương lai; không coi `zenxgo.io.vn` là hằng số trong code hoặc dữ liệu.
 - Trọng tâm sản phẩm: UI/UX phía người chơi.
-- Game chính dùng để xây template đầu tiên: **Lục Địa Đam Mê**.
+- Bốn game public dùng chung Game Hub: **Lục Địa Đam Mê**, **Vương Triều Hỏa Long**, **Thị Trấn Mây** và **Chiến Tuyến Orion**.
 
 ## Bộ tài liệu
 
@@ -36,16 +36,22 @@ zenxgo.io.vn
 │   ├── Giới thiệu
 │   ├── Tin tức + chi tiết bài
 │   ├── Roadmap
-│   └── Tải game/Coming Soon
+│   └── Tải game (ẩn cho tới khi có URL phân phối thật)
 │
 ├── hoalong.zenxgo.io.vn
-│   └── Homepage demo theo template chiến thuật
+│   ├── Trang chủ đang hoạt động
+│   ├── Giới thiệu, Tin tức + chi tiết bài
+│   └── Roadmap
 │
 ├── thitranmay.zenxgo.io.vn
-│   └── Homepage demo theo template casual
+│   ├── Trang chủ đang hoạt động
+│   ├── Giới thiệu, Tin tức + chi tiết bài
+│   └── Roadmap
 │
 └── orion.zenxgo.io.vn
-    └── Homepage demo theo template tactical shooter
+    ├── Trang chủ đang hoạt động
+    ├── Giới thiệu, Tin tức + chi tiết bài
+    └── Roadmap
 ```
 
 ## Ngoài phạm vi MVP

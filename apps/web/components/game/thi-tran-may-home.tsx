@@ -40,7 +40,7 @@ const GALLERY_ITEMS = [
   {
     id: 'town-square',
     title: 'Quảng trường',
-    subtitle: 'Minh họa concept',
+    subtitle: 'Thư viện thế giới',
     fullSrc: '/images/games/thi-tran-may/detail-v1/town-square.webp',
     thumbSrc: '/images/games/thi-tran-may/detail-v1/town-square.webp',
     alt: 'Quảng trường và tháp đồng hồ của Thị Trấn Mây',
@@ -48,7 +48,7 @@ const GALLERY_ITEMS = [
   {
     id: 'garden',
     title: 'Khu vườn',
-    subtitle: 'Minh họa concept',
+    subtitle: 'Thư viện thế giới',
     fullSrc: '/images/games/thi-tran-may/detail-v1/garden.webp',
     thumbSrc: '/images/games/thi-tran-may/detail-v1/garden.webp',
     alt: 'Khu vườn và những ngôi nhà trên đảo mây',
@@ -56,7 +56,7 @@ const GALLERY_ITEMS = [
   {
     id: 'airships',
     title: 'Khinh khí cầu',
-    subtitle: 'Minh họa concept',
+    subtitle: 'Thư viện thế giới',
     fullSrc: '/images/games/thi-tran-may/detail-v1/airships.webp',
     thumbSrc: '/images/games/thi-tran-may/detail-v1/airships.webp',
     alt: 'Khinh khí cầu bay trên những tầng mây',
@@ -66,18 +66,18 @@ const GALLERY_ITEMS = [
 const FAQS = [
   {
     id: 1,
-    question: 'Đây có phải là game đã phát hành chính thức?',
-    answer: 'Chưa. Thị Trấn Mây hiện là bản concept nghệ thuật và định hướng lối chơi mô phỏng thư giãn do ZENX GO phát triển. Mọi hình ảnh và tài liệu đều mang tính chất minh họa cho thế giới tương lai.',
+    question: 'Thị Trấn Mây có những hoạt động nào?',
+    answer: 'Bạn có thể chăm sóc khu vườn nổi, ghé thăm hàng xóm, trao đổi vật phẩm và tham gia các hoạt động theo mùa tại Quảng trường Mây.',
   },
   {
     id: 2,
-    question: 'Đã có bản tải game hoặc chơi thử (Alpha/Beta) chưa?',
-    answer: 'Hiện tại chưa có bản tải về. Lịch thử nghiệm sẽ được thông báo trên ZENX Portal khi hoàn tất các giai đoạn dựng môi trường và kiểm thử nội bộ.',
+    question: 'Làm thế nào để đồng bộ tiến trình?',
+    answer: 'Đăng nhập cùng một tài khoản ZENX GO trên các thiết bị được hỗ trợ để đồng bộ tiến trình, vật phẩm và lịch hoạt động của thị trấn.',
   },
   {
     id: 3,
     question: 'Tôi có thể theo dõi tiến độ và đóng góp ý kiến ở đâu?',
-    answer: 'Bạn có thể theo dõi nhật ký phát triển tại mục Tin tức của Thị Trấn Mây hoặc tham gia cộng đồng người chơi trên hệ sinh thái ZENX GO.',
+    answer: 'Bạn có thể xem Tin tức để cập nhật mùa vụ, hoặc tham gia Cộng đồng ZENX GO để chia sẻ ảnh, mẹo chăm vườn và lịch ghé thăm.',
   },
 ];
 
@@ -91,13 +91,6 @@ export function ThiTranMayHome() {
 
   const toggleFaq = (id: number) => {
     setOpenFaqs((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   };
 
   return (
@@ -152,7 +145,7 @@ export function ThiTranMayHome() {
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <div className="max-w-xl lg:max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-[#cae8f7] px-3.5 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#165a88] shadow-2xs">
-              <span>BẢN CONCEPT • CASUAL MÔ PHỎNG</span>
+              <span>ĐANG HOẠT ĐỘNG • CASUAL MÔ PHỎNG</span>
             </div>
 
             <h1 className="mt-4 text-5xl sm:text-6xl lg:text-[76px] font-black tracking-tight text-[#10304f] font-serif leading-[1.04]">
@@ -160,28 +153,26 @@ export function ThiTranMayHome() {
             </h1>
 
             <p className="mt-4 text-xl sm:text-2xl font-black text-[#10304f] leading-snug">
-              Xây một góc nhỏ trên những tầng mây.
+              {game.tagline}
             </p>
 
             <p className="mt-4 text-sm sm:text-base text-[#386284] leading-relaxed max-w-md">
-              Khám phá ý tưởng về một thị trấn nổi dành cho sáng tạo và thư giãn.
+              Chăm sóc một thị trấn nổi dành cho sáng tạo, kết nối và thư giãn mỗi ngày.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => scrollToSection('y-tuong')}
+              <Link
+                href={gameUrl(game.subdomain, '/tin-tuc')}
                 className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#0f828a] px-6 py-2.5 text-sm font-bold text-white shadow-xs transition-all hover:bg-[#0c6c73] active:scale-[0.98]"
               >
-                Khám phá concept
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection('thi-tran')}
+                Xem tin tức
+              </Link>
+              <Link
+                href={portalUrl('/events?game=thi-tran-may')}
                 className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#0f828a] bg-white/90 px-6 py-2.5 text-sm font-bold text-[#0f828a] shadow-xs backdrop-blur-xs transition-all hover:bg-white active:scale-[0.98]"
               >
-                Xem ý tưởng trải nghiệm
-              </button>
+                Xem sự kiện
+              </Link>
             </div>
           </div>
         </div>
@@ -274,13 +265,13 @@ export function ThiTranMayHome() {
         </div>
       </section>
 
-      {/* 4. SECTION: Interactive Gallery (Concept Showcase) */}
+      {/* 4. SECTION: Interactive Gallery (World library) */}
       <section id="y-tuong" className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="inline-flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">
               <LeafIcon className="size-5 text-emerald-500" />
-              <span>HÌNH ẢNH CONCEPT</span>
+              <span>THƯ VIỆN THẾ GIỚI</span>
               <LeafIcon className="size-5 text-emerald-500" />
             </p>
             <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif">
@@ -406,18 +397,18 @@ export function ThiTranMayHome() {
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
             <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs mb-3">
               <Leaf className="size-3.5 text-emerald-600" />
-              THÔNG TIN DỰ ÁN & HỎI ĐÁP
+              THÔNG TIN GAME & HỎI ĐÁP
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif tracking-tight leading-tight">
               Sẵn sàng đón bạn lên những tầng mây
             </h2>
             <p className="mt-3 text-sm sm:text-base text-[#386284] leading-relaxed">
-              Thị Trấn Mây là dự án game thư giãn đang trong giai đoạn phát triển ý tưởng và hoàn thiện mỹ thuật.
+              Thị Trấn Mây là game thư giãn đang hoạt động với mùa vụ, sự kiện và cộng đồng cư dân trên những tầng mây.
             </p>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-12 items-stretch">
-            {/* Left Card: Nền tảng dự kiến */}
+            {/* Left Card: Nền tảng hỗ trợ */}
             <div className="lg:col-span-5 rounded-3xl bg-white border border-[#cce4f5] p-6 sm:p-8 shadow-sm flex flex-col justify-between">
               <div>
                 <h3 className="text-xl font-black text-[#10304f] font-serif flex items-center gap-2">
@@ -436,7 +427,7 @@ export function ThiTranMayHome() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-sm sm:text-base text-[#10304f]">Ứng dụng Di động</h4>
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Dự kiến</span>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Đang hoạt động</span>
                       </div>
                       <p className="mt-1 text-xs text-[#527797] leading-relaxed">
                         Tối ưu cho những phiên chơi ngắn, dễ dàng chăm sóc vườn và ghé thăm bạn bè.
@@ -451,10 +442,10 @@ export function ThiTranMayHome() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="font-bold text-sm sm:text-base text-[#10304f]">Trình duyệt Web</h4>
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Dự kiến</span>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Đang hoạt động</span>
                       </div>
                       <p className="mt-1 text-xs text-[#527797] leading-relaxed">
-                        Chơi trực tiếp trên PC/Laptop, thưởng thức trọn vẹn khung cảnh trên màn hình lớn.
+                        Theo dõi lịch hoạt động và thư viện thế giới trên PC/Laptop với khung cảnh trọn vẹn.
                       </p>
                     </div>
                   </div>
@@ -477,7 +468,7 @@ export function ThiTranMayHome() {
               </div>
 
               <div className="mt-8 pt-5 border-t border-sky-100 flex items-center justify-between text-xs text-[#7395af]">
-                <span>Trạng thái: <strong className="text-[#10304f]">Concept Art</strong></span>
+                <span>Trạng thái: <strong className="text-[#10304f]">Đang hoạt động</strong></span>
                 <span className="text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">ZENX GO Ecosystem</span>
               </div>
             </div>
@@ -487,7 +478,7 @@ export function ThiTranMayHome() {
               <div>
                 <h3 className="text-xl font-black text-[#10304f] font-serif flex items-center gap-2">
                   <HelpCircle className="size-5 text-[#0f828a]" />
-                  <span>Về bản concept & Câu hỏi thường gặp</span>
+                  <span>Về game & Câu hỏi thường gặp</span>
                 </h3>
                 <p className="mt-1.5 text-xs sm:text-sm text-[#587e9e] leading-relaxed mb-6">
                   Những giải đáp chi tiết về định hướng và quá trình xây dựng thế giới Thị Trấn Mây.
@@ -538,7 +529,7 @@ export function ThiTranMayHome() {
       </section>
 
       {/* 7. SECTION: Development Updates */}
-      {game.articles.length ? <section id="nhat-ky" className="py-10 sm:py-16"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">Nhật ký concept</p><h2 className="mt-3 text-2xl font-black text-[#10304f] font-serif sm:text-3xl">Những ghi chú từ thị trấn</h2></div><Link href={portalUrl('/news?game=thi-tran-may')} className="hidden items-center gap-2 text-xs font-bold text-[#0f828a] sm:inline-flex">Xem tất cả <ArrowRight className="size-4" /></Link></div><div className="mt-7 grid gap-5 md:grid-cols-3">{game.articles.slice(0, 3).map((article) => <Link key={article.slug} href={gameUrl(game.subdomain, `/tin-tuc/${article.slug}`)} className="group overflow-hidden rounded-3xl border border-[#cbe5f5] bg-white shadow-xs transition-all hover:-translate-y-1 hover:shadow-lg"><div className="aspect-[16/9] overflow-hidden bg-[#d9effb]">{article.coverImageUrl ? <img src={article.coverImageUrl} alt={article.title} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" /> : null}</div><div className="p-5"><p className="text-[11px] font-bold uppercase tracking-wider text-[#0f828a]">{article.category.replaceAll('_', ' ')}</p><h3 className="mt-3 font-bold text-[#10304f]">{article.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[#527797]">{article.excerpt}</p><span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#0f828a]">Đọc bài viết <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span></div></Link>)}</div><Link href={portalUrl('/news?game=thi-tran-may')} className="mt-6 inline-flex items-center gap-2 text-xs font-bold text-[#0f828a] sm:hidden">Xem tất cả bài viết <ArrowRight className="size-4" /></Link></div></section> : null}
+      {game.articles.length ? <section id="nhat-ky" className="py-10 sm:py-16"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">Nhật ký vận hành</p><h2 className="mt-3 text-2xl font-black text-[#10304f] font-serif sm:text-3xl">Những ghi chú từ thị trấn</h2></div><Link href={portalUrl('/news?game=thi-tran-may')} className="hidden items-center gap-2 text-xs font-bold text-[#0f828a] sm:inline-flex">Xem tất cả <ArrowRight className="size-4" /></Link></div><div className="mt-7 grid gap-5 md:grid-cols-3">{game.articles.slice(0, 3).map((article) => <Link key={article.slug} href={gameUrl(game.subdomain, `/tin-tuc/${article.slug}`)} className="group overflow-hidden rounded-3xl border border-[#cbe5f5] bg-white shadow-xs transition-all hover:-translate-y-1 hover:shadow-lg"><div className="aspect-[16/9] overflow-hidden bg-[#d9effb]">{article.coverImageUrl ? <img src={article.coverImageUrl} alt={article.title} className="size-full object-cover transition-transform duration-500 group-hover:scale-105" /> : null}</div><div className="p-5"><p className="text-[11px] font-bold uppercase tracking-wider text-[#0f828a]">{article.category.replaceAll('_', ' ')}</p><h3 className="mt-3 font-bold text-[#10304f]">{article.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[#527797]">{article.excerpt}</p><span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#0f828a]">Đọc bài viết <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span></div></Link>)}</div><Link href={portalUrl('/news?game=thi-tran-may')} className="mt-6 inline-flex items-center gap-2 text-xs font-bold text-[#0f828a] sm:hidden">Xem tất cả bài viết <ArrowRight className="size-4" /></Link></div></section> : null}
 
       {/* 8. SECTION: Bottom Banner CTA */}
       <section className="pb-14 sm:pb-20 pt-4">
@@ -563,7 +554,7 @@ export function ThiTranMayHome() {
                   <LeafIcon className="size-6 text-emerald-500 shrink-0 inline-block self-end mb-1" />
                 </div>
                 <p className="mt-2 text-sm sm:text-base text-[#386284] leading-relaxed">
-                  Khám phá thêm những thế giới concept trong hệ sinh thái ZENX GO.
+                  Khám phá thêm những thế giới đang hoạt động trong hệ sinh thái ZENX GO.
                 </p>
               </div>
 

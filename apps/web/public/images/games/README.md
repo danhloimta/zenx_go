@@ -21,7 +21,7 @@ Các đường dẫn public, alt text và focal point được khai báo trong `
 - Dùng `thumbnail.webp` cho card 16:9, không dùng `key-art.png` ở production.
 - Dùng `avatar.webp` cho vùng vuông; không tiếp tục crop từ thumbnail trong CSS.
 - Giữ nguyên aspect ratio và dùng focal point trong manifest khi cần `object-position`.
-- Game demo phải được gắn nhãn `Demo` hoặc `Concept` trong UI; artwork không chứa nhãn này.
+- Artwork chỉ cung cấp hình ảnh thế giới; trạng thái và thông tin game luôn lấy từ dữ liệu public trong UI.
 
 ## Nguồn tạo
 

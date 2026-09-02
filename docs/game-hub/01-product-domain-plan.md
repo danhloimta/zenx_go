@@ -19,8 +19,8 @@ Game Hub là Phase 2, bổ sung lớp khám phá game và website riêng của t
 ### Mục tiêu MVP
 
 - Biến homepage hiện tại thành Game Hub có hình ảnh và cá tính game rõ ràng.
-- Cho phép người dùng khám phá game theo thể loại, nền tảng và trạng thái phát hành.
-- Cung cấp website riêng cho Lục Địa Đam Mê trên subdomain.
+- Cho phép người dùng khám phá bốn game đang hoạt động theo thể loại, nền tảng và lịch nội dung.
+- Cung cấp website riêng cho cả bốn game trên subdomain.
 - Dùng chung trạng thái đăng nhập và tài khoản ZENX GO.
 - Chứng minh một bộ section UI có thể phục vụ nhiều loại game.
 - Giữ kiến trúc sẵn sàng cho việc thay domain trong tương lai.
@@ -44,7 +44,7 @@ Nhiệm vụ chính:
 - Giới thiệu thương hiệu ZENX GO.
 - Giúp người dùng khám phá game.
 - Là điểm vào cho tài khoản, ví, thanh toán và hỗ trợ.
-- Hiển thị game nổi bật, game mới và game sắp ra mắt.
+- Hiển thị game nổi bật, game mới và lịch hoạt động mới nhất.
 - Điều hướng người dùng sang website chính thức của game.
 
 ### Subdomain game
@@ -55,7 +55,7 @@ Nhiệm vụ chính:
 
 - Truyền tải thế giới, hình ảnh và định vị của game.
 - Tin tức, hướng dẫn, roadmap hoặc sự kiện.
-- CTA phù hợp với trạng thái game: theo dõi, đăng ký test, tải hoặc chơi ngay.
+- CTA phù hợp với trạng thái game: vào trang game, xem tin tức hoặc tham gia cộng đồng.
 - Sau MVP có thể mở rộng server, BXH, giftcode và nạp game.
 
 ## 4. Quy ước domain không phụ thuộc thương hiệu
@@ -151,7 +151,7 @@ status
 
 - Người dùng hiểu ZENX GO có nhiều game ngay trong màn hình đầu tiên.
 - Người dùng đi từ Game Hub sang Lục Địa Đam Mê trong tối đa hai thao tác.
-- Người dùng nhận biết rõ game đang phát triển, test hay đã phát hành.
+- Người dùng nhận biết rõ bốn game đang hoạt động và lịch cập nhật tương ứng.
 - CTA chính trên mỗi trang không gây nhầm lẫn.
 
 ### Kỹ thuật

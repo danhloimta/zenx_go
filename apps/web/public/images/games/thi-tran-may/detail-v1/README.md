@@ -46,7 +46,7 @@ CTA dùng panorama làm background-image kết hợp gradient trắng/sky-blue; 
 
 ## Nguồn và giới hạn
 
-Hero tái sử dụng key art gốc. Bốn ảnh quảng trường/khu vườn/khinh khí cầu/đảo mây được tái tạo sạch bằng Image Generation từ mockup và key art: có thể khác chi tiết nhỏ, không phải tách layer nguyên bản. Không chứa chữ hay nút. Đây là minh họa concept, không phải screenshot gameplay.
+Hero tái sử dụng key art gốc. Bốn ảnh quảng trường/khu vườn/khinh khí cầu/đảo mây được tái tạo sạch bằng Image Generation từ mockup và key art: có thể khác chi tiết nhỏ, không phải tách layer nguyên bản. Không chứa chữ hay nút. Đây là minh họa thế giới, không phải screenshot gameplay.
 
 Ảnh nguồn PNG và prompt đầy đủ nằm tại `design/resources/thi-tran-may-detail-v1/` trong repository.
 Xuất lại WebP (cần Node và ImageMagick):

@@ -147,11 +147,11 @@ export function VuongTrieuHoaLongHome() {
             <div className="flex flex-wrap items-center gap-2 mb-3.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-amber-950/80 border border-amber-500/50 text-amber-400 backdrop-blur-md shadow-lg">
                 <Crown className="size-3.5" />
-                CHIẾN THUẬT SLG • DEMO
+                CHIẾN THUẬT SLG • ĐANG HOẠT ĐỘNG
               </span>
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#1e1510] border border-[#5c3a1e] text-[#e57c23]">
                 <Flame className="size-3 fill-current" />
-                SẮP RA MẮT
+                ĐANG VẬN HÀNH
               </span>
             </div>
 
@@ -165,12 +165,12 @@ export function VuongTrieuHoaLongHome() {
 
             {/* Slogan */}
             <p className="mt-3 sm:mt-4 text-base sm:text-xl font-medium text-amber-100/90 tracking-wide drop-shadow-sm font-serif">
-              Xây dựng vương triều, thống lĩnh chiến trường.
+              {game.tagline}
             </p>
 
             {/* Synopsis */}
             <p className="mt-2.5 text-xs sm:text-sm text-[#c5b597] leading-relaxed max-w-lg">
-              Concept chiến thuật mô phỏng thế giới thời trung cổ thần thoại, nơi ngọn lửa rồng thiêng và tham vọng vương quyền định hình cục diện các cuộc chiến tranh liên minh vĩ đại.
+              Game chiến thuật mô phỏng thế giới thời trung cổ thần thoại, nơi ngọn lửa rồng thiêng và tham vọng vương quyền định hình cục diện các cuộc chiến tranh liên minh vĩ đại.
             </p>
 
             {/* CTA Buttons */}
@@ -306,13 +306,13 @@ export function VuongTrieuHoaLongHome() {
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#e57c23]">
-              HÌNH ẢNH CONCEPT THẾ GIỚI
+              THƯ VIỆN THẾ GIỚI HỎA LONG
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight mt-2">
               Khám phá không gian Hỏa Long
             </h2>
             <p className="mt-3 text-xs sm:text-sm text-[#baa98a]">
-              Chọn từng khung cảnh để xem chi tiết tạo hình và concept thế giới rồng lửa.
+              Chọn từng khung cảnh để xem chi tiết chiến trường, thành trì và thế giới rồng lửa.
             </p>
           </div>
 
@@ -431,7 +431,7 @@ export function VuongTrieuHoaLongHome() {
                     <div className="p-5 sm:p-6">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#e57c23]">
                         {article.category === 'DEVELOPMENT_UPDATE'
-                          ? 'Tiến độ phát triển'
+                          ? 'Cập nhật hệ thống'
                           : article.category === 'EVENT'
                             ? 'Sự kiện'
                             : 'Thông báo'}
@@ -478,7 +478,7 @@ export function VuongTrieuHoaLongHome() {
             <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
               <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-bold bg-amber-950/90 border border-amber-500/50 text-amber-300 backdrop-blur-md shadow-lg mb-4">
                 <Crown className="size-3.5" />
-                ĐĂNG KÝ THEO DÕI SỚM
+                CẬP NHẬT VẬN HÀNH
               </span>
 
               <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
@@ -489,7 +489,7 @@ export function VuongTrieuHoaLongHome() {
               </h2>
 
               <p className="mt-3.5 text-xs sm:text-sm text-[#d4c3a3] leading-relaxed max-w-lg">
-                Tạo tài khoản ZENX GO ngay hôm nay để nhận thông báo sớm nhất khi bản thử nghiệm Alpha Test của Vương Triều Hỏa Long chính thức mở cửa.
+                Tạo tài khoản ZENX GO để theo dõi lịch mùa, phần thưởng và những cập nhật mới nhất của Vương Triều Hỏa Long.
               </p>
 
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto">
