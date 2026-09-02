@@ -68,7 +68,7 @@ export function LucDiaDamMeHome() {
         {/* Full Bleed Background Art */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
           <img
-            src="/images/games/luc-dia-dam-me/hero.png"
+            src="/images/games/luc-dia-dam-me/hero.webp"
             alt="Lục Địa Đam Mê - Kỵ sĩ thiên thần"
             className="size-full object-cover object-[78%_center] sm:object-[70%_center] lg:object-[68%_32%]"
             fetchPriority="high"
@@ -138,7 +138,7 @@ export function LucDiaDamMeHome() {
         {/* Full Bleed Right Artwork - Perfectly Framed Character on Desktop */}
         <div className="absolute inset-y-0 right-0 -z-20 hidden lg:block lg:w-[56%] xl:w-[54%] overflow-hidden pointer-events-none">
           <img
-            src="/images/games/luc-dia-dam-me/assets/sec2-art.png"
+            src="/images/games/luc-dia-dam-me/assets/sec2-art.webp"
             alt="Kỵ sĩ Lục Địa Đam Mê trên ban công thành phố mây"
             className="size-full object-cover object-right"
             loading="lazy"
@@ -171,7 +171,7 @@ export function LucDiaDamMeHome() {
                 <div className="flex items-center gap-3.5 sm:gap-4 py-1.5 sm:py-2">
                   <div className="size-11 sm:size-14 shrink-0 overflow-hidden flex items-center justify-center">
                     <img
-                      src="/images/games/luc-dia-dam-me/assets/icon-season6.png"
+                      src="/images/games/luc-dia-dam-me/assets/icon-season6.webp"
                       alt="Tinh thần Season 6"
                       className="size-full object-contain"
                     />
@@ -192,7 +192,7 @@ export function LucDiaDamMeHome() {
                 <div className="flex items-center gap-3.5 sm:gap-4 py-1.5 sm:py-2">
                   <div className="size-11 sm:size-14 shrink-0 overflow-hidden flex items-center justify-center">
                     <img
-                      src="/images/games/luc-dia-dam-me/assets/icon-nhip-rieng.png"
+                      src="/images/games/luc-dia-dam-me/assets/icon-nhip-rieng.webp"
                       alt="Khám phá theo nhịp riêng"
                       className="size-full object-contain"
                     />
@@ -213,7 +213,7 @@ export function LucDiaDamMeHome() {
                 <div className="flex items-center gap-3.5 sm:gap-4 py-1.5 sm:py-2">
                   <div className="size-11 sm:size-14 shrink-0 overflow-hidden flex items-center justify-center">
                     <img
-                      src="/images/games/luc-dia-dam-me/assets/icon-cong-dong.png"
+                      src="/images/games/luc-dia-dam-me/assets/icon-cong-dong.webp"
                       alt="Gắn kết cộng đồng"
                       className="size-full object-contain"
                     />
@@ -234,13 +234,13 @@ export function LucDiaDamMeHome() {
                 className="relative w-full overflow-hidden rounded-2xl border border-black/5 shadow-sm cursor-pointer"
                 onClick={() =>
                   setLightboxImage({
-                    src: '/images/games/luc-dia-dam-me/bg2.png',
+                    src: '/images/games/luc-dia-dam-me/bg2.webp',
                     title: 'Lục Địa Đam Mê - Kỵ sĩ trên ban công mây',
                   })
                 }
               >
                 <img
-                  src="/images/games/luc-dia-dam-me/bg2.png"
+                  src="/images/games/luc-dia-dam-me/bg2.webp"
                   alt="Kỵ sĩ Lục Địa Đam Mê trên ban công thành phố mây"
                   className="w-full object-cover aspect-[16/10] sm:aspect-[4/3]"
                   loading="lazy"
@@ -266,7 +266,7 @@ export function LucDiaDamMeHome() {
         {/* Full Bleed Panorama Art */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
           <img
-            src="/images/games/luc-dia-dam-me/bg.png"
+            src="/images/games/luc-dia-dam-me/bg.webp"
             alt="Lục địa trên mây"
             className="size-full object-cover object-[60%_center]"
             loading="lazy"
@@ -288,7 +288,7 @@ export function LucDiaDamMeHome() {
                 type="button"
                 onClick={() =>
                   setLightboxImage({
-                    src: '/images/games/luc-dia-dam-me/bg.png',
+                    src: '/images/games/luc-dia-dam-me/bg.webp',
                     title: 'Lục Địa Đam Mê - Toàn cảnh thành phố trên mây',
                   })
                 }
@@ -459,7 +459,7 @@ export function LucDiaDamMeHome() {
         {/* Full-Width Panoramic Background Art */}
         <div className="absolute inset-0 -z-20 overflow-hidden">
           <img
-            src="/images/games/luc-dia-dam-me/bg2.png"
+            src="/images/games/luc-dia-dam-me/bg2.webp"
             alt="Lục Địa Đam Mê toàn cảnh"
             className="size-full object-cover object-[50%_40%]"
             loading="lazy"

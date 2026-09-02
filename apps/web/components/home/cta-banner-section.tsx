@@ -15,7 +15,7 @@ export function CtaBannerSection() {
         {/* Desktop Side Character Artworks (Hidden on Mobile to prevent overlapping seams) */}
         <div className="hidden md:block absolute left-0 bottom-0 top-0 w-80 lg:w-[420px] pointer-events-none overflow-hidden">
           <img
-            src="/images/games/luc-dia-dam-me/nhan_vat3.png"
+            src="/images/games/luc-dia-dam-me/nhan_vat3.webp"
             alt="Lục Địa Đam Mê Knight"
             className="size-full object-cover object-[75%_25%] contrast-105 brightness-105"
           />
@@ -36,7 +36,7 @@ export function CtaBannerSection() {
         {/* Mobile Background Atmosphere (Unified & Seamless) */}
         <div className="block md:hidden absolute inset-0 opacity-20 pointer-events-none">
           <img
-            src="/images/games/luc-dia-dam-me/bg.png"
+            src="/images/games/luc-dia-dam-me/bg.webp"
             alt="Gaming Background"
             className="size-full object-cover object-center"
           />

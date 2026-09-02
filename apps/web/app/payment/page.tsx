@@ -174,7 +174,7 @@ export default function PaymentPage() {
             </div>
           </div>
           <img
-            src="/images/wallet.png"
+            src="/images/wallet.webp"
             alt="Ví ZENX"
             className="hidden h-24 w-auto object-contain sm:block"
           />

@@ -90,7 +90,7 @@ function LoginForm() {
 
           <div className="my-6 flex items-center justify-center">
             <img
-              src="/images/image.png"
+              src="/images/image.webp"
               alt="ZENX GO Security & Gaming"
               className="w-[85%] max-w-[420px] object-contain drop-shadow-md"
             />

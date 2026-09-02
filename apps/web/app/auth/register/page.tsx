@@ -163,7 +163,7 @@ export default function RegisterPage() {
 
             <div className="my-8 flex justify-center">
               <img
-                src="/images/wallet.png"
+                src="/images/wallet.webp"
                 alt="Ví ZENX GO"
                 className="w-[230px] sm:w-[260px] object-contain drop-shadow-sm transition-transform hover:scale-105 duration-300"
               />

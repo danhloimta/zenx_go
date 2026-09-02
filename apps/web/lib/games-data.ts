@@ -118,11 +118,11 @@ export function gameItemFromSummary(summary: GameSummary): GameItem {
   const titleLines = titleWords.length > 2 ? [titleWords.slice(0, splitAt).join(' '), titleWords.slice(splitAt).join(' ')] : undefined;
   const websiteUrl = gameUrl(summary.subdomain);
   const characterArt = summary.slug === 'luc-dia-dam-me'
-    ? '/images/games/luc-dia-dam-me/nhan_vat3.png'
+    ? '/images/games/luc-dia-dam-me/nhan_vat3.webp'
     : summary.slug === 'vuong-trieu-hoa-long'
-      ? '/images/games/vuong-trieu-hoa-long/key-art.png'
+      ? '/images/games/vuong-trieu-hoa-long/key-art.webp'
       : summary.slug === 'chien-tuyen-orion'
-        ? '/images/games/chien-tuyen-orion/key-art.png'
+        ? '/images/games/chien-tuyen-orion/key-art.webp'
         : summary.coverUrl ?? '';
   const focalPoint = summary.slug === 'luc-dia-dam-me'
     ? '75% 30%'

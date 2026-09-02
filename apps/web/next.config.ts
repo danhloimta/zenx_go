@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     if (!proxyOrigin) return [];
     return [{ source: '/api/v1/:path*', destination: `${proxyOrigin}/api/v1/:path*` }];
   },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+  },
 };
 
 export default nextConfig;

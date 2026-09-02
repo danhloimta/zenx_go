@@ -12,7 +12,7 @@ export function BrandLogo({
   compact?: boolean;
   variant?: "light" | "dark";
 }) {
-  const logoSrc = variant === "dark" ? "/images/logo-white.png" : "/images/logo.png";
+  const logoSrc = variant === "dark" ? "/images/logo-white.webp" : "/images/logo.webp";
 
   return (
     <Link
