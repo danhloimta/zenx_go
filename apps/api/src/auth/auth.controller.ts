@@ -8,6 +8,7 @@ import { ForgotPasswordDto, LoginDto, RefreshDto, RegisterDto, ResetPasswordDto 
 import { SocialProvider } from '../common/domain';
 import { DomainError } from '../common/errors';
 import { OAuthMode, SocialService } from '../social/social.service';
+import { isAllowedReturnTo } from '../common/web-domain';
 
 @Controller('auth')
 export class AuthController {
@@ -47,8 +48,8 @@ export class AuthController {
   me(@Req() request: AuthenticatedRequest) { return { userId: request.user.sub, username: request.user.username }; }
 
   @Get('google')
-  google(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string) {
-    return this.startOAuth('GOOGLE', request, response, mode);
+  google(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string, @Query('returnTo') returnTo?: string) {
+    return this.startOAuth('GOOGLE', request, response, mode, returnTo);
   }
 
   @Get('google/callback')
@@ -57,8 +58,8 @@ export class AuthController {
   }
 
   @Get('facebook')
-  facebook(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string) {
-    return this.startOAuth('FACEBOOK', request, response, mode);
+  facebook(@Req() request: Request, @Res() response: Response, @Query('mode') mode?: string, @Query('returnTo') returnTo?: string) {
+    return this.startOAuth('FACEBOOK', request, response, mode, returnTo);
   }
 
   @Get('facebook/callback')
@@ -66,15 +67,16 @@ export class AuthController {
     return this.completeOAuth('FACEBOOK', request, response, code, state, error);
   }
 
-  private async startOAuth(provider: SocialProvider, request: Request, response: Response, rawMode?: string) {
+  private async startOAuth(provider: SocialProvider, request: Request, response: Response, rawMode?: string, rawReturnTo?: string) {
     const mode: OAuthMode = rawMode === 'link' ? 'link' : 'login';
+    const returnTo = mode === 'login' ? this.safeReturnTo(rawReturnTo, '/account') : undefined;
     try {
       let userId: string | undefined;
       if (mode === 'link') {
         const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
         userId = access.sub;
       }
-      const authorization = this.social.getAuthorizationUrl(provider, mode, userId);
+      const authorization = this.social.getAuthorizationUrl(provider, mode, userId, returnTo);
       const stateCookieName = this.social.stateCookieName(provider);
       response.cookie(stateCookieName, this.social.appendState(request.cookies?.[stateCookieName], authorization.state), {
         ...this.cookieOptions(),
@@ -83,7 +85,7 @@ export class AuthController {
       });
       return response.redirect(authorization.url);
     } catch (error) {
-      return this.redirectOAuthError(response, mode, this.errorCode(error));
+      return this.redirectOAuthError(response, mode, this.errorCode(error), returnTo);
     }
   }
 
@@ -104,7 +106,7 @@ export class AuthController {
       } else {
         response.clearCookie(stateCookie, { ...this.cookieOptions(), path: `/api/v1/auth/${provider.toLowerCase()}` });
       }
-      if (providerError) return this.redirectOAuthError(response, oauthState.mode, 'provider_cancelled');
+      if (providerError) return this.redirectOAuthError(response, oauthState.mode, 'provider_cancelled', oauthState.returnTo);
       const profile = await this.social.exchangeCode(provider, code ?? '');
       if (oauthState.mode === 'link') {
         const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
@@ -116,15 +118,27 @@ export class AuthController {
       const userId = await this.social.loginIdentity(provider, profile);
       const tokens = await this.auth.loginWithSocial(userId);
       this.withCookies(response, tokens);
-      return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}/account`);
+      return response.redirect(oauthState.returnTo ?? `${this.config.getOrThrow<string>('webOrigin')}/account`);
     } catch (error) {
-      return this.redirectOAuthError(response, oauthState?.mode ?? mode, this.errorCode(error));
+      return this.redirectOAuthError(response, oauthState?.mode ?? mode, this.errorCode(error), oauthState?.returnTo);
     }
   }
 
-  private redirectOAuthError(response: Response, mode: OAuthMode, code: string) {
+  private redirectOAuthError(response: Response, mode: OAuthMode, code: string, returnTo?: string) {
+    if (mode === 'login' && returnTo) {
+      const target = new URL(returnTo);
+      target.searchParams.set('social_error', code);
+      return response.redirect(target.toString());
+    }
     const path = mode === 'link' ? '/account/social' : '/auth/login';
     return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}${path}?social_error=${encodeURIComponent(code)}`);
+  }
+
+  private safeReturnTo(value: string | undefined, fallbackPath: string) {
+    const baseDomain = this.config.getOrThrow<string>('baseDomain');
+    const origins = this.config.get<string[]>('allowedWebOrigins') ?? [];
+    if (isAllowedReturnTo(value, baseDomain, origins, this.config.get<boolean>('allowGameSubdomains') ?? true)) return value!;
+    return `${this.config.getOrThrow<string>('webOrigin')}${fallbackPath}`;
   }
 
   private errorCode(error: unknown) {

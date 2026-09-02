@@ -9,6 +9,13 @@ const optionalOAuthUri = () => Joi.string().trim().uri().empty('').optional();
 export const appConfigValidationSchema = Joi.object({
   API_PORT: Joi.number().port().default(4000),
   WEB_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
+  PUBLIC_BASE_DOMAIN: Joi.string().hostname().optional(),
+  PUBLIC_WEB_ORIGIN: Joi.string().uri().optional(),
+  ALLOWED_WEB_ORIGINS: Joi.string().optional(),
+  ALLOW_GAME_SUBDOMAINS: Joi.boolean().default(true),
+  COOKIE_DOMAIN: Joi.string().allow('').optional(),
+  COOKIE_SECURE: Joi.boolean().default(false),
+  GAME_DEMO_PUBLIC: Joi.boolean().default(false),
   DATABASE_URL: Joi.string().optional(),
   JWT_ACCESS_SECRET: Joi.string().min(32).default('development-access-secret-change-me-32'),
   JWT_REFRESH_SECRET: Joi.string().min(32).default('development-refresh-secret-change-me-32'),
@@ -45,6 +52,8 @@ export const appConfigValidationSchema = Joi.object({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
+      envFilePath: process.env.NODE_ENV === 'test' ? ['.env.test', '.env.test.example'] : undefined,
       load: [configuration],
       validationSchema: appConfigValidationSchema,
     }),

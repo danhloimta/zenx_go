@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -17,6 +17,7 @@ import { SocialAuthButton } from '@/components/social-auth-button';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { isSafeReturnTo } from '@/lib/domain';
 
 const schema = z.object({
   username: z.string().trim().min(1, 'Vui lòng nhập tên đăng nhập hoặc email.'),
@@ -26,6 +27,7 @@ type Values = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const [returnTo, setReturnTo] = useState<string | undefined>();
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', password: '' },
@@ -35,15 +37,17 @@ export default function LoginPage() {
     onSuccess: () => {
       toast.success('Đăng nhập thành công.');
       const next = new URLSearchParams(window.location.search).get('next');
-      const destination = next && next.startsWith('/') && !next.startsWith('//') ? next : '/account';
-      router.push(destination);
-      router.refresh();
+      const destination = getSafeDestination(returnTo ?? next);
+      if (destination.startsWith('http://') || destination.startsWith('https://')) window.location.assign(destination);
+      else { router.push(destination); router.refresh(); }
     },
     onError: (error) =>
       toast.error(getErrorMessage(error, 'Tên đăng nhập hoặc mật khẩu không đúng.')),
   });
 
   useEffect(() => {
+    const candidate = new URLSearchParams(window.location.search).get('returnTo');
+    if (isSafeReturnTo(candidate)) setReturnTo(candidate!);
     const socialError = new URLSearchParams(window.location.search).get('social_error');
     if (!socialError) return;
     const messages: Record<string, string> = {
@@ -155,8 +159,8 @@ export default function LoginPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <SocialAuthButton provider="google" href={api.auth.oauthUrl('google')} />
-              <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook')} />
+              <SocialAuthButton provider="google" href={api.auth.oauthUrl('google', 'login', returnTo)} />
+              <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook', 'login', returnTo)} />
             </div>
 
             <p className="mt-7 text-center text-xs sm:text-sm text-slate-600">
@@ -170,4 +174,10 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function getSafeDestination(value: string | null | undefined) {
+  if (value && (value.startsWith('/') && !value.startsWith('//'))) return value;
+  if (value && isSafeReturnTo(value)) return value;
+  return '/account';
 }

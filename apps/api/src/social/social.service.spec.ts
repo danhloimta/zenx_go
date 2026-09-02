@@ -49,6 +49,13 @@ describe('SocialService OAuth boundary', () => {
     expect(() => service.verifyState('GOOGLE', authorization.state, 'tampered')).toThrow('OAuth state is invalid or expired');
   });
 
+  it('binds an allowed return URL into the signed state without exposing it to the provider as trusted input', () => {
+    const service = new SocialService(prisma as never, config as never);
+    const returnTo = 'https://lucdia.zenxgo.io.vn/tin-tuc/world-remake';
+    const authorization = service.getAuthorizationUrl('GOOGLE', 'login', undefined, returnTo);
+    expect(service.verifyState('GOOGLE', authorization.state, authorization.state)).toMatchObject({ mode: 'login', returnTo });
+  });
+
   it('exchanges an authorization code and reads the provider user profile', async () => {
     const service = new SocialService(prisma as never, config as never);
     const fetchMock = jest.spyOn(global, 'fetch')

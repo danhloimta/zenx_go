@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "games": [
+    {
+      "slug": "luc-dia-dam-me",
+      "alt": "Kỵ sĩ có cánh của Lục Địa Đam Mê trên thành phố giữa mây",
+      "focalPoint": "72% 48%",
+      "assets": {
+        "source": "/images/games/luc-dia-dam-me/key-art.png",
+        "heroDesktop": "/images/games/luc-dia-dam-me/hero-desktop.webp",
+        "heroMobile": "/images/games/luc-dia-dam-me/hero-mobile.webp",
+        "thumbnail": "/images/games/luc-dia-dam-me/thumbnail.webp",
+        "avatar": "/images/games/luc-dia-dam-me/avatar.webp"
+      }
+    },
+    {
+      "slug": "vuong-trieu-hoa-long",
+      "alt": "Hỏa long trên vương quốc núi lửa và đội quân đang tiến vào thành",
+      "focalPoint": "72% 38%",
+      "assets": {
+        "source": "/images/games/vuong-trieu-hoa-long/key-art.png",
+        "heroDesktop": "/images/games/vuong-trieu-hoa-long/hero-desktop.webp",
+        "heroMobile": "/images/games/vuong-trieu-hoa-long/hero-mobile.webp",
+        "thumbnail": "/images/games/vuong-trieu-hoa-long/thumbnail.webp",
+        "avatar": "/images/games/vuong-trieu-hoa-long/avatar.webp"
+      }
+    },
+    {
+      "slug": "thi-tran-may",
+      "alt": "Thị trấn và tháp đồng hồ trên hòn đảo nổi giữa bầu trời",
+      "focalPoint": "58% 48%",
+      "assets": {
+        "source": "/images/games/thi-tran-may/key-art.png",
+        "heroDesktop": "/images/games/thi-tran-may/hero-desktop.webp",
+        "heroMobile": "/images/games/thi-tran-may/hero-mobile.webp",
+        "thumbnail": "/images/games/thi-tran-may/thumbnail.webp",
+        "avatar": "/images/games/thi-tran-may/avatar.webp"
+      }
+    },
+    {
+      "slug": "chien-tuyen-orion",
+      "alt": "Biệt đội Orion tiến qua thuộc địa không gian giữa cơn bão năng lượng",
+      "focalPoint": "68% 43%",
+      "assets": {
+        "source": "/images/games/chien-tuyen-orion/key-art.png",
+        "heroDesktop": "/images/games/chien-tuyen-orion/hero-desktop.webp",
+        "heroMobile": "/images/games/chien-tuyen-orion/hero-mobile.webp",
+        "thumbnail": "/images/games/chien-tuyen-orion/thumbnail.webp",
+        "avatar": "/images/games/chien-tuyen-orion/avatar.webp"
+      }
+    }
+  ]
+}

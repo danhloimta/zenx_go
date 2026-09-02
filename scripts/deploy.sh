@@ -6,7 +6,7 @@ readonly DEPLOY_HOST="${DEPLOY_HOST:-root@103.116.105.26}"
 readonly DEPLOY_DIR="${DEPLOY_DIR:-/opt/zenx-go}"
 readonly DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 readonly DEPLOY_REMOTE="${DEPLOY_REMOTE:-origin}"
-readonly HEALTH_URL="${HEALTH_URL:-https://zenxgo.io.vn}"
+readonly HEALTH_URL="${HEALTH_URL:-${PUBLIC_WEB_ORIGIN:-http://127.0.0.1:3100}}"
 readonly NODE_BIN_DIR="${NODE_BIN_DIR:-/root/.nvm/versions/node/v22.22.1/bin}"
 readonly LOCAL_LOCK="${TMPDIR:-/tmp}/zenx-go-deploy.lock"
 

@@ -9,6 +9,7 @@ import express from 'express';
 import { AppModule } from './app.module';
 import { ApiErrorFilter } from './common/error.filter';
 import { ResponseInterceptor } from './common/response.interceptor';
+import { isAllowedWebOrigin } from './common/web-domain';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
@@ -17,7 +18,22 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use('/uploads', express.static(config.getOrThrow<string>('uploadDir')));
   app.setGlobalPrefix('api/v1');
-  app.enableCors({ origin: config.getOrThrow<string>('webOrigin'), credentials: true });
+  app.enableCors({
+    credentials: true,
+    origin: (requestOrigin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+      if (isAllowedWebOrigin(
+        requestOrigin,
+        config.getOrThrow<string>('baseDomain'),
+        config.get<string[]>('allowedWebOrigins') ?? [],
+        config.get<boolean>('allowGameSubdomains') ?? true,
+      )) {
+        callback(null, true);
+      } else {
+        // Let OriginGuard produce the consistent API 403 response for state-changing requests.
+        callback(null, false);
+      }
+    },
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidUnknownValues: true }));
   app.useGlobalFilters(new ApiErrorFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());

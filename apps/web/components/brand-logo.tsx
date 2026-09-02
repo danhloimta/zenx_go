@@ -5,11 +5,15 @@ export function BrandLogo({
   href = "/",
   className,
   compact = false,
+  variant = "light",
 }: {
   href?: string;
   className?: string;
   compact?: boolean;
+  variant?: "light" | "dark";
 }) {
+  const logoSrc = variant === "dark" ? "/images/logo-white.png" : "/images/logo.png";
+
   return (
     <Link
       href={href}
@@ -17,7 +21,7 @@ export function BrandLogo({
       aria-label="ZENX GO"
     >
       <img
-        src="/images/logo.png"
+        src={logoSrc}
         alt="ZENX GO"
         className={cn(
           "object-contain transition-all",

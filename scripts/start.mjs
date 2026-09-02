@@ -88,6 +88,8 @@ const apiPort = await findAvailablePort(requestedApiPort, reservedPorts);
 reservedPorts.add(apiPort);
 const webPort = await findAvailablePort(requestedWebPort, reservedPorts);
 const apiBaseUrl = localApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL ?? fileEnv.NEXT_PUBLIC_API_BASE_URL, apiPort);
+const configuredBaseDomain = process.env.PUBLIC_BASE_DOMAIN ?? fileEnv.PUBLIC_BASE_DOMAIN ?? 'localhost';
+const configuredWebOrigin = process.env.PUBLIC_WEB_ORIGIN ?? (fileEnv.NODE_ENV === 'production' ? fileEnv.PUBLIC_WEB_ORIGIN : undefined) ?? `http://localhost:${webPort}`;
 
 if (apiPort !== requestedApiPort || webPort !== requestedWebPort) {
   console.log(`[start] Port conflict detected; using API ${apiPort} and web ${webPort}.`);
@@ -103,6 +105,8 @@ const child = spawn(turboCommand, ['start'], {
     API_PORT: String(apiPort),
     PORT: String(webPort),
     WEB_ORIGIN: `http://localhost:${webPort}`,
+    PUBLIC_BASE_DOMAIN: configuredBaseDomain,
+    PUBLIC_WEB_ORIGIN: configuredWebOrigin,
     NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
   },
   stdio: 'inherit',

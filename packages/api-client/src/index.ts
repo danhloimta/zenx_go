@@ -450,6 +450,98 @@ export interface CreateSupportTicketRequest {
   description: string;
 }
 
+export type GameRecordType = "REAL" | "DEMO";
+export type GameLifecycleStatus = "CONCEPT" | "IN_DEVELOPMENT" | "INTERNAL_TEST" | "CLOSED_BETA" | "OPEN_BETA" | "LIVE" | "COMING_SOON" | "SUNSET";
+export type GameOperationalStatus = "AVAILABLE" | "MAINTENANCE" | "DEGRADED" | "UNAVAILABLE";
+export type GameArticleCategory = "DEVELOPMENT_UPDATE" | "ANNOUNCEMENT" | "EVENT";
+export type GameMilestoneStatus = "COMPLETED" | "IN_PROGRESS" | "UPCOMING" | "PLANNED";
+
+export interface GameGenre {
+  code: string;
+  name: string;
+  slug: string;
+}
+
+export interface ThemeConfig {
+  primary: string;
+  secondary?: string;
+  surface: string;
+  text: string;
+  heading?: string;
+  body?: string;
+  radius?: string;
+  motion?: string;
+  [key: string]: unknown;
+}
+
+export interface FeatureConfig {
+  sections: string[];
+  downloads?: "COMING_SOON" | boolean;
+  demo?: boolean;
+  [key: string]: unknown;
+}
+
+export interface GameSummary {
+  code: string;
+  name: string;
+  slug: string;
+  subdomain: string;
+  recordType: GameRecordType;
+  tagline: string;
+  shortDescription: string;
+  lifecycleStatus: GameLifecycleStatus;
+  operationalStatus: GameOperationalStatus;
+  releaseYear?: number | null;
+  themePreset: string;
+  logoUrl?: string | null;
+  iconUrl?: string | null;
+  coverUrl?: string | null;
+  heroDesktopUrl?: string | null;
+  heroMobileUrl?: string | null;
+  featured: boolean;
+  primaryGame: boolean;
+  sortOrder: number;
+  genres: GameGenre[];
+  platforms: string[];
+}
+
+export interface GameArticleSummary {
+  title: string;
+  slug: string;
+  excerpt: string;
+  coverImageUrl?: string | null;
+  category: GameArticleCategory | string;
+  publishedAt?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+}
+
+export interface GameArticleDetail extends GameArticleSummary {
+  contentHtml: string;
+  related: GameArticleSummary[];
+}
+
+export interface GameMilestone {
+  title: string;
+  description?: string | null;
+  displayPeriod: string;
+  status: GameMilestoneStatus;
+  checklist: string[];
+  sortOrder: number;
+}
+
+export interface GameDetail extends GameSummary {
+  longDescription?: string | null;
+  theme: ThemeConfig;
+  featureConfig: FeatureConfig;
+  articles: GameArticleSummary[];
+  milestones: GameMilestone[];
+}
+
+export interface GameListResponse {
+  items: GameSummary[];
+}
+
 export function createZenxApiClient(options: ApiClientOptions = {}) {
   const client = new ApiClient(options);
 
@@ -464,9 +556,12 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.post<void>("/auth/forgot-password", input),
       resetPassword: (input: ResetPasswordRequest) =>
         client.post<void>("/auth/reset-password", input),
-      oauthUrl: (provider: AuthProvider, mode: "login" | "link" = "login") => {
-        const query = mode === "link" ? "?mode=link" : "";
-        return `${clientBasePath(options.baseUrl)}/auth/${provider}${query}`;
+      oauthUrl: (provider: AuthProvider, mode: "login" | "link" = "login", returnTo?: string) => {
+        const query = new URLSearchParams();
+        if (mode === "link") query.set("mode", "link");
+        if (returnTo) query.set("returnTo", returnTo);
+        const suffix = query.toString();
+        return `${clientBasePath(options.baseUrl)}/auth/${provider}${suffix ? `?${suffix}` : ""}`;
       },
     },
     otp: {
@@ -571,6 +666,15 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.get<Paginated<SupportTicket>>("/support/tickets", query),
       ticket: (ticketNo: string) =>
         client.get<SupportTicket>(`/support/tickets/${encodeURIComponent(ticketNo)}`),
+    },
+    games: {
+      list: (query: { genre?: string; platform?: string; status?: GameLifecycleStatus } = {}) =>
+        client.get<GameListResponse>("/games", query),
+      bySlug: (slug: string) => client.get<GameDetail>(`/games/${encodeURIComponent(slug)}`),
+      bySubdomain: (subdomain: string) => client.get<GameDetail>(`/games/by-subdomain/${encodeURIComponent(subdomain)}`),
+      articles: (slug: string) => client.get<{ items: GameArticleSummary[] }>(`/games/${encodeURIComponent(slug)}/articles`),
+      article: (slug: string, articleSlug: string) => client.get<GameArticleDetail>(`/games/${encodeURIComponent(slug)}/articles/${encodeURIComponent(articleSlug)}`),
+      roadmap: (slug: string) => client.get<{ items: GameMilestone[] }>(`/games/${encodeURIComponent(slug)}/roadmap`),
     },
   };
 }

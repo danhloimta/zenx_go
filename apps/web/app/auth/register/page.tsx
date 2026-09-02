@@ -108,7 +108,7 @@ export default function RegisterPage() {
       setOtpSent(true);
       setCountdown(60);
       toast.success(
-        `Đã gửi mã OTP. Mã có hiệu lực trong ${Math.round(result.expiresIn / 60)} phút.`,
+        `Đã gửi OTP. Mã có hiệu lực trong ${Math.round(result.expiresIn / 60)} phút.`,
       );
       setTimeout(() => otpInputRef.current?.focus(), 150);
     },
@@ -371,7 +371,7 @@ export default function RegisterPage() {
                     <Input
                       ref={otpInputRef}
                       id="reg-otpCode"
-                      aria-label="Nhập mã OTP 6 số"
+                      aria-label="Nhập số OTP"
                       inputMode="numeric"
                       maxLength={6}
                       autoComplete="one-time-code"
@@ -393,6 +393,7 @@ export default function RegisterPage() {
                   <Button
                     type="button"
                     variant="zenx-outline"
+                    aria-label="Gửi OTP"
                     className="shrink-0 px-4 text-xs font-semibold h-11 min-w-[110px]"
                     onClick={() => sendOtp.mutate()}
                     disabled={!isPhoneValid || sendOtp.isPending || countdown > 0}

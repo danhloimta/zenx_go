@@ -21,14 +21,14 @@ export default defineConfig({
       url: `${e2eApiBaseUrl}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { ...process.env, NODE_ENV: 'test', API_PORT: '4300', WEB_ORIGIN: e2eWebOrigin, OTP_MOCK_FIXED_CODE: '123456' },
+      env: { ...process.env, NODE_ENV: 'test', API_PORT: '4300', WEB_ORIGIN: e2eWebOrigin, PUBLIC_BASE_DOMAIN: 'localhost', PUBLIC_WEB_ORIGIN: e2eWebOrigin, ALLOWED_WEB_ORIGINS: `${e2eWebOrigin},http://lucdia.localhost:3300,http://hoalong.localhost:3300,http://thitranmay.localhost:3300,http://orion.localhost:3300`, ALLOW_GAME_SUBDOMAINS: 'true', OTP_MOCK_FIXED_CODE: '123456' },
     },
     {
       command: 'pnpm --filter web start',
       url: e2eWebOrigin,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { ...process.env, PORT: '3300', NEXT_DIST_DIR: '.next-e2e', NEXT_PUBLIC_API_BASE_URL: e2eApiBaseUrl },
+      env: { ...process.env, PORT: '3300', NEXT_DIST_DIR: '.next-e2e', NEXT_PUBLIC_API_BASE_URL: e2eApiBaseUrl, PUBLIC_BASE_DOMAIN: 'localhost', PUBLIC_WEB_ORIGIN: e2eWebOrigin },
     },
   ],
   projects: [

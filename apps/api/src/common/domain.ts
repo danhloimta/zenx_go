@@ -22,3 +22,24 @@ export const CoinPackageStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as c
 export const SupportStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
 export const SupportTicketStatus = { NEW: 'NEW', IN_PROGRESS: 'IN_PROGRESS', RESOLVED: 'RESOLVED', CLOSED: 'CLOSED' } as const;
 export type SupportTicketStatus = (typeof SupportTicketStatus)[keyof typeof SupportTicketStatus];
+export const GameRecordType = { REAL: 'REAL', DEMO: 'DEMO' } as const;
+export type GameRecordType = (typeof GameRecordType)[keyof typeof GameRecordType];
+export const GameLifecycleStatus = {
+  CONCEPT: 'CONCEPT',
+  IN_DEVELOPMENT: 'IN_DEVELOPMENT',
+  INTERNAL_TEST: 'INTERNAL_TEST',
+  CLOSED_BETA: 'CLOSED_BETA',
+  OPEN_BETA: 'OPEN_BETA',
+  LIVE: 'LIVE',
+  COMING_SOON: 'COMING_SOON',
+  SUNSET: 'SUNSET',
+} as const;
+export type GameLifecycleStatus = (typeof GameLifecycleStatus)[keyof typeof GameLifecycleStatus];
+export const GameOperationalStatus = { AVAILABLE: 'AVAILABLE', MAINTENANCE: 'MAINTENANCE', DEGRADED: 'DEGRADED', UNAVAILABLE: 'UNAVAILABLE' } as const;
+export type GameOperationalStatus = (typeof GameOperationalStatus)[keyof typeof GameOperationalStatus];
+export const GameArticleStatus = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' } as const;
+export type GameArticleStatus = (typeof GameArticleStatus)[keyof typeof GameArticleStatus];
+export const GameArticleCategory = { DEVELOPMENT_UPDATE: 'DEVELOPMENT_UPDATE', ANNOUNCEMENT: 'ANNOUNCEMENT', EVENT: 'EVENT' } as const;
+export type GameArticleCategory = (typeof GameArticleCategory)[keyof typeof GameArticleCategory];
+export const GameMilestoneStatus = { COMPLETED: 'COMPLETED', IN_PROGRESS: 'IN_PROGRESS', UPCOMING: 'UPCOMING', PLANNED: 'PLANNED' } as const;
+export type GameMilestoneStatus = (typeof GameMilestoneStatus)[keyof typeof GameMilestoneStatus];

@@ -468,6 +468,7 @@ function CategoryTab({
     <button
       type="button"
       role="tab"
+      aria-label={typeof children === 'string' ? children : undefined}
       aria-selected={active}
       onClick={onClick}
       className={cn(
@@ -514,6 +515,7 @@ function FaqItem({
     >
       <button
         type="button"
+        aria-label={faq.question}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className="flex w-full items-center justify-between gap-4 p-4 sm:p-5 text-left text-sm font-bold text-slate-800 transition-colors hover:text-[#00873E]"

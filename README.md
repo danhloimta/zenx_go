@@ -2,6 +2,10 @@
 
 ZENX GO Phase 1 is a TypeScript account portal and ZENX Coin wallet.
 
+## Product planning
+
+The UI-first Game Hub MVP and multi-game subdomain expansion plan is documented in [docs/game-hub/README.md](docs/game-hub/README.md).
+
 ## Local setup
 
 Requirements: Node.js 22.13+, Corepack/pnpm 10+, and Docker.
@@ -21,7 +25,9 @@ pnpm --filter web exec playwright install chromium
 pnpm dev
 ```
 
-The web app runs at `http://localhost:3000`, the API at `http://localhost:4000`, and Swagger at `http://localhost:4000/docs`. Browser E2E runs the API on port `4100` against the isolated test database.
+The web app runs at `http://localhost:3000`, the API at `http://localhost:4000`, and Swagger at `http://localhost:4000/docs`. With the default local domain configuration, game hosts are available at `http://lucdia.localhost:3000`, `http://hoalong.localhost:3000`, `http://thitranmay.localhost:3000`, and `http://orion.localhost:3000`; `/preview/games/[slug]` is available when wildcard DNS is not. Browser E2E runs the API on port `4300` against the isolated test database.
+
+Production domain routing uses `PUBLIC_BASE_DOMAIN`, `PUBLIC_WEB_ORIGIN`, `ALLOWED_WEB_ORIGINS`, `ALLOW_GAME_SUBDOMAINS`, and `COOKIE_DOMAIN`. Configure wildcard DNS/TLS and route `/api/v1` on every public hostname to the same API before enabling cross-subdomain login.
 
 The default OTP and payment implementations are mocks. The mock OTP provider logs a development code and the mock payment provider exposes deterministic callback data for local development.
 

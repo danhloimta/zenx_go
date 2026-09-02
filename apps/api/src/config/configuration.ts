@@ -1,7 +1,12 @@
 export default () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.API_PORT ?? 4000),
-  webOrigin: process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+  webOrigin: process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+  baseDomain: process.env.PUBLIC_BASE_DOMAIN ?? (() => {
+    try { return new URL(process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? 'http://localhost:3000').hostname; } catch { return 'localhost'; }
+  })(),
+  allowedWebOrigins: (process.env.ALLOWED_WEB_ORIGINS ?? process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? 'http://localhost:3000').split(',').map((value) => value.trim()).filter(Boolean),
+  allowGameSubdomains: process.env.ALLOW_GAME_SUBDOMAINS !== 'false',
   databaseUrl: process.env.DATABASE_URL,
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'development-access-secret-change-me-32',
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'development-refresh-secret-change-me-32',
@@ -29,16 +34,16 @@ export default () => ({
   oauthStateSecret: process.env.OAUTH_STATE_SECRET || process.env.JWT_REFRESH_SECRET || 'development-refresh-secret-change-me-32',
   oauth: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.NODE_ENV === 'test' ? undefined : process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.NODE_ENV === 'test' ? undefined : process.env.GOOGLE_CLIENT_SECRET,
       redirectUri: process.env.GOOGLE_REDIRECT_URI,
       authorizationUrl: process.env.GOOGLE_AUTHORIZATION_URL,
       tokenUrl: process.env.GOOGLE_TOKEN_URL,
       userInfoUrl: process.env.GOOGLE_USERINFO_URL,
     },
     facebook: {
-      clientId: process.env.FACEBOOK_CLIENT_ID,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      clientId: process.env.NODE_ENV === 'test' ? undefined : process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.NODE_ENV === 'test' ? undefined : process.env.FACEBOOK_CLIENT_SECRET,
       redirectUri: process.env.FACEBOOK_REDIRECT_URI,
       authorizationUrl: process.env.FACEBOOK_AUTHORIZATION_URL,
       tokenUrl: process.env.FACEBOOK_TOKEN_URL,

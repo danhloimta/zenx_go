@@ -34,6 +34,118 @@ model User {
   @@map("users")
 }
 
+model Game {
+  id                 String           @id @default(uuid()) @db.UniqueIdentifier
+  code               String           @unique @db.VarChar(32)
+  name               String           @db.NVarChar(160)
+  slug               String           @unique @db.VarChar(160)
+  subdomain          String           @unique @db.VarChar(63)
+  recordType         String           @map("record_type") @db.VarChar(16)
+  tagline            String           @db.NVarChar(500)
+  shortDescription   String           @map("short_description") @db.NVarChar(1000)
+  longDescription    String?          @map("long_description") @db.NVarChar(Max)
+  lifecycleStatus    String           @map("lifecycle_status") @db.VarChar(24)
+  operationalStatus  String           @default("AVAILABLE") @map("operational_status") @db.VarChar(24)
+  releaseYear        Int?             @map("release_year")
+  themePreset        String           @map("theme_preset") @db.VarChar(40)
+  themeConfig        String           @map("theme_config") @db.NVarChar(Max)
+  featureConfig      String           @map("feature_config") @db.NVarChar(Max)
+  logoUrl            String?          @map("logo_url") @db.NVarChar(2048)
+  iconUrl            String?          @map("icon_url") @db.NVarChar(2048)
+  coverUrl           String?          @map("cover_url") @db.NVarChar(2048)
+  heroDesktopUrl     String?          @map("hero_desktop_url") @db.NVarChar(2048)
+  heroMobileUrl      String?          @map("hero_mobile_url") @db.NVarChar(2048)
+  featured           Boolean          @default(false)
+  primaryGame        Boolean          @default(false) @map("primary_game")
+  isPublic           Boolean          @default(false) @map("is_public")
+  sortOrder          Int              @default(0) @map("sort_order")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+  genres             GameGenre[]
+  platforms          GamePlatform[]
+  articles           GameArticle[]
+  milestones         GameMilestone[]
+
+  @@index([isPublic, sortOrder])
+  @@index([subdomain, isPublic])
+  @@index([lifecycleStatus, isPublic])
+  @@map("games")
+}
+
+model Genre {
+  id        String      @id @default(uuid()) @db.UniqueIdentifier
+  code      String      @unique @db.VarChar(32)
+  name      String      @db.NVarChar(80)
+  slug      String      @unique @db.VarChar(80)
+  sortOrder Int         @default(0) @map("sort_order")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  games     GameGenre[]
+
+  @@map("genres")
+}
+
+model GameGenre {
+  gameId  String @map("game_id") @db.UniqueIdentifier
+  genreId String @map("genre_id") @db.UniqueIdentifier
+  game    Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([gameId, genreId])
+  @@index([genreId, gameId])
+  @@map("game_genres")
+}
+
+model GamePlatform {
+  id       String @id @default(uuid()) @db.UniqueIdentifier
+  gameId   String @map("game_id") @db.UniqueIdentifier
+  platform String @db.VarChar(24)
+  game     Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, platform])
+  @@index([platform, gameId])
+  @@map("game_platforms")
+}
+
+model GameArticle {
+  id             String    @id @default(uuid()) @db.UniqueIdentifier
+  gameId         String    @map("game_id") @db.UniqueIdentifier
+  title          String    @db.NVarChar(240)
+  slug           String    @db.VarChar(180)
+  excerpt        String    @db.NVarChar(1000)
+  content        String    @db.NVarChar(Max)
+  coverImageUrl  String?   @map("cover_image_url") @db.NVarChar(2048)
+  category       String    @db.VarChar(32)
+  status         String    @default("PUBLISHED") @db.VarChar(16)
+  publishedAt    DateTime? @map("published_at")
+  seoTitle       String?   @map("seo_title") @db.NVarChar(240)
+  seoDescription String?   @map("seo_description") @db.NVarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  game           Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, slug])
+  @@index([gameId, status, publishedAt])
+  @@map("game_articles")
+}
+
+model GameMilestone {
+  id              String   @id @default(uuid()) @db.UniqueIdentifier
+  gameId          String   @map("game_id") @db.UniqueIdentifier
+  title           String   @db.NVarChar(240)
+  description     String?  @db.NVarChar(1000)
+  displayPeriod   String   @map("display_period") @db.NVarChar(80)
+  status          String   @db.VarChar(24)
+  checklistConfig String   @map("checklist_config") @db.NVarChar(Max)
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId, sortOrder])
+  @@map("game_milestones")
+}
+
 model UserProfile {
   id             String    @id @default(uuid()) @db.UniqueIdentifier
   userId         String    @unique @map("user_id") @db.UniqueIdentifier

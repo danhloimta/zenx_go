@@ -15,6 +15,7 @@ import { SupportModule } from './support/support.module';
 import { OriginGuard } from './common/origin.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
+import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { randomUUID } from 'node:crypto';
     WalletModule,
     PaymentModule,
     SupportModule,
+    GameModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard }],
 })

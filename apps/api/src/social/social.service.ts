@@ -31,6 +31,7 @@ type OAuthState = {
   provider: SocialProvider;
   mode: OAuthMode;
   userId?: string;
+  returnTo?: string;
   nonce: string;
   expiresAt: number;
 };
@@ -42,7 +43,7 @@ const PROVIDER_TIMEOUT_MS = 10_000;
 export class SocialService {
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
-  getAuthorizationUrl(provider: SocialProvider, mode: OAuthMode, userId?: string) {
+  getAuthorizationUrl(provider: SocialProvider, mode: OAuthMode, userId?: string, returnTo?: string) {
     const providerConfig = this.providerConfig(provider);
     if (!providerConfig.clientId || !providerConfig.clientSecret) {
       throw new DomainError(ErrorCode.SOCIAL_NOT_CONFIGURED, 'Social provider is not configured', 503);
@@ -51,7 +52,7 @@ export class SocialService {
       throw new DomainError(ErrorCode.INVALID_OAUTH_STATE, 'A signed-in user is required to link a social account', 401);
     }
 
-    const state = this.createState(provider, mode, userId);
+    const state = this.createState(provider, mode, userId, returnTo);
     const url = new URL(providerConfig.authorizationUrl);
     url.searchParams.set('client_id', providerConfig.clientId);
     url.searchParams.set('redirect_uri', providerConfig.redirectUri);
@@ -245,11 +246,12 @@ export class SocialService {
     return remaining.length > 0 ? remaining.join('|') : undefined;
   }
 
-  private createState(provider: SocialProvider, mode: OAuthMode, userId?: string) {
+  private createState(provider: SocialProvider, mode: OAuthMode, userId?: string, returnTo?: string) {
     const payload = Buffer.from(JSON.stringify({
       provider,
       mode,
       ...(userId ? { userId } : {}),
+      ...(returnTo ? { returnTo } : {}),
       nonce: randomBytes(16).toString('hex'),
       expiresAt: Math.floor(Date.now() / 1000) + STATE_TTL_SECONDS,
     } satisfies OAuthState)).toString('base64url');

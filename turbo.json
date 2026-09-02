@@ -4,7 +4,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "dist/**"],
-      "env": ["NEXT_DIST_DIR", "NEXT_PUBLIC_API_BASE_URL", "NEXT_TELEMETRY_DISABLED"]
+      "env": ["NEXT_DIST_DIR", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_BASE_DOMAIN", "NEXT_PUBLIC_WEB_ORIGIN", "PUBLIC_BASE_DOMAIN", "PUBLIC_WEB_ORIGIN", "NEXT_TELEMETRY_DISABLED"]
     },
     "dev": {
       "cache": false,
@@ -52,7 +52,12 @@
         "UPLOAD_DIR",
         "RATE_LIMIT_TTL_MS",
         "RATE_LIMIT_MAX",
-        "WEB_ORIGIN"
+        "WEB_ORIGIN",
+        "PUBLIC_BASE_DOMAIN",
+        "PUBLIC_WEB_ORIGIN",
+        "ALLOWED_WEB_ORIGINS",
+        "ALLOW_GAME_SUBDOMAINS",
+        "GAME_DEMO_PUBLIC"
       ]
     },
     "start": {
@@ -83,7 +88,12 @@
         "SKIP_DB_CONNECT",
         "TERMS_VERSION",
         "UPLOAD_DIR",
-        "WEB_ORIGIN"
+        "WEB_ORIGIN",
+        "PUBLIC_BASE_DOMAIN",
+        "PUBLIC_WEB_ORIGIN",
+        "ALLOWED_WEB_ORIGINS",
+        "ALLOW_GAME_SUBDOMAINS",
+        "GAME_DEMO_PUBLIC"
       ],
       "cache": false,
       "persistent": true
