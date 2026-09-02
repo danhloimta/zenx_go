@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { BrandLogo } from '@/components/brand-logo';
 import type { GameItem } from '@/lib/games-data';
 
-export function HomeFooter({ games }: { games: GameItem[] }) {
+export function HomeFooter({ games = [] }: { games?: GameItem[] }) {
   return (
     <footer id="community" className="w-full border-t border-slate-900 bg-slate-950 text-slate-400 text-xs">
       {/* Main Footer Links */}
