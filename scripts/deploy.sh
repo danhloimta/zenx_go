@@ -6,7 +6,7 @@ readonly DEPLOY_HOST="${DEPLOY_HOST:-root@103.116.105.26}"
 readonly DEPLOY_DIR="${DEPLOY_DIR:-/opt/zenx-go}"
 readonly DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 readonly DEPLOY_REMOTE="${DEPLOY_REMOTE:-origin}"
-readonly HEALTH_URL="${HEALTH_URL:-${PUBLIC_WEB_ORIGIN:-http://127.0.0.1:3100}}"
+readonly HEALTH_URL="${HEALTH_URL:-${PUBLIC_WEB_ORIGIN:-https://zenxgo.io.vn}}"
 readonly NODE_BIN_DIR="${NODE_BIN_DIR:-/root/.nvm/versions/node/v22.22.1/bin}"
 readonly LOCAL_LOCK="${TMPDIR:-/tmp}/zenx-go-deploy.lock"
 
@@ -99,13 +99,17 @@ pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm build
 pnpm --filter api prisma:deploy
+pnpm --filter api prisma:seed
 
 systemctl restart zenxgo-api.service
 systemctl restart zenxgo-web.service
 
+base_domain="$(grep '^PUBLIC_BASE_DOMAIN=' "$deploy_dir/.env" 2>/dev/null | cut -d= -f2- | tr -d '"\r' || true)"
+base_domain="${base_domain:-zenxgo.io.vn}"
+
 for attempt in $(seq 1 20); do
   if curl -fsS http://127.0.0.1:4100/api/v1/support/faqs >/dev/null \
-    && curl -fsS http://127.0.0.1:3100/ >/dev/null; then
+    && curl -fsS -H "Host: $base_domain" http://127.0.0.1:3100/ >/dev/null; then
     printf '%s\n' "$deploy_commit" > "$deploy_dir/.deployed-commit"
     echo "Production services are healthy."
     exit 0
