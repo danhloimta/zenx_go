@@ -1,9 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Toaster } from "sonner";
-import { api } from "@/lib/api";
 
 export function Providers({ children }: Readonly<{ children: React.ReactNode }>) {
   const [queryClient] = useState(
@@ -21,16 +20,8 @@ export function Providers({ children }: Readonly<{ children: React.ReactNode }>)
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthBootstrap />
       {children}
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
-}
-
-function AuthBootstrap() {
-  useEffect(() => {
-    void api.auth.refresh().catch(() => undefined);
-  }, []);
-  return null;
 }

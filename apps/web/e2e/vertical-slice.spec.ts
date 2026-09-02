@@ -40,9 +40,9 @@ test('registers, tops up through a signed mock callback, and shows wallet histor
   const callback = { providerTransactionId: `mock-${paymentNo}`, paymentNo, status: 'SUCCESS' };
   const rawBody = JSON.stringify(callback);
   const signature = createHash('sha256').update(rawBody).digest('hex');
-  const callbackResponse = await request.post(`${process.env.E2E_API_BASE_URL ?? 'http://localhost:4300/api/v1'}/payments/mock/callback`, {
+  const callbackResponse = await request.post(`${process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:4300/api/v1'}/payments/mock/callback`, {
     data: rawBody,
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:3300', 'x-payment-signature': signature },
+    headers: { 'content-type': 'application/json', origin: 'http://lvh.me:3300', 'x-payment-signature': signature },
   });
   expect(callbackResponse.status()).toBe(201);
 

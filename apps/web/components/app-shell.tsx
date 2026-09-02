@@ -27,6 +27,7 @@ import { LogoutButton } from '@/components/logout-button';
 import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
 import { cn, formatAmount, mediaUrl } from '@/lib/utils';
+import { portalUrl } from '@/lib/domain';
 import { ApiError } from '@zenx-go/api-client';
 import { toast } from 'sonner';
 
@@ -70,7 +71,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const onboardingNoticeShown = useRef(false);
 
   const account = useAccount();
-  const wallet = useWallet();
+  const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
 
   // Close dropdowns on outside click
@@ -96,10 +97,15 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
   useEffect(() => {
     if (account.error instanceof ApiError && account.error.status === 401) {
-      const next = `${pathname}${window.location.search}`;
-      router.replace(`/auth/login?next=${encodeURIComponent(next)}`);
+      const returnTo = new URL(`${pathname}${window.location.search}`, portalUrl('/'));
+      returnTo.hash = '';
+      router.replace(`/auth/login?returnTo=${encodeURIComponent(returnTo.toString())}`);
       return;
     }
+    // A profile completion mutation updates the shared account query while an
+    // initial/refetch request may still be in flight. Do not redirect based on
+    // the stale snapshot until that request settles.
+    if (account.isLoading || account.isFetching) return;
     if (
       user &&
       user.profile.profileCompletedAt === null &&
@@ -111,7 +117,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       }
       router.replace('/account/complete-profile');
     }
-  }, [account.error, pathname, router, user]);
+  }, [account.error, account.isFetching, account.isLoading, pathname, router, user]);
 
   const isActive = (href: string) => {
     if (!href.startsWith('/')) return false;

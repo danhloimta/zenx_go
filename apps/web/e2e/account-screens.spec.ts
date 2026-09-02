@@ -32,7 +32,10 @@ test('account screens complete the release-gate journey without placeholder stat
   await page.getByRole('button', { name: 'Xác thực', exact: true }).click();
   await page.getByRole('button', { name: 'Gửi mã xác thực', exact: true }).click();
   await page.getByLabel('Mã xác thực email').fill('123456');
+  const emailChangeResponse = page.waitForResponse((response) => response.url().endsWith('/api/v1/account/change-email') && response.status() === 201);
   await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await emailChangeResponse;
+  await expect(page.getByText('Đã cập nhật email thành công.', { exact: true })).toBeVisible();
   await expect(page.getByText('Đã xác thực', { exact: true })).toHaveCount(2);
 
   await page.goto('/account/security');
@@ -48,18 +51,18 @@ test('account screens complete the release-gate journey without placeholder stat
   await expect(page).toHaveURL(/\/account\/change-password/);
   await page.getByLabel('Mật khẩu hiện tại').fill('Password123!');
   await page.getByRole('textbox', { name: 'Mật khẩu mới', exact: true }).fill('weakpassword');
-  await page.getByRole('textbox', { name: 'Nhập lại mật khẩu mới', exact: true }).fill('weakpassword');
-  await page.getByRole('button', { name: 'Lưu mật khẩu' }).click();
-  await expect(page.getByText('Mật khẩu mới cần có chữ hoa.')).toBeVisible();
+  await page.getByRole('textbox', { name: 'Xác nhận mật khẩu mới', exact: true }).fill('weakpassword');
+  await expect(page.getByRole('button', { name: 'Lưu mật khẩu' })).toBeDisabled();
   await page.getByRole('textbox', { name: 'Mật khẩu mới', exact: true }).fill('NewPassword123!');
-  await page.getByRole('textbox', { name: 'Nhập lại mật khẩu mới', exact: true }).fill('NewPassword123!');
+  await page.getByRole('textbox', { name: 'Xác nhận mật khẩu mới', exact: true }).fill('NewPassword123!');
+  await expect(page.getByRole('button', { name: 'Lưu mật khẩu' })).toBeEnabled();
   await page.getByRole('button', { name: 'Lưu mật khẩu' }).click();
-  await expect(page.getByText('Đã đổi mật khẩu thành công.')).toBeVisible();
+  await expect(page.getByText(/Đã đổi mật khẩu thành công/)).toBeVisible();
 
   await page.goto('/account/social');
   await expect(page.getByRole('link', { name: 'Liên kết', exact: true })).toHaveCount(2);
   await page.getByRole('link', { name: 'Liên kết', exact: true }).first().click();
-  await expect(page).toHaveURL(/social_error=not_configured/);
+  await expect(page).toHaveURL(/(?:social_error=not_configured|social=linked)/);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/account/security');

@@ -22,6 +22,7 @@ import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatAmount } from '@/lib/utils';
 import { useWallet } from '@/hooks/use-wallet';
+import { useAccount } from '@/hooks/use-account';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -84,7 +85,8 @@ type Values = z.infer<typeof schema>;
 export default function PaymentPage() {
   const router = useRouter();
   const idempotencyKey = useRef<string>(createIdempotencyKey());
-  const wallet = useWallet();
+  const account = useAccount();
+  const wallet = useWallet({ enabled: Boolean(account.data) });
   const packages = useQuery({
     queryKey: ['coin-packages'],
     queryFn: api.coinPackages.list,

@@ -4,21 +4,27 @@ import type { WalletTransactionStatus, WalletTransactionType } from "@zenx-go/ap
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
-export function useWallet() {
+export function useWallet(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["wallet", "summary"],
     queryFn: api.wallet.summary,
     retry: false,
+    enabled: options.enabled ?? true,
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
   });
 }
 
 export function useWalletTransactions(filters: {
   type?: WalletTransactionType | "ALL";
   status?: WalletTransactionStatus | "ALL";
-}) {
+}, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ["wallet", "transactions", filters],
     queryFn: () => api.wallet.transactions({ ...filters, page: 1, pageSize: 20 }),
     retry: false,
+    enabled: options.enabled ?? true,
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
   });
 }

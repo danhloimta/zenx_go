@@ -268,7 +268,7 @@ export class SocialService {
       return {
         clientId: this.config.get<string>('oauth.google.clientId'),
         clientSecret: this.config.get<string>('oauth.google.clientSecret'),
-        redirectUri: this.config.get<string>('oauth.google.redirectUri') || 'http://localhost:4000/api/v1/auth/google/callback',
+        redirectUri: this.config.get<string>('oauth.google.redirectUri') || `${(this.config.get<string>('webOrigin') ?? 'http://lvh.me:3000').replace(/\/$/, '')}/api/v1/auth/google/callback`,
         authorizationUrl: this.config.get<string>('oauth.google.authorizationUrl') || 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: this.config.get<string>('oauth.google.tokenUrl') || 'https://oauth2.googleapis.com/token',
         userInfoUrl: this.config.get<string>('oauth.google.userInfoUrl') || 'https://openidconnect.googleapis.com/v1/userinfo',
@@ -278,7 +278,7 @@ export class SocialService {
     return {
       clientId: this.config.get<string>('oauth.facebook.clientId'),
       clientSecret: this.config.get<string>('oauth.facebook.clientSecret'),
-      redirectUri: this.config.get<string>('oauth.facebook.redirectUri') || 'http://localhost:4000/api/v1/auth/facebook/callback',
+      redirectUri: this.config.get<string>('oauth.facebook.redirectUri') || `${(this.config.get<string>('webOrigin') ?? 'http://lvh.me:3000').replace(/\/$/, '')}/api/v1/auth/facebook/callback`,
       authorizationUrl: this.config.get<string>('oauth.facebook.authorizationUrl') || 'https://www.facebook.com/v19.0/dialog/oauth',
       tokenUrl: this.config.get<string>('oauth.facebook.tokenUrl') || 'https://graph.facebook.com/v19.0/oauth/access_token',
       userInfoUrl: this.config.get<string>('oauth.facebook.userInfoUrl') || 'https://graph.facebook.com/me?fields=id,name,email,picture',

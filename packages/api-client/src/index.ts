@@ -175,6 +175,20 @@ export class ApiClient {
   private refreshSession() {
     if (!this.refreshPromise) {
       this.refreshPromise = this.request('/auth/refresh', { method: 'POST' }, undefined, false)
+        .catch(async (error) => {
+          if (!(error instanceof ApiError) || ![401, 409].includes(error.status)) throw error;
+          let lastError: unknown = error;
+          for (const milliseconds of [250, 500]) {
+            await delay(milliseconds);
+            try {
+              return await this.request('/auth/refresh', { method: 'POST' }, undefined, false);
+            } catch (retryError) {
+              lastError = retryError;
+              if (!(retryError instanceof ApiError) || ![401, 409].includes(retryError.status)) throw retryError;
+            }
+          }
+          throw lastError;
+        })
         .finally(() => {
           this.refreshPromise = null;
         });
@@ -201,6 +215,10 @@ export class ApiClient {
   delete<T>(path: string, options?: Omit<ApiRequestOptions, "method" | "body">) {
     return this.request<T>(path, { ...options, method: "DELETE" });
   }
+}
+
+function delay(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 }
 
 export type AuthProvider = "google" | "facebook";
@@ -239,6 +257,11 @@ export interface AuthUser {
 
 export interface LoginResponse {
   user: AuthUser;
+  redirectTo: string;
+}
+
+export interface RefreshResponse {
+  user: AuthUser;
 }
 
 export interface RegisterRequest {
@@ -258,6 +281,7 @@ export interface RegisterResponse {
 export interface LoginRequest {
   username: string;
   password: string;
+  returnTo?: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -550,7 +574,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
     auth: {
       register: (input: RegisterRequest) => client.post<RegisterResponse>("/auth/register", input),
       login: (input: LoginRequest) => client.post<LoginResponse>("/auth/login", input),
-      refresh: () => client.post<LoginResponse>("/auth/refresh"),
+      refresh: () => client.post<RefreshResponse>("/auth/refresh"),
       logout: () => client.post<void>("/auth/logout"),
       forgotPassword: (input: ForgotPasswordRequest) =>
         client.post<void>("/auth/forgot-password", input),

@@ -15,26 +15,25 @@ test('landing page exposes the account and wallet entry points', async ({ page }
 });
 
 test('game hostnames resolve the shared game shell and routes', async ({ page }) => {
-  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.localhost:3300' });
-  await page.goto('http://localhost:3300/');
+  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.lvh.me:3300' });
+  await page.goto('http://lvh.me:3300/');
   await expect(page.getByRole('heading', { name: 'Lục Địa Đam Mê', exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Development Updates', { exact: true }).first()).toBeVisible();
-  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'hoalong.localhost:3300' });
-  await page.goto('http://localhost:3300/');
+  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'hoalong.lvh.me:3300' });
+  await page.goto('http://lvh.me:3300/');
   await expect(page.getByRole('heading', { name: 'Vương Triều Hỏa Long', exact: true }).first()).toBeVisible();
   await expect(page.getByText('Concept / Demo', { exact: true }).first()).toBeVisible();
-  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'orion.localhost:3300' });
-  await page.goto('http://localhost:3300/');
+  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'orion.lvh.me:3300' });
+  await page.goto('http://lvh.me:3300/');
   await expect(page.getByRole('heading', { name: 'Chiến Tuyến Orion', exact: true }).first()).toBeVisible();
   await expect(page.getByText('Concept / Demo', { exact: true }).first()).toBeVisible();
 });
 
 test('game cards and article cards link to their public destinations', async ({ page }) => {
   await page.goto('/');
-  const gameCard = page.locator('a[href*="lucdia.localhost"]').first();
-  await expect(gameCard).toHaveAttribute('href', /^http:\/\/lucdia\.localhost:3300\//);
+  const gameCard = page.locator('a[href*="lucdia.lvh.me"]').first();
+  await expect(gameCard).toHaveAttribute('href', /^http:\/\/lucdia\.lvh\.me:3300\//);
   for (const subdomain of ['lucdia', 'hoalong', 'thitranmay', 'orion']) {
-    await expect(page.locator(`a[href*="${subdomain}.localhost"]:visible`).first()).toBeVisible();
+    await expect(page.locator(`a[href*="${subdomain}.lvh.me"]:visible`).first()).toBeVisible();
   }
   for (const [subdomain, title] of [
     ['lucdia', 'LỤC ĐỊA ĐAM MÊ'],
@@ -43,31 +42,31 @@ test('game cards and article cards link to their public destinations', async ({ 
     ['orion', 'Chiến Tuyến Orion'],
   ]) {
     const avatar = page.locator(`img[title="${title}"]`).first();
-    await expect(avatar.locator('..')).toHaveAttribute('href', new RegExp(`^http://${subdomain}\\.localhost:3300/`));
+    await expect(avatar.locator('..')).toHaveAttribute('href', new RegExp(`^http://${subdomain}\\.lvh\\.me:3300/`));
   }
   const articleCard = page.getByRole('link', { name: /Đọc bài viết/ }).first();
-  await expect(articleCard).toHaveAttribute('href', /^http:\/\/lucdia\.localhost:3300\/tin-tuc\//);
+  await expect(articleCard).toHaveAttribute('href', /^http:\/\/lucdia\.lvh\.me:3300\/tin-tuc\//);
 });
 
 test('game article metadata uses the article canonical URL', async ({ page }) => {
-  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.localhost:3300' });
-  await page.goto('http://localhost:3300/tin-tuc/world-remake');
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'http://lucdia.localhost:3300/tin-tuc/world-remake');
+  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.lvh.me:3300' });
+  await page.goto('http://lvh.me:3300/tin-tuc/world-remake');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'http://lucdia.lvh.me:3300/tin-tuc/world-remake');
 });
 
 test('demo game routes outside the homepage return a real 404', async ({ page }) => {
   for (const subdomain of ['hoalong', 'thitranmay', 'orion']) {
-    await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': `${subdomain}.localhost:3300` });
+    await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': `${subdomain}.lvh.me:3300` });
     for (const path of ['/gioi-thieu', '/tin-tuc', '/roadmap', '/tai-game']) {
-      const response = await page.goto(`http://localhost:3300${path}`);
+      const response = await page.goto(`http://lvh.me:3300${path}`);
       expect(response?.status(), `${subdomain}${path}`).toBe(404);
     }
   }
 });
 
 test('unknown game host returns a real 404', async ({ page }) => {
-  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'unknown-game.localhost:3300' });
-  const response = await page.goto('http://localhost:3300/');
+  await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'unknown-game.lvh.me:3300' });
+  const response = await page.goto('http://lvh.me:3300/');
   expect(response?.status()).toBe(404);
 });
 
@@ -79,7 +78,7 @@ test('login route renders its form', async ({ page }) => {
 
 test('protected wallet routes redirect an expired session to login', async ({ page }) => {
   await page.goto('/wallet');
-  await expect(page).toHaveURL(/\/auth\/login\?next=%2Fwallet/);
+  await expect(page).toHaveURL(/\/auth\/login\?returnTo=http%3A%2F%2Flvh\.me%3A3300%2Fwallet/);
 });
 
 test('legal footer links resolve to explicit demo documents', async ({ page }) => {

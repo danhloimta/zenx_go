@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/status-badge';
 import { EmptyState } from '@/components/empty-state';
 import { toast } from 'sonner';
+import { useAccount } from '@/hooks/use-account';
 
 const pageSize = 10;
 const transactionTypes: Array<WalletTransactionType | 'ALL'> = ['ALL', 'TOPUP', 'CREDIT', 'DEBIT', 'REFUND'];
@@ -29,6 +30,7 @@ export default function TransactionsPage() {
 }
 
 function TransactionsContent() {
+  const account = useAccount();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -64,12 +66,17 @@ function TransactionsContent() {
   const query = useQuery({
     queryKey: ['wallet', 'transactions', { page, pageSize, search, from, to, type, status }],
     queryFn: () => api.wallet.transactions({ page, pageSize, search, from, to, type, status }),
+    enabled: Boolean(account.data),
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
     retry: false,
   });
   const detail = useQuery({
     queryKey: ['wallet', 'transaction', selectedNo],
     queryFn: () => api.wallet.transaction(selectedNo as string),
-    enabled: Boolean(selectedNo),
+    enabled: Boolean(selectedNo && account.data),
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
     retry: false,
   });
   const totalPages = useMemo(() => Math.max(1, query.data?.totalPages ?? Math.ceil((query.data?.total ?? 0) / pageSize)), [query.data?.total, query.data?.totalPages]);

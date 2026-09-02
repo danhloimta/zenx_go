@@ -1,5 +1,5 @@
 import { OtpChannel, OtpPurpose } from '../common/domain';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString() @MinLength(3) username!: string;
@@ -14,6 +14,7 @@ export class RegisterDto {
 export class LoginDto {
   @IsString() username!: string;
   @IsString() password!: string;
+  @IsOptional() @IsString() @MaxLength(2048) returnTo?: string;
 }
 
 export class ResetPasswordDto {

@@ -50,6 +50,9 @@ importers:
       '@prisma/client':
         specifier: 6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@zenx-go/web-domain':
+        specifier: workspace:*
+        version: link:../../packages/web-domain
       argon2:
         specifier: ^0.41.1
         version: 0.41.1
@@ -159,6 +162,9 @@ importers:
       '@zenx-go/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@zenx-go/web-domain':
+        specifier: workspace:*
+        version: link:../../packages/web-domain
       date-fns:
         specifier: ^4.1.0
         version: 4.4.0
@@ -226,6 +232,8 @@ importers:
   packages/eslint-config: {}
 
   packages/tsconfig: {}
+
+  packages/web-domain: {}
 
 packages:
 

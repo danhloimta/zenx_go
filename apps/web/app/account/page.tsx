@@ -25,8 +25,8 @@ import { ZenxCoinGoldIcon, GoogleIcon, FacebookIcon } from '@/components/icons';
 
 export default function AccountOverviewPage() {
   const account = useAccount();
-  const wallet = useWallet();
-  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' });
+  const wallet = useWallet({ enabled: Boolean(account.data) });
+  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' }, { enabled: Boolean(account.data) });
 
   const user = account.data;
   const securityChecks = [Boolean(user?.emailVerifiedAt), Boolean(user?.phoneVerifiedAt), Boolean(user?.hasPassword)];

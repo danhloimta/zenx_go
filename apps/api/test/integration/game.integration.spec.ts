@@ -95,7 +95,17 @@ describe('Game catalog API (SQL Server)', () => {
   it('allows state-changing requests from a public game host but rejects lookalike domains', async () => {
     const gameOrigin = await request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Origin', 'http://lucdia.localhost:3000');
     expect(gameOrigin.status).toBe(401);
+    const missingOrigin = await request(app.getHttpServer()).post('/api/v1/auth/refresh');
+    expect(missingOrigin.status).toBe(403);
     const foreignOrigin = await request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Origin', 'http://evilzenxgo.io.vn');
     expect(foreignOrigin.status).toBe(403);
+
+    await prisma.game.update({ where: { subdomain: 'lucdia' }, data: { isPublic: false } });
+    try {
+      const hiddenOrigin = await request(app.getHttpServer()).post('/api/v1/auth/refresh').set('Origin', 'http://lucdia.localhost:3000');
+      expect(hiddenOrigin.status).toBe(403);
+    } finally {
+      await prisma.game.update({ where: { subdomain: 'lucdia' }, data: { isPublic: true } });
+    }
   });
 });

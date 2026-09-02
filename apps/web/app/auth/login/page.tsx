@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { User } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -17,7 +18,7 @@ import { SocialAuthButton } from '@/components/social-auth-button';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
-import { isSafeReturnTo } from '@/lib/domain';
+import { isSafeReturnTo, portalUrl } from '@/lib/domain';
 
 const schema = z.object({
   username: z.string().trim().min(1, 'Vui lòng nhập tên đăng nhập hoặc email.'),
@@ -26,18 +27,27 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-[440px] p-8 text-center text-sm text-slate-500">Đang tải biểu mẫu đăng nhập…</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
-  const [returnTo, setReturnTo] = useState<string | undefined>();
+  const searchParams = useSearchParams();
+  const queryReturnTo = getReturnToCandidate(searchParams.get('returnTo') ?? searchParams.get('next'));
+  const [returnTo, setReturnTo] = useState<string | undefined>(queryReturnTo);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', password: '' },
   });
   const login = useMutation({
-    mutationFn: api.auth.login,
-    onSuccess: () => {
+    mutationFn: (values: Values) => api.auth.login({ ...values, returnTo: returnTo ?? queryReturnTo }),
+    onSuccess: (result) => {
       toast.success('Đăng nhập thành công.');
-      const next = new URLSearchParams(window.location.search).get('next');
-      const destination = getSafeDestination(returnTo ?? next);
+      const destination = getSafeDestination(result?.redirectTo);
       if (destination.startsWith('http://') || destination.startsWith('https://')) window.location.assign(destination);
       else { router.push(destination); router.refresh(); }
     },
@@ -46,8 +56,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    const candidate = new URLSearchParams(window.location.search).get('returnTo');
-    if (isSafeReturnTo(candidate)) setReturnTo(candidate!);
+    if (queryReturnTo) setReturnTo(queryReturnTo);
     const socialError = new URLSearchParams(window.location.search).get('social_error');
     if (!socialError) return;
     const messages: Record<string, string> = {
@@ -58,7 +67,7 @@ export default function LoginPage() {
       oauth_failed: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.',
     };
     toast.error(messages[socialError] ?? messages.oauth_failed);
-  }, []);
+  }, [queryReturnTo]);
 
   return (
     <div className="w-full max-w-[1120px] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-soft">
@@ -159,8 +168,8 @@ export default function LoginPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <SocialAuthButton provider="google" href={api.auth.oauthUrl('google', 'login', returnTo)} />
-              <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook', 'login', returnTo)} />
+              <SocialAuthButton provider="google" href={api.auth.oauthUrl('google', 'login', returnTo ?? queryReturnTo)} />
+              <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook', 'login', returnTo ?? queryReturnTo)} />
             </div>
 
             <p className="mt-7 text-center text-xs sm:text-sm text-slate-600">
@@ -180,4 +189,14 @@ function getSafeDestination(value: string | null | undefined) {
   if (value && (value.startsWith('/') && !value.startsWith('//'))) return value;
   if (value && isSafeReturnTo(value)) return value;
   return '/account';
+}
+
+function getReturnToCandidate(value: string | null) {
+  if (!value) return undefined;
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    const url = new URL(value, portalUrl('/'));
+    url.hash = '';
+    return url.toString();
+  }
+  return isSafeReturnTo(value) ? value : undefined;
 }

@@ -4,6 +4,7 @@ import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard';
 import { DomainError, ErrorCode } from '../common/errors';
 import { CreatePaymentDto, PaymentCallbackDto } from './dto';
 import { PaymentService } from './payment.service';
+import { SkipOriginGuard } from '../common/origin-guard.decorator';
 
 @Controller()
 export class PaymentController {
@@ -22,6 +23,7 @@ export class PaymentController {
   @Get('payments') list(@Req() request: AuthenticatedRequest) { return this.payments.list(request.user.sub); }
 
   @Post('payments/:provider/callback')
+  @SkipOriginGuard()
   callback(@Req() request: Request, @Headers('x-payment-signature') signature: string | undefined, @Body() dto: PaymentCallbackDto) {
     if (!signature?.trim()) {
       throw new DomainError(ErrorCode.INVALID_PAYMENT_CALLBACK, 'Payment callback signature is required', 400);

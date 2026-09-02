@@ -61,6 +61,11 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     expect(response.body.data.user.profile.profileCompletedAt).toBeNull();
     userId = response.body.data.user.id;
     cookies = cookieHeader(response);
+    const setCookies = Array.isArray(response.headers['set-cookie']) ? response.headers['set-cookie'] : [response.headers['set-cookie']];
+    expect(setCookies.find((cookie) => cookie.startsWith('zenx_access='))).toEqual(expect.stringContaining('Path=/'));
+    expect(setCookies.find((cookie) => cookie.startsWith('zenx_access='))).toEqual(expect.stringContaining('HttpOnly'));
+    expect(setCookies.find((cookie) => cookie.startsWith('zenx_access='))).toEqual(expect.stringContaining('SameSite=Lax'));
+    expect(setCookies.find((cookie) => cookie.startsWith('zenx_refresh='))).toEqual(expect.stringContaining('Path=/api/v1/auth'));
 
     const wallet = await http().get('/wallet').set('Cookie', cookies);
     expect(wallet.body.data).toMatchObject({ currency: 'ZENX', balance: '0' });
@@ -105,9 +110,23 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
       http().post('/auth/refresh').set('Cookie', oldRefresh!),
       http().post('/auth/refresh').set('Cookie', oldRefresh!),
     ]);
-    expect([first.status, second.status].sort()).toEqual([201, 401]);
+    expect([first.status, second.status].sort()).toEqual([201, 409]);
     const successful = first.status === 201 ? first : second;
     expect(cookieHeader(successful)).toContain('zenx_refresh=');
+    await new Promise((resolve) => setTimeout(resolve, 2_100));
+    const replay = await http().post('/auth/refresh').set('Cookie', oldRefresh!);
+    expect(replay.status).toBe(401);
+  });
+
+  it('returns a server-validated redirect destination for password login', async () => {
+    const valid = await http().post('/auth/login').send({ username: email, password: 'Password123!', returnTo: 'http://lucdia.localhost:3000/tin-tuc/world-remake?from=login' });
+    expect(valid.status).toBe(201);
+    expect(valid.body.data.redirectTo).toBe('http://lucdia.localhost:3000/tin-tuc/world-remake?from=login');
+    expect(cookieHeader(valid)).toContain('zenx_access=');
+
+    const invalid = await http().post('/auth/login').send({ username: email, password: 'Password123!', returnTo: 'https://evilzenxgo.io.vn/account' });
+    expect(invalid.status).toBe(201);
+    expect(invalid.body.data.redirectTo).toBe('http://localhost:3000/account');
   });
 
   it('credits one TOPUP for duplicate callbacks and serializes all monetary values as strings', async () => {

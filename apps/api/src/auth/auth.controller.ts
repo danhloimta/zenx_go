@@ -8,11 +8,11 @@ import { ForgotPasswordDto, LoginDto, RefreshDto, RegisterDto, ResetPasswordDto 
 import { SocialProvider } from '../common/domain';
 import { DomainError } from '../common/errors';
 import { OAuthMode, SocialService } from '../social/social.service';
-import { isAllowedReturnTo } from '../common/web-domain';
+import { DomainPolicyService } from '../common/domain-policy.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService, private readonly config: ConfigService, private readonly social: SocialService) {}
+  constructor(private readonly auth: AuthService, private readonly config: ConfigService, private readonly social: SocialService, private readonly domainPolicy: DomainPolicyService) {}
 
   @Post('register')
   register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -32,8 +32,8 @@ export class AuthController {
   @Post('logout')
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     await this.auth.logout(request.cookies?.[REFRESH_COOKIE]);
-    response.clearCookie(ACCESS_COOKIE, this.cookieOptions());
-    response.clearCookie(REFRESH_COOKIE, { ...this.cookieOptions(), path: '/api/v1/auth' });
+    response.clearCookie(ACCESS_COOKIE, this.accessCookieOptions());
+    response.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
     return { loggedOut: true };
   }
 
@@ -69,8 +69,9 @@ export class AuthController {
 
   private async startOAuth(provider: SocialProvider, request: Request, response: Response, rawMode?: string, rawReturnTo?: string) {
     const mode: OAuthMode = rawMode === 'link' ? 'link' : 'login';
-    const returnTo = mode === 'login' ? this.safeReturnTo(rawReturnTo, '/account') : undefined;
+    let returnTo: string | undefined;
     try {
+      returnTo = mode === 'login' ? await this.domainPolicy.resolveReturnTo(rawReturnTo) : undefined;
       let userId: string | undefined;
       if (mode === 'link') {
         const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
@@ -79,7 +80,7 @@ export class AuthController {
       const authorization = this.social.getAuthorizationUrl(provider, mode, userId, returnTo);
       const stateCookieName = this.social.stateCookieName(provider);
       response.cookie(stateCookieName, this.social.appendState(request.cookies?.[stateCookieName], authorization.state), {
-        ...this.cookieOptions(),
+        ...this.oauthStateCookieOptions(),
         maxAge: 10 * 60 * 1000,
         path: `/api/v1/auth/${provider.toLowerCase()}`,
       });
@@ -94,33 +95,38 @@ export class AuthController {
     const stateCookie = this.social.stateCookieName(provider);
     const cookieState = request.cookies?.[stateCookie] as string | undefined;
     let oauthState: ReturnType<SocialService['verifyState']> | undefined;
+    let safeReturnTo: string | undefined;
     try {
       oauthState = this.social.verifyState(provider, state, cookieState);
+      safeReturnTo = oauthState.mode === 'login' ? await this.domainPolicy.resolveReturnTo(oauthState.returnTo) : undefined;
       const remainingState = this.social.removeState(cookieState, state!);
       if (remainingState) {
         response.cookie(stateCookie, remainingState, {
-          ...this.cookieOptions(),
+          ...this.oauthStateCookieOptions(),
           maxAge: 10 * 60 * 1000,
           path: `/api/v1/auth/${provider.toLowerCase()}`,
         });
       } else {
-        response.clearCookie(stateCookie, { ...this.cookieOptions(), path: `/api/v1/auth/${provider.toLowerCase()}` });
+        response.clearCookie(stateCookie, { ...this.oauthStateCookieOptions(), path: `/api/v1/auth/${provider.toLowerCase()}` });
       }
-      if (providerError) return this.redirectOAuthError(response, oauthState.mode, 'provider_cancelled', oauthState.returnTo);
+      if (providerError) return this.redirectOAuthError(response, oauthState.mode, 'provider_cancelled', safeReturnTo);
       const profile = await this.social.exchangeCode(provider, code ?? '');
       if (oauthState.mode === 'link') {
         const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
         if (access.sub !== oauthState.userId) throw new DomainError('INVALID_OAUTH_STATE', 'OAuth session does not belong to the signed-in user', 401);
         await this.social.linkIdentity(oauthState.userId!, provider, profile);
-        return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}/account/social?social=linked&provider=${provider.toLowerCase()}`);
+        const target = new URL(this.domainPolicy.portalUrl('/account/social'));
+        target.searchParams.set('social', 'linked');
+        target.searchParams.set('provider', provider.toLowerCase());
+        return response.redirect(target.toString());
       }
 
       const userId = await this.social.loginIdentity(provider, profile);
       const tokens = await this.auth.loginWithSocial(userId);
       this.withCookies(response, tokens);
-      return response.redirect(oauthState.returnTo ?? `${this.config.getOrThrow<string>('webOrigin')}/account`);
+      return response.redirect(safeReturnTo ?? this.domainPolicy.portalUrl('/account'));
     } catch (error) {
-      return this.redirectOAuthError(response, oauthState?.mode ?? mode, this.errorCode(error), oauthState?.returnTo);
+      return this.redirectOAuthError(response, oauthState?.mode ?? mode, this.errorCode(error), safeReturnTo);
     }
   }
 
@@ -131,14 +137,9 @@ export class AuthController {
       return response.redirect(target.toString());
     }
     const path = mode === 'link' ? '/account/social' : '/auth/login';
-    return response.redirect(`${this.config.getOrThrow<string>('webOrigin')}${path}?social_error=${encodeURIComponent(code)}`);
-  }
-
-  private safeReturnTo(value: string | undefined, fallbackPath: string) {
-    const baseDomain = this.config.getOrThrow<string>('baseDomain');
-    const origins = this.config.get<string[]>('allowedWebOrigins') ?? [];
-    if (isAllowedReturnTo(value, baseDomain, origins, this.config.get<boolean>('allowGameSubdomains') ?? true)) return value!;
-    return `${this.config.getOrThrow<string>('webOrigin')}${fallbackPath}`;
+    const target = new URL(this.domainPolicy.portalUrl(path));
+    target.searchParams.set('social_error', code);
+    return response.redirect(target.toString());
   }
 
   private errorCode(error: unknown) {
@@ -153,13 +154,30 @@ export class AuthController {
     return 'oauth_failed';
   }
 
-  private withCookies(response: Response, tokens: { accessToken: string; refreshToken: string; user: unknown }) {
-    response.cookie(ACCESS_COOKIE, tokens.accessToken, { ...this.cookieOptions(), maxAge: ACCESS_TTL_SECONDS * 1000 });
-    response.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...this.cookieOptions(), maxAge: REFRESH_TTL_SECONDS * 1000, path: '/api/v1/auth' });
-    return { user: tokens.user };
+  private withCookies(response: Response, tokens: { accessToken: string; refreshToken: string; user: unknown; redirectTo?: string }) {
+    response.cookie(ACCESS_COOKIE, tokens.accessToken, { ...this.accessCookieOptions(), maxAge: ACCESS_TTL_SECONDS * 1000 });
+    response.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...this.refreshCookieOptions(), maxAge: REFRESH_TTL_SECONDS * 1000 });
+    return { user: tokens.user, ...(tokens.redirectTo ? { redirectTo: tokens.redirectTo } : {}) };
   }
 
-  private cookieOptions() {
-    return { httpOnly: true, secure: this.config.get<boolean>('cookieSecure') ?? false, sameSite: 'lax' as const, domain: this.config.get<string>('cookieDomain') };
+  private baseCookieOptions(includeDomain = true) {
+    return {
+      httpOnly: true,
+      secure: this.config.get<boolean>('cookieSecure') ?? false,
+      sameSite: 'lax' as const,
+      ...(includeDomain && this.domainPolicy.sessionCookieDomain ? { domain: this.domainPolicy.sessionCookieDomain } : {}),
+    };
+  }
+
+  private accessCookieOptions() {
+    return { ...this.baseCookieOptions(), path: '/' };
+  }
+
+  private refreshCookieOptions() {
+    return { ...this.baseCookieOptions(), path: '/api/v1/auth' };
+  }
+
+  private oauthStateCookieOptions() {
+    return this.baseCookieOptions(false);
   }
 }

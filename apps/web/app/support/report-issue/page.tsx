@@ -20,6 +20,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { portalUrl } from '@/lib/domain';
+import { useAccount } from '@/hooks/use-account';
 
 const schema = z.object({
   categoryId: z.string().uuid('Vui lòng chọn danh mục hỗ trợ.'),
@@ -30,7 +32,7 @@ type Values = z.infer<typeof schema>;
 
 export default function ReportIssuePage() {
   const router = useRouter();
-  const account = useQuery({ queryKey: ['account', 'me'], queryFn: api.account.me, retry: false });
+  const account = useAccount();
   const faqQuery = useQuery({ queryKey: ['support', 'faqs'], queryFn: api.support.faqs, retry: false });
   const [createdTicket, setCreatedTicket] = useState<SupportTicket | null>(null);
   const form = useForm<Values>({
@@ -41,8 +43,8 @@ export default function ReportIssuePage() {
 
   useEffect(() => {
     if (account.error instanceof ApiError && account.error.status === 401) {
-      const next = '/support/report-issue';
-      router.replace(`/auth/login?next=${encodeURIComponent(next)}`);
+      const returnTo = new URL('/support/report-issue', portalUrl('/')).toString();
+      router.replace(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }, [account.error, router]);
 

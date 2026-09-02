@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/status-badge';
 import { ZenxCoinGoldIcon } from '@/components/icons';
+import { useAccount } from '@/hooks/use-account';
 
 export default function WalletPage() {
-  const wallet = useWallet();
-  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' });
+  const account = useAccount();
+  const wallet = useWallet({ enabled: Boolean(account.data) });
+  const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' }, { enabled: Boolean(account.data) });
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 pb-10">

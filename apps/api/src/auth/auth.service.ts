@@ -9,9 +9,13 @@ import { normalizeEmail, normalizePhone, normalizeUsername } from '../common/nor
 import { ACCESS_TTL_SECONDS, REFRESH_TTL_SECONDS } from '../common/constants';
 import { PrismaService } from '../database/prisma.service';
 import { OtpService } from '../otp/otp.service';
+import { DomainPolicyService } from '../common/domain-policy.service';
 import { LoginDto, RegisterDto, ResetPasswordDto } from './dto';
 
 export type AuthTokens = { accessToken: string; refreshToken: string; user: unknown };
+export type LoginTokens = AuthTokens & { redirectTo: string };
+
+const REFRESH_RECOVERY_WINDOW_MS = 2_000;
 
 @Injectable()
 export class AuthService {
@@ -20,6 +24,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly otp: OtpService,
+    private readonly domainPolicy: DomainPolicyService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokens> {
@@ -54,7 +59,7 @@ export class AuthService {
     return this.issueTokens(user.id, user.username, user);
   }
 
-  async login(dto: LoginDto): Promise<AuthTokens> {
+  async login(dto: LoginDto): Promise<LoginTokens> {
     const identity = dto.username.trim();
     const usernameNormalized = normalizeUsername(identity);
     const emailNormalized = normalizeEmail(identity);
@@ -64,7 +69,8 @@ export class AuthService {
     }
     if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
     if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
-    return this.issueTokens(user.id, user.username, user);
+    const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo);
+    return { ...await this.issueTokens(user.id, user.username, user), redirectTo };
   }
 
   async loginWithSocial(userId: string): Promise<AuthTokens> {
@@ -98,12 +104,25 @@ export class AuthService {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
     const session = await this.prisma.refreshSession.findUnique({ where: { id: payload.sid }, include: { user: { include: { profile: true } } } });
-    if (!session || session.revokedAt || session.expiresAt <= new Date() || !(await argon2.verify(session.tokenHash, refreshToken))) {
+    if (!session || session.expiresAt <= new Date() || !(await argon2.verify(session.tokenHash, refreshToken))) {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
-    const claimed = await this.prisma.refreshSession.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: new Date() } });
-    if (claimed.count !== 1) throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
-    return this.issueTokens(session.user.id, session.user.username, session.user);
+    if (session.revokedAt) {
+      if (session.replacedById && Date.now() - session.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS) {
+        throw new DomainError(ErrorCode.REFRESH_IN_PROGRESS, 'Refresh session is being rotated; retry with the current cookie', 409);
+      }
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
+    }
+    const replacementId = randomUUID();
+    const claimed = await this.prisma.refreshSession.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: new Date(), replacedById: replacementId } });
+    if (claimed.count !== 1) {
+      const current = await this.prisma.refreshSession.findUnique({ where: { id: session.id }, select: { revokedAt: true, replacedById: true } });
+      if (current?.revokedAt && current.replacedById && Date.now() - current.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS) {
+        throw new DomainError(ErrorCode.REFRESH_IN_PROGRESS, 'Refresh session is being rotated; retry with the current cookie', 409);
+      }
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
+    }
+    return this.issueTokens(session.user.id, session.user.username, session.user, replacementId);
   }
 
   async logout(refreshToken?: string) {
@@ -132,8 +151,8 @@ export class AuthService {
     return { reset: true };
   }
 
-  private async issueTokens(userId: string, username: string, user: unknown): Promise<AuthTokens> {
-    const sid = randomUUID();
+  private async issueTokens(userId: string, username: string, user: unknown, sessionId = randomUUID()): Promise<AuthTokens> {
+    const sid = sessionId;
     const accessToken = await this.jwt.signAsync({ sub: userId, username, type: 'access' }, { expiresIn: ACCESS_TTL_SECONDS });
     const refreshToken = await this.jwt.signAsync({ sub: userId, username, sid, type: 'refresh' }, { secret: this.config.getOrThrow('jwtRefreshSecret'), expiresIn: REFRESH_TTL_SECONDS });
     await this.prisma.refreshSession.create({ data: { id: sid, userId, tokenHash: await argon2.hash(refreshToken), expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000) } });

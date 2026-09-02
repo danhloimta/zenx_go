@@ -16,6 +16,7 @@ import { OriginGuard } from './common/origin.guard';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'node:crypto';
 import { GameModule } from './game/game.module';
+import { DomainPolicyModule } from './common/domain-policy.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { GameModule } from './game/game.module';
     PaymentModule,
     SupportModule,
     GameModule,
+    DomainPolicyModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard }],
 })

@@ -4,7 +4,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "dist/**"],
-      "env": ["NEXT_DIST_DIR", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_BASE_DOMAIN", "NEXT_PUBLIC_WEB_ORIGIN", "PUBLIC_BASE_DOMAIN", "PUBLIC_WEB_ORIGIN", "NEXT_TELEMETRY_DISABLED"]
+      "env": ["NEXT_DIST_DIR", "NEXT_PUBLIC_API_BASE_URL", "NEXT_PUBLIC_BASE_DOMAIN", "NEXT_PUBLIC_WEB_ORIGIN", "PUBLIC_BASE_DOMAIN", "PUBLIC_WEB_ORIGIN", "API_PROXY_ORIGIN", "NEXT_TELEMETRY_DISABLED"]
     },
     "dev": {
       "cache": false,
@@ -57,7 +57,9 @@
         "PUBLIC_WEB_ORIGIN",
         "ALLOWED_WEB_ORIGINS",
         "ALLOW_GAME_SUBDOMAINS",
-        "GAME_DEMO_PUBLIC"
+        "GAME_DEMO_PUBLIC",
+        "ALLOW_TEST_OAUTH",
+        "API_PROXY_ORIGIN"
       ]
     },
     "start": {
@@ -71,6 +73,7 @@
         "JWT_REFRESH_SECRET",
         "NEXT_PUBLIC_API_BASE_URL",
         "NEXT_TELEMETRY_DISABLED",
+        "NODE_ENV",
         "DEMO_MODE",
         "OTP_EMAIL_PROVIDER",
         "OTP_MOCK_FIXED_CODE",
@@ -83,6 +86,19 @@
         "SEPAY_WEBHOOK_SECRET",
         "SEPAY_TRANSFER_PREFIX",
         "SEPAY_QR_BASE_URL",
+        "OAUTH_STATE_SECRET",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_REDIRECT_URI",
+        "GOOGLE_AUTHORIZATION_URL",
+        "GOOGLE_TOKEN_URL",
+        "GOOGLE_USERINFO_URL",
+        "FACEBOOK_CLIENT_ID",
+        "FACEBOOK_CLIENT_SECRET",
+        "FACEBOOK_REDIRECT_URI",
+        "FACEBOOK_AUTHORIZATION_URL",
+        "FACEBOOK_TOKEN_URL",
+        "FACEBOOK_USERINFO_URL",
         "PORT",
         "PRIVACY_VERSION",
         "SKIP_DB_CONNECT",
@@ -93,7 +109,9 @@
         "PUBLIC_WEB_ORIGIN",
         "ALLOWED_WEB_ORIGINS",
         "ALLOW_GAME_SUBDOMAINS",
-        "GAME_DEMO_PUBLIC"
+        "GAME_DEMO_PUBLIC",
+        "ALLOW_TEST_OAUTH",
+        "API_PROXY_ORIGIN"
       ],
       "cache": false,
       "persistent": true

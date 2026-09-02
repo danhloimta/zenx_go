@@ -8,5 +8,7 @@ export function useAccount() {
     queryKey: ["account", "me"],
     queryFn: api.account.me,
     retry: false,
+    staleTime: 0,
+    refetchOnWindowFocus: 'always',
   });
 }

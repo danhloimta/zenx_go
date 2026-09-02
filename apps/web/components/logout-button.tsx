@@ -3,6 +3,7 @@
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
@@ -16,10 +17,12 @@ export function LogoutButton({
   variant?: "default" | "outline" | "secondary" | "ghost" | "destructive" | "zenx-outline";
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const logout = useMutation({
     mutationFn: api.auth.logout,
     onSuccess: () => {
-      router.push("/auth/login");
+      queryClient.clear();
+      router.replace("/auth/login");
       router.refresh();
     },
     onError: (error) => toast.error(getErrorMessage(error)),

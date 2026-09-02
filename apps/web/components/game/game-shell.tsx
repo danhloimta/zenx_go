@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Coins, LogIn, Menu, UserRound, X } from 'lucide-react';
 import { useState } from 'react';
 import type { GameDetail } from '@zenx-go/api-client';
@@ -18,11 +18,13 @@ export function GameShell({ game, children }: { game: GameDetail; children: Reac
 function GameFrame({ children }: { children: React.ReactNode }) {
   const game = useGame();
   const account = useAccount();
-  const wallet = useWallet();
+  const wallet = useWallet({ enabled: Boolean(account.data) });
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const currentUrl = gameUrl(game.subdomain, pathname || '/');
-  const loginUrl = `${portalUrl('/auth/login')}?returnTo=${encodeURIComponent(currentUrl)}`;
+  const currentUrl = new URL(gameUrl(game.subdomain, pathname || '/'));
+  currentUrl.search = searchParams.toString();
+  const loginUrl = `${portalUrl('/auth/login')}?returnTo=${encodeURIComponent(currentUrl.toString())}`;
   const theme = game.theme;
   const isFullWebsite = game.recordType !== 'DEMO';
   const navItems = [

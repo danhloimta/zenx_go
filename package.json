@@ -14,7 +14,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:integration": "pnpm --filter api test:integration",
-    "test:e2e": "pnpm --filter api test:db:prepare && pnpm --filter api test:db:reset && cross-env NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_BASE_URL=http://localhost:4300/api/v1 pnpm build && turbo test:e2e",
+    "test:e2e": "pnpm --filter api test:db:prepare && pnpm --filter api test:db:reset && cross-env NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_BASE_URL=/api/v1 API_PROXY_ORIGIN=http://127.0.0.1:4300 PUBLIC_BASE_DOMAIN=lvh.me PUBLIC_WEB_ORIGIN=http://lvh.me:3300 pnpm build && turbo test:e2e",
     "test:db:prepare": "pnpm --filter api test:db:prepare",
     "test:db:reset": "pnpm --filter api test:db:reset",
     "db:wait": "docker compose up -d --wait sqlserver",

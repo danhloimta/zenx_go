@@ -1,15 +1,20 @@
-export const RESERVED_SUBDOMAINS = new Set([
-  'www', 'api', 'admin', 'id', 'auth', 'account', 'support', 'cdn', 'static', 'assets', 'status',
-]);
+import {
+  isAllowedProtocol,
+  normalizeBaseDomain,
+  parseReturnTo,
+  RESERVED_SUBDOMAINS,
+} from '@zenx-go/web-domain';
+
+export { RESERVED_SUBDOMAINS };
 
 export function getPublicWebOrigin() {
-  return process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? process.env.NEXT_PUBLIC_WEB_ORIGIN ?? 'http://localhost:3000';
+  return process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? process.env.NEXT_PUBLIC_WEB_ORIGIN ?? 'http://lvh.me:3000';
 }
 
 export function getPublicBaseDomain() {
   const configured = process.env.PUBLIC_BASE_DOMAIN ?? process.env.NEXT_PUBLIC_BASE_DOMAIN;
-  if (configured) return configured.toLowerCase().replace(/^\.+|\.+$/g, '');
-  try { return new URL(getPublicWebOrigin()).hostname.toLowerCase(); } catch { return 'localhost'; }
+  if (configured) return normalizeBaseDomain(configured);
+  try { return normalizeBaseDomain(new URL(getPublicWebOrigin()).hostname); } catch { return 'lvh.me'; }
 }
 
 export function gameUrl(subdomain: string, pathname = '/') {
@@ -32,12 +37,14 @@ export function portalUrl(pathname = '/') {
 
 export function isSafeReturnTo(value: string | null | undefined) {
   if (!value) return false;
+  const policy = { production: process.env.NODE_ENV === 'production', allowGameSubdomains: true, allowLocalHttp: true };
+  if (!isAllowedProtocol(value, policy)) return false;
+  const parsed = parseReturnTo(value, getPublicBaseDomain(), [], policy);
+  if (!parsed) return false;
   try {
-    const url = new URL(value);
-    const base = getPublicBaseDomain();
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) return false;
-    if (url.hostname !== base && !url.hostname.endsWith(`.${base}`)) return false;
-    const label = url.hostname.slice(0, -(base.length + 1));
-    return !label.includes('.') && (!label || !RESERVED_SUBDOMAINS.has(label));
-  } catch { return false; }
+    const configured = new URL(getPublicWebOrigin());
+    return parsed.url.protocol === configured.protocol && parsed.url.port === configured.port;
+  } catch {
+    return false;
+  }
 }

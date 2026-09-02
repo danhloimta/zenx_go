@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 import { randomInt } from 'node:crypto';
 
 test('uses runtime SePay capabilities, renders VietQR, and reacts to webhook status', async ({ page, request }) => {
-  const apiBase = process.env.E2E_API_BASE_URL ?? 'http://localhost:4300/api/v1';
+  const apiBase = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:4300/api/v1';
+  const browserApiBase = 'http://lvh.me:3300/api/v1';
   const suffix = `${Date.now().toString().slice(-5)}${randomInt(100000, 1_000_000)}`;
   const phone = `+849${suffix.slice(-8)}`;
-  const headers = { 'content-type': 'application/json', origin: 'http://localhost:3300' };
+  const headers = { 'content-type': 'application/json', origin: 'http://lvh.me:3300' };
   await request.post(`${apiBase}/otp/send`, { headers, data: { channel: 'SMS', purpose: 'VERIFY_PHONE', destination: phone } });
   const verified = await request.post(`${apiBase}/otp/verify`, { headers, data: { channel: 'SMS', purpose: 'VERIFY_PHONE', destination: phone, code: '123456' } });
   const verificationToken = (await verified.json()).data.verificationToken;
@@ -28,7 +29,7 @@ test('uses runtime SePay capabilities, renders VietQR, and reacts to webhook sta
     data: { fullName: 'SePay UI Player', dateOfBirth: '2000-01-01', gender: 'UNSPECIFIED', city: 'Ho Chi Minh City' },
   });
   expect(completed.status()).toBe(201);
-  await page.context().addCookies([{ name: 'zenx_access', value: accessCookie![1], url: 'http://localhost:3300' }]);
+  await page.context().addCookies([{ name: 'zenx_access', value: accessCookie![1], domain: '.lvh.me', path: '/' }]);
 
   const paymentNo = 'ZENXABCDEF123456';
   let status = 'PENDING';
@@ -45,12 +46,12 @@ test('uses runtime SePay capabilities, renders VietQR, and reacts to webhook sta
     paidAt: status === 'SUCCESS' ? '2026-08-26T05:01:00.000Z' : null,
     expiredAt: '2026-08-26T05:30:00.000Z',
   });
-  await page.route(`${apiBase}/payment-config`, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { provider: 'sepay', methods: ['VIETQR'], isDemo: false, allowMockCompletion: false }, error: null }) }));
-  await page.route(`${apiBase}/payments`, async (route) => {
+  await page.route(`${browserApiBase}/payment-config`, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { provider: 'sepay', methods: ['VIETQR'], isDemo: false, allowMockCompletion: false }, error: null }) }));
+  await page.route(`${browserApiBase}/payments`, async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ data: payment(), error: null }) });
   });
-  await page.route(`${apiBase}/payments/${paymentNo}`, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: payment(), error: null }) }));
+  await page.route(`${browserApiBase}/payments/${paymentNo}`, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: payment(), error: null }) }));
 
   await page.goto('/payment');
   await expect(page.getByText('MoMo', { exact: true })).toHaveCount(0);

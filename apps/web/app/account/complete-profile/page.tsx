@@ -63,11 +63,18 @@ export default function CompleteProfilePage() {
 
   const save = useMutation({
     mutationFn: api.account.completeProfile,
-    onSuccess: (data) => {
+    onMutate: async () => {
+      // Prevent an initial account request that started before this mutation
+      // from resolving with the incomplete profile after the save succeeds.
+      await queryClient.cancelQueries({ queryKey: ['account', 'me'] });
+    },
+    onSuccess: async (data) => {
       queryClient.setQueryData(['account', 'me'], data);
+      // Re-read the authoritative account snapshot before leaving onboarding;
+      // this also prevents a stale request from restoring the old profile.
+      await queryClient.invalidateQueries({ queryKey: ['account', 'me'], exact: true });
       toast.success('Đã hoàn thiện hồ sơ.');
       router.replace('/account/profile');
-      router.refresh();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

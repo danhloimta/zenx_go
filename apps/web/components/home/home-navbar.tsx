@@ -21,7 +21,7 @@ export function HomeNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [coinDropdownOpen, setCoinDropdownOpen] = useState(false);
   const account = useAccount();
-  const wallet = useWallet();
+  const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
 
   return (

@@ -99,6 +99,9 @@ function ProfileContent({
   });
 
   useEffect(() => {
+    // Do not overwrite edits while an account refetch (for example after a
+    // cross-tab focus) delivers a fresh object identity.
+    if (form.formState.isDirty) return;
     form.reset({
       fullName: account.profile.fullName ?? '',
       dateOfBirth: account.profile.dateOfBirth?.slice(0, 10) ?? '',
@@ -106,7 +109,7 @@ function ProfileContent({
       city: account.profile.city ?? '',
       address: account.profile.address ?? '',
     });
-  }, [account, form]);
+  }, [account, form, form.formState.isDirty]);
 
   const update = useMutation({
     mutationFn: api.account.update,
@@ -697,7 +700,7 @@ function ContactChange({
       );
       return;
     }
-    if (value && trimmed === value.trim()) {
+    if (value && trimmed === value.trim() && !verificationOnly) {
       setError(
         type === 'email'
           ? 'Email mới phải khác email hiện tại.'

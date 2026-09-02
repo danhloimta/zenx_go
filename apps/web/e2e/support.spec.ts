@@ -14,6 +14,6 @@ test('support page renders FAQ categories, search, and accordion answers', async
 
 test('report issue requires authentication and preserves its destination', async ({ page }) => {
   await page.goto('/support/report-issue');
-  await expect(page).toHaveURL(/\/auth\/login\?next=%2Fsupport%2Freport-issue/);
+  await expect(page).toHaveURL(/\/auth\/login\?returnTo=http%3A%2F%2Flvh\.me%3A3300%2Fsupport%2Freport-issue/);
   await expect(page.getByRole('heading', { name: 'Đăng nhập tài khoản' })).toBeVisible();
 });

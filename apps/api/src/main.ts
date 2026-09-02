@@ -9,11 +9,13 @@ import express from 'express';
 import { AppModule } from './app.module';
 import { ApiErrorFilter } from './common/error.filter';
 import { ResponseInterceptor } from './common/response.interceptor';
-import { isAllowedWebOrigin } from './common/web-domain';
+import { DomainPolicyService } from './common/domain-policy.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const config = app.get(ConfigService);
+  const domainPolicy = app.get(DomainPolicyService);
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.useLogger(app.get(Logger));
   app.use(cookieParser());
   app.use('/uploads', express.static(config.getOrThrow<string>('uploadDir')));
@@ -21,17 +23,9 @@ async function bootstrap() {
   app.enableCors({
     credentials: true,
     origin: (requestOrigin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
-      if (isAllowedWebOrigin(
-        requestOrigin,
-        config.getOrThrow<string>('baseDomain'),
-        config.get<string[]>('allowedWebOrigins') ?? [],
-        config.get<boolean>('allowGameSubdomains') ?? true,
-      )) {
-        callback(null, true);
-      } else {
-        // Let OriginGuard produce the consistent API 403 response for state-changing requests.
-        callback(null, false);
-      }
+      void domainPolicy.isAllowedOrigin(requestOrigin)
+        .then((allowed) => callback(null, allowed))
+        .catch((error: unknown) => callback(error instanceof Error ? error : new Error('Origin validation failed')));
     },
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidUnknownValues: true }));

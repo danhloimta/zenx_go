@@ -65,31 +65,24 @@ async function findAvailablePort(preferredPort, reservedPorts) {
   throw new Error(`No available port found from ${preferredPort} to ${preferredPort + 99}`);
 }
 
-function localApiBaseUrl(value, apiPort) {
-  const fallback = `http://localhost:${apiPort}/api/v1`;
-  if (!value) return fallback;
-
-  try {
-    const url = new URL(value);
-    if (['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(url.hostname)) {
-      url.port = String(apiPort);
-      return url.toString().replace(/\/$/, '');
-    }
-    return value;
-  } catch {
-    return fallback;
-  }
-}
-
 const reservedPorts = new Set();
 const requestedApiPort = configuredPort('API_PORT', 4000);
 const requestedWebPort = configuredPort('PORT', 3000);
 const apiPort = await findAvailablePort(requestedApiPort, reservedPorts);
 reservedPorts.add(apiPort);
 const webPort = await findAvailablePort(requestedWebPort, reservedPorts);
-const apiBaseUrl = localApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL ?? fileEnv.NEXT_PUBLIC_API_BASE_URL, apiPort);
-const configuredBaseDomain = process.env.PUBLIC_BASE_DOMAIN ?? fileEnv.PUBLIC_BASE_DOMAIN ?? 'localhost';
-const configuredWebOrigin = process.env.PUBLIC_WEB_ORIGIN ?? (fileEnv.NODE_ENV === 'production' ? fileEnv.PUBLIC_WEB_ORIGIN : undefined) ?? `http://localhost:${webPort}`;
+const configuredBaseDomain = process.env.PUBLIC_BASE_DOMAIN ?? fileEnv.PUBLIC_BASE_DOMAIN ?? hostnameFromOrigin(process.env.PUBLIC_WEB_ORIGIN ?? fileEnv.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? fileEnv.WEB_ORIGIN) ?? 'localhost';
+const configuredWebOrigin = process.env.PUBLIC_WEB_ORIGIN ?? (fileEnv.NODE_ENV === 'production' ? fileEnv.PUBLIC_WEB_ORIGIN : undefined) ?? `http://${configuredBaseDomain}:${webPort}`;
+const configuredCookieDomain = process.env.COOKIE_DOMAIN || fileEnv.COOKIE_DOMAIN || (configuredBaseDomain !== 'localhost' ? `.${configuredBaseDomain}` : undefined);
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? fileEnv.NEXT_PUBLIC_API_BASE_URL;
+let webHostname = 'localhost';
+try { webHostname = new URL(configuredWebOrigin).hostname; } catch { /* fall back to local mode */ }
+const isLocalWeb = ['localhost', '127.0.0.1', 'lvh.me'].includes(webHostname);
+const apiBaseUrl = isLocalWeb ? '/api/v1' : configuredApiBaseUrl ?? '/api/v1';
+const apiProxyOrigin = process.env.API_PROXY_ORIGIN ?? (isLocalWeb ? `http://127.0.0.1:${apiPort}` : undefined);
+const configuredOriginUrl = new URL(configuredWebOrigin);
+const configuredOriginPort = configuredOriginUrl.port ? `:${configuredOriginUrl.port}` : '';
+const defaultAllowedOrigins = [configuredWebOrigin, ...['lucdia', 'hoalong', 'thitranmay', 'orion'].map((subdomain) => `${configuredOriginUrl.protocol}//${subdomain}.${configuredBaseDomain}${configuredOriginPort}`)].join(',');
 
 if (apiPort !== requestedApiPort || webPort !== requestedWebPort) {
   console.log(`[start] Port conflict detected; using API ${apiPort} and web ${webPort}.`);
@@ -104,10 +97,13 @@ const child = spawn(turboCommand, ['start'], {
     ...process.env,
     API_PORT: String(apiPort),
     PORT: String(webPort),
-    WEB_ORIGIN: `http://localhost:${webPort}`,
+    WEB_ORIGIN: configuredWebOrigin,
     PUBLIC_BASE_DOMAIN: configuredBaseDomain,
     PUBLIC_WEB_ORIGIN: configuredWebOrigin,
+    ...(isLocalWeb ? { ALLOWED_WEB_ORIGINS: process.env.ALLOWED_WEB_ORIGINS ?? defaultAllowedOrigins } : {}),
+    ...(configuredCookieDomain ? { COOKIE_DOMAIN: configuredCookieDomain } : {}),
     NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
+    ...(apiProxyOrigin ? { API_PROXY_ORIGIN: apiProxyOrigin } : {}),
   },
   stdio: 'inherit',
 });
@@ -122,3 +118,8 @@ child.on('error', (error) => {
 });
 
 child.on('exit', (code) => process.exit(code ?? 1));
+
+function hostnameFromOrigin(value) {
+  if (!value) return undefined;
+  try { return new URL(value).hostname; } catch { return undefined; }
+}
