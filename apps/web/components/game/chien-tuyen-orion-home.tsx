@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { gameUrl, portalUrl } from '@/lib/domain';
 import { useGame } from '@/components/game/game-context';
+import { formatCategoryLabel } from '@/lib/games-data';
 
 const ROLES = [
   {
@@ -552,11 +553,7 @@ export function ChienTuyenOrionHome() {
 
                     <div className="p-5 sm:p-6">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-600">
-                        {article.category === 'DEVELOPMENT_UPDATE'
-                          ? 'Cập nhật hệ thống'
-                          : article.category === 'EVENT'
-                            ? 'Sự kiện'
-                            : 'Thông báo'}
+                        {formatCategoryLabel(article.category)}
                       </span>
 
                       <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1.5 group-hover:text-cyan-600 transition-colors line-clamp-2">

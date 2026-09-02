@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { portalUrl, gameUrl } from '@/lib/domain';
 import { useGame } from '@/components/game/game-context';
+import { formatCategoryLabel } from '@/lib/games-data';
 
 // Gold Diamond Divider
 function DiamondDivider({ className = 'my-4' }: { className?: string }) {
@@ -429,7 +430,7 @@ export function LucDiaDamMeHome() {
                 </div>
                 <div className="p-4 sm:p-5">
                   <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#9d7d47]">
-                    {article.category.replaceAll('_', ' ')}
+                    {formatCategoryLabel(article.category)}
                   </p>
                   <h3 className="mt-1.5 sm:mt-2 text-sm sm:text-base font-medium text-[#152238] font-serif line-clamp-2">
                     {article.title}

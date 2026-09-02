@@ -63,25 +63,79 @@ export interface NewsItem {
 
 export function formatCategoryLabel(category?: string | null): string {
   if (!category) return 'Tin tức';
-  switch (category) {
+  const normalized = category.trim().toUpperCase().replaceAll(' ', '_');
+  switch (normalized) {
     case 'DEVELOPMENT_UPDATE':
-    case 'Development Update':
-    case 'Tiến độ phát triển':
+    case 'DEVELOPMENT':
+    case 'DEV_UPDATE':
+    case 'TIẾN_ĐỘ_PHÁT_TRIỂN':
+    case 'CẬP_NHẬT_VẬN_HÀNH':
+    case 'CAP_NHAT_VAN_HANH':
       return 'Cập nhật vận hành';
     case 'ANNOUNCEMENT':
-    case 'Announcement':
-    case 'Thông báo':
+    case 'THÔNG_BÁO':
+    case 'THONG_BAO':
       return 'Thông báo';
     case 'EVENT':
-    case 'Event':
-    case 'Sự kiện':
+    case 'SỰ_KIỆN':
+    case 'SU_KIEN':
       return 'Sự kiện';
     case 'MAINTENANCE':
-    case 'Maintenance':
-    case 'Bảo trì':
+    case 'BẢO_TRÌ':
+    case 'BAO_TRI':
       return 'Bảo trì';
+    case 'GUIDE':
+    case 'HƯỚNG_DẪN':
+    case 'HUONG_DAN':
+      return 'Hướng dẫn';
+    case 'COMMUNITY':
+    case 'CỘNG_ĐỒNG':
+    case 'CONG_DONG':
+      return 'Cộng đồng';
     default:
       return category.replaceAll('_', ' ');
+  }
+}
+
+export function formatMilestoneStatus(status?: string | null): string {
+  if (!status) return '';
+  const normalized = status.trim().toUpperCase().replaceAll(' ', '_');
+  switch (normalized) {
+    case 'COMPLETED':
+      return 'Đã hoàn tất';
+    case 'IN_PROGRESS':
+      return 'Đang hoạt động';
+    case 'UPCOMING':
+      return 'Sắp diễn ra';
+    case 'PLANNED':
+      return 'Dự kiến';
+    default:
+      return status.replaceAll('_', ' ');
+  }
+}
+
+export function formatLifecycleStatus(status?: string | null): string {
+  if (!status) return '';
+  const normalized = status.trim().toUpperCase().replaceAll(' ', '_');
+  switch (normalized) {
+    case 'LIVE':
+      return 'Đang hoạt động';
+    case 'OPEN_BETA':
+      return 'Mở Open Beta';
+    case 'CLOSED_BETA':
+      return 'Thử nghiệm giới hạn';
+    case 'INTERNAL_TEST':
+      return 'Thử nghiệm nội bộ';
+    case 'IN_DEVELOPMENT':
+      return 'Đang phát triển';
+    case 'COMING_SOON':
+      return 'Sắp ra mắt';
+    case 'CONCEPT':
+      return 'Bản phác thảo';
+    case 'SUNSET':
+      return 'Dừng hoạt động';
+    default:
+      return status.replaceAll('_', ' ');
   }
 }
 
