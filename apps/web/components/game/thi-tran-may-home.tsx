@@ -8,24 +8,28 @@ import {
   Globe,
   Sun,
   Sprout,
+  Leaf,
   Cloud,
   Moon,
   ChevronDown,
-  Send,
   X,
+  HelpCircle,
 } from 'lucide-react';
 import { gameUrl, portalUrl } from '@/lib/domain';
 import { useGame } from '@/components/game/game-context';
 
 // Leaf SVG icon with custom shape matching design
-function LeafIcon({ className = 'size-4 text-emerald-500 shrink-0 inline-block' }: { className?: string }) {
+function LeafIcon({ className = 'size-5 text-emerald-500 shrink-0 inline-block' }: { className?: string }) {
   return (
     <svg
-      className={className}
+      className={`size-5 shrink-0 inline-block ${className}`}
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
+      style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px', flexShrink: 0 }}
     >
       <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z" />
     </svg>
@@ -62,25 +66,28 @@ const GALLERY_ITEMS = [
 const FAQS = [
   {
     id: 1,
-    question: 'Đây có phải game đã phát hành?',
-    answer: 'Chưa. Đây là bản concept minh họa.',
+    question: 'Đây có phải là game đã phát hành chính thức?',
+    answer: 'Chưa. Thị Trấn Mây hiện là bản concept nghệ thuật và định hướng lối chơi mô phỏng thư giãn do ZENX GO phát triển. Mọi hình ảnh và tài liệu đều mang tính chất minh họa cho thế giới tương lai.',
   },
   {
     id: 2,
-    question: 'Đã có bản tải game chưa?',
-    answer: 'Hiện chưa có bản tải hoặc bản chơi thử.',
+    question: 'Đã có bản tải game hoặc chơi thử (Alpha/Beta) chưa?',
+    answer: 'Hiện tại chưa có bản tải về. Lịch thử nghiệm sẽ được thông báo trên ZENX Portal khi hoàn tất các giai đoạn dựng môi trường và kiểm thử nội bộ.',
   },
   {
     id: 3,
-    question: 'Tôi có thể xem thêm ở đâu?',
-    answer: 'Khám phá các dự án khác tại ZENX GO.',
+    question: 'Tôi có thể theo dõi tiến độ và đóng góp ý kiến ở đâu?',
+    answer: 'Bạn có thể theo dõi nhật ký phát triển tại mục Tin tức của Thị Trấn Mây hoặc tham gia cộng đồng người chơi trên hệ sinh thái ZENX GO.',
   },
 ];
 
 export function ThiTranMayHome() {
   const game = useGame();
-  const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({ 1: true, 2: true, 3: true });
+  const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({ 1: true });
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; title: string; alt: string } | null>(null);
+
+  const activeGalleryItem = GALLERY_ITEMS[activeGalleryIndex];
 
   const toggleFaq = (id: number) => {
     setOpenFaqs((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -94,39 +101,36 @@ export function ThiTranMayHome() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f9fd] text-[#123b63] font-sans selection:bg-[#118a94]/20 selection:text-[#123b63]">
+    <div className="bg-[#f0f8ff] text-[#123b63] font-sans antialiased selection:bg-[#cae8f7] selection:text-[#123b63]">
       {/* Lightbox Modal */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => setLightboxImage(null)}
         >
-          <div
-            className="relative max-h-[90vh] max-w-5xl overflow-hidden rounded-3xl bg-slate-900 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 z-50 size-10 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors cursor-pointer"
+            aria-label="Đóng ảnh"
           >
-            <button
-              onClick={() => setLightboxImage(null)}
-              className="absolute right-4 top-4 z-10 flex size-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur hover:bg-black/90"
-              aria-label="Đóng"
-            >
-              <X className="size-5" />
-            </button>
+            <X className="size-6" />
+          </button>
+          <div className="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl">
             <img
               src={lightboxImage.src}
               alt={lightboxImage.alt}
-              className="max-h-[80vh] w-auto object-contain"
+              className="max-h-[85vh] w-auto object-contain"
             />
-            <div className="p-4 text-center text-sm font-semibold text-white/90 bg-slate-950">
+            <div className="p-4 text-center text-sm font-semibold text-[#10304f] bg-white">
               {lightboxImage.title}
             </div>
           </div>
         </div>
       )}
 
-      {/* 1. HERO SECTION - Full Bleed Key Art Background matching design */}
-      <section className="relative isolate overflow-hidden min-h-[640px] sm:min-h-[720px] lg:min-h-[820px] flex items-center">
-        {/* Full Bleed Background Art */}
+      {/* 1. HERO SECTION */}
+      <section className="relative isolate overflow-hidden min-h-[540px] sm:min-h-[580px] lg:h-[calc(100vh-80px)] lg:min-h-[600px] lg:max-h-[780px] flex items-center bg-[#dff0fb]">
         <div className="absolute inset-0 -z-20 overflow-hidden">
           <picture>
             <source
@@ -135,42 +139,35 @@ export function ThiTranMayHome() {
             />
             <img
               src="/images/games/thi-tran-may/detail-v1/hero.webp"
-              alt="Thị trấn nổi giữa bầu trời và những tầng mây"
-              className="size-full object-cover object-[58%_40%] lg:object-[56%_38%]"
+              alt="Thị Trấn Mây - Hòn đảo bay kỳ diệu"
+              className="size-full object-cover object-[70%_center] sm:object-center contrast-102 brightness-100"
               fetchPriority="high"
             />
           </picture>
         </div>
 
-        {/* Soft Left Side Gradient Overlay for Crisp Text Contrast */}
-        <div className="absolute inset-y-0 left-0 w-full lg:w-[62%] -z-10 bg-gradient-to-r from-[#e3f2fb]/95 via-[#e3f2fb]/80 to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 inset-x-0 h-28 -z-10 bg-gradient-to-t from-[#f3f9fd] via-[#f3f9fd]/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#e3f2fb]/95 via-[#e3f2fb]/70 via-40% to-transparent pointer-events-none hidden sm:block" />
+        <div className="block sm:hidden absolute inset-0 -z-10 bg-gradient-to-t from-[#e3f2fb] via-[#e3f2fb]/80 via-60% to-transparent pointer-events-none" />
 
-        {/* Hero Content Container */}
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <div className="max-w-xl lg:max-w-2xl">
-            {/* Badge */}
             <div className="inline-flex items-center gap-2 rounded-full bg-[#cae8f7] px-3.5 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#165a88] shadow-2xs">
               <span>BẢN CONCEPT • CASUAL MÔ PHỎNG</span>
             </div>
 
-            {/* Title */}
-            <h1 className="mt-3 text-5xl sm:text-6xl lg:text-[76px] font-black tracking-tight text-[#123b63] font-serif leading-[1.04]">
+            <h1 className="mt-4 text-5xl sm:text-6xl lg:text-[76px] font-black tracking-tight text-[#10304f] font-serif leading-[1.04]">
               THỊ TRẤN MÂY
             </h1>
 
-            {/* Subtitle */}
-            <p className="mt-3 text-xl sm:text-2xl font-black text-[#10304f] leading-snug">
+            <p className="mt-4 text-xl sm:text-2xl font-black text-[#10304f] leading-snug">
               Xây một góc nhỏ trên những tầng mây.
             </p>
 
-            {/* Description */}
-            <p className="mt-3 text-sm sm:text-base text-[#386284] leading-relaxed max-w-md">
+            <p className="mt-4 text-sm sm:text-base text-[#386284] leading-relaxed max-w-md">
               Khám phá ý tưởng về một thị trấn nổi dành cho sáng tạo và thư giãn.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => scrollToSection('y-tuong')}
@@ -186,403 +183,340 @@ export function ThiTranMayHome() {
                 Xem ý tưởng trải nghiệm
               </button>
             </div>
-
-            {/* Platform indicators inline */}
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm font-semibold text-[#2f5575]">
-              <span>Nền tảng dự kiến:</span>
-              <span className="inline-flex items-center gap-1.5 text-[#0f828a]">
-                <Smartphone className="size-4" /> Mobile
-              </span>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1.5 text-[#0f828a]">
-                <Globe className="size-4" /> Web
-              </span>
-            </div>
-
-            {/* Disclaimer */}
-            <p className="mt-3.5 text-xs text-[#6285a2]">
-              Hình ảnh và nội dung minh họa cho concept game.
-            </p>
           </div>
         </div>
       </section>
 
-      {/* 2. SECTION: "Một nơi bình yên để tự tay vun đắp." */}
-      <section id="gioi-thieu" className="py-12 sm:py-16">
+      {/* 3. SECTION: 3 Pillar Cards */}
+      <section id="thi-tran" className="py-8 sm:py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-12">
-            {/* Left Copy */}
-            <div className="lg:col-span-5">
-              <div className="flex items-start gap-2.5">
-                <LeafIcon className="size-5 text-emerald-500 shrink-0 mt-1.5" />
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#10304f] font-serif leading-[1.15]">
-                  Một nơi bình yên<br />để tự tay vun đắp.
-                </h2>
-              </div>
-              <p className="mt-5 text-base sm:text-lg text-[#386284] leading-relaxed pl-8">
-                Ý tưởng Thị Trấn Mây hướng tới nhịp trải nghiệm nhẹ nhàng, nơi mỗi lựa chọn góp phần tạo nên một thị trấn mang dấu ấn riêng.
-              </p>
-            </div>
-
-            {/* Right Image */}
-            <div className="lg:col-span-7">
-              <div className="overflow-hidden rounded-[28px] shadow-sm">
-                <img
-                  src="/images/games/thi-tran-may/detail-v1/town-square.webp"
-                  alt="Quảng trường và tháp đồng hồ của Thị Trấn Mây"
-                  className="w-full object-cover transition-transform duration-500 hover:scale-[1.02] cursor-pointer"
-                  onClick={() =>
-                    setLightboxImage({
-                      src: '/images/games/thi-tran-may/detail-v1/town-square.webp',
-                      title: 'Minh họa concept thị trấn',
-                      alt: 'Quảng trường và tháp đồng hồ của Thị Trấn Mây',
-                    })
-                  }
-                  loading="lazy"
-                />
-              </div>
-              <p className="mt-2.5 text-center text-xs text-[#7395af]">
-                Minh họa concept thị trấn
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. SECTION: "Ba hướng trải nghiệm được đề xuất" */}
-      <section id="y-tuong" className="py-12 sm:py-16 relative">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Section Heading with Leaves */}
           <div className="text-center">
-            <h2 className="inline-flex items-center justify-center gap-2.5 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#10304f] font-serif">
+            <p className="inline-flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">
               <LeafIcon className="size-5 text-emerald-500" />
-              <span>Ba hướng trải nghiệm được đề xuất</span>
+              <span>Ý TƯỞNG TRẢI NGHIỆM</span>
               <LeafIcon className="size-5 text-emerald-500" />
+            </p>
+            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif">
+              Ba điểm chạm nhẹ nhàng
             </h2>
           </div>
 
-          {/* Cards with Left Thumbnail + Right Content & Paper Plane */}
-          <div className="relative mt-10">
-            {/* Paper Airplane decorative on top right */}
-            <div className="hidden lg:flex items-center absolute -top-4 right-6 text-[#118a94] opacity-80">
-              <Send className="size-6 -rotate-12" />
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-3">
-              {/* Card 01 */}
-              <div className="flex items-center gap-4 rounded-[26px] bg-[#fffef9] border border-[#faecd8] p-3 shadow-xs transition-all hover:shadow-md hover:-translate-y-0.5">
-                <div className="w-[125px] sm:w-[140px] h-[115px] shrink-0 overflow-hidden rounded-[20px]">
-                  <img
-                    src="/images/games/thi-tran-may/detail-v1/town-square-thumb.webp"
-                    alt="Xây dựng góc nhỏ"
-                    className="size-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                    onClick={() =>
-                      setLightboxImage({
-                        src: '/images/games/thi-tran-may/detail-v1/town-square.webp',
-                        title: '01 - Xây dựng góc nhỏ',
-                        alt: 'Xây dựng góc nhỏ',
-                      })
-                    }
-                    loading="lazy"
-                  />
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            <div className="flex flex-col justify-between rounded-[28px] bg-white border border-[#cbe5f5] p-6 sm:p-8 shadow-xs transition-all hover:shadow-md hover:-translate-y-1">
+              <div>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#e3f2fb] text-[#0f828a]">
+                  <Sun className="size-6" />
                 </div>
-                <div className="flex-1 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-2xl font-black text-[#118a94] font-serif">01</span>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-[#10304f]">
+                    Xây dựng & Sáng tạo
+                  </h3>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                     <LeafIcon className="size-3.5 text-emerald-500" />
-                  </div>
-                  <h3 className="text-base font-bold text-[#10304f] mt-0.5">Xây dựng góc nhỏ</h3>
-                  <p className="text-xs text-[#527797] mt-1 leading-snug">
-                    Sắp xếp công trình và tạo không gian theo phong cách riêng.
-                  </p>
+                    <span>01</span>
+                  </span>
                 </div>
+                <p className="mt-3 text-sm leading-relaxed text-[#527797]">
+                  Tự do sắp đặt từng góc nhỏ trên đảo mây: từ ngôi nhà mái ngói, khu vườn hoa đến con đường lát đá dẫn ra bến khinh khí cầu.
+                </p>
               </div>
-
-              {/* Card 02 */}
-              <div className="flex items-center gap-4 rounded-[26px] bg-[#fffef9] border border-[#faecd8] p-3 shadow-xs transition-all hover:shadow-md hover:-translate-y-0.5">
-                <div className="w-[125px] sm:w-[140px] h-[115px] shrink-0 overflow-hidden rounded-[20px]">
-                  <img
-                    src="/images/games/thi-tran-may/detail-v1/garden-thumb.webp"
-                    alt="Chăm sóc thị trấn"
-                    className="size-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                    onClick={() =>
-                      setLightboxImage({
-                        src: '/images/games/thi-tran-may/detail-v1/garden.webp',
-                        title: '02 - Chăm sóc thị trấn',
-                        alt: 'Chăm sóc thị trấn',
-                      })
-                    }
-                    loading="lazy"
-                  />
-                </div>
-                <div className="flex-1 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-2xl font-black text-[#118a94] font-serif">02</span>
-                    <LeafIcon className="size-3.5 text-emerald-500" />
-                  </div>
-                  <h3 className="text-base font-bold text-[#10304f] mt-0.5">Chăm sóc thị trấn</h3>
-                  <p className="text-xs text-[#527797] mt-1 leading-snug">
-                    Theo dõi những hoạt động nhẹ nhàng trong ngày.
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 03 */}
-              <div className="flex items-center gap-4 rounded-[26px] bg-[#fffef9] border border-[#faecd8] p-3 shadow-xs transition-all hover:shadow-md hover:-translate-y-0.5">
-                <div className="w-[125px] sm:w-[140px] h-[115px] shrink-0 overflow-hidden rounded-[20px]">
-                  <img
-                    src="/images/games/thi-tran-may/detail-v1/floating-islands-thumb.webp"
-                    alt="Kết nối đảo mây"
-                    className="size-full object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
-                    onClick={() =>
-                      setLightboxImage({
-                        src: '/images/games/thi-tran-may/detail-v1/floating-islands.webp',
-                        title: '03 - Kết nối đảo mây',
-                        alt: 'Kết nối đảo mây',
-                      })
-                    }
-                    loading="lazy"
-                  />
-                </div>
-                <div className="flex-1 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-2xl font-black text-[#118a94] font-serif">03</span>
-                    <LeafIcon className="size-3.5 text-emerald-500" />
-                  </div>
-                  <h3 className="text-base font-bold text-[#10304f] mt-0.5">Kết nối đảo mây</h3>
-                  <p className="text-xs text-[#527797] mt-1 leading-snug">
-                    Khám phá ý tưởng giao lưu giữa các hòn đảo.
-                  </p>
-                </div>
+              <div className="mt-6 pt-4 border-t border-sky-50 text-xs text-[#7395af]">
+                Sắp đặt không gian thư giãn
               </div>
             </div>
 
-            {/* Note below cards */}
-            <p className="mt-6 text-center text-xs text-[#7395af]">
-              Các hướng trải nghiệm đang ở mức ý tưởng.
+            <div className="flex flex-col justify-between rounded-[28px] bg-white border border-[#cbe5f5] p-6 sm:p-8 shadow-xs transition-all hover:shadow-md hover:-translate-y-1">
+              <div>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#e3f2fb] text-[#0f828a]">
+                  <Sprout className="size-6" />
+                </div>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-[#10304f]">
+                    Nhịp sống êm ả
+                  </h3>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                    <LeafIcon className="size-3.5 text-emerald-500" />
+                    <span>02</span>
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-[#527797]">
+                  Chăm sóc những mảnh vườn nhỏ, theo dõi cây cối lớn lên theo thời gian thực và tận hưởng nhịp ngày - đêm nhẹ nhàng.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-sky-50 text-xs text-[#7395af]">
+                Vườn cây & Thời gian thực
+              </div>
+            </div>
+
+            <div className="flex flex-col justify-between rounded-[28px] bg-white border border-[#cbe5f5] p-6 sm:p-8 shadow-xs transition-all hover:shadow-md hover:-translate-y-1">
+              <div>
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-[#e3f2fb] text-[#0f828a]">
+                  <Cloud className="size-6" />
+                </div>
+                <div className="mt-5 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-[#10304f]">
+                    Ghé thăm bạn bè
+                  </h3>
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
+                    <LeafIcon className="size-3.5 text-emerald-500" />
+                    <span>03</span>
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-[#527797]">
+                  Ghé thăm hòn đảo của bạn bè bằng khinh khí cầu, để lại lời nhắn ấm áp và trao đổi những món quà lưu niệm độc đáo.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-sky-50 text-xs text-[#7395af]">
+                Cộng đồng & Giao lưu
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. SECTION: Interactive Gallery (Concept Showcase) */}
+      <section id="y-tuong" className="py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="inline-flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">
+              <LeafIcon className="size-5 text-emerald-500" />
+              <span>HÌNH ẢNH CONCEPT</span>
+              <LeafIcon className="size-5 text-emerald-500" />
+            </p>
+            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif">
+              Thế giới trên những tầng mây
+            </h2>
+          </div>
+
+          <div className="mt-10 overflow-hidden rounded-[28px] bg-white border border-[#cbe5f5] p-4 sm:p-6 shadow-sm">
+            <div
+              className="overflow-hidden rounded-2xl cursor-pointer group relative aspect-[16/9]"
+              onClick={() =>
+                setLightboxImage({
+                  src: activeGalleryItem.fullSrc,
+                  title: activeGalleryItem.title,
+                  alt: activeGalleryItem.alt,
+                })
+              }
+            >
+              <img
+                src={activeGalleryItem.fullSrc}
+                alt={activeGalleryItem.alt}
+                className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                <span className="text-white text-sm font-bold flex items-center gap-2">
+                  <span>Phóng to hình ảnh</span>
+                  <ArrowRight className="size-4" />
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 sm:mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+              {GALLERY_ITEMS.map((item, index) => {
+                const isActive = activeGalleryIndex === index;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveGalleryIndex(index)}
+                    className={`rounded-2xl border-2 p-2 sm:p-3 text-left transition-all cursor-pointer ${
+                      isActive
+                        ? 'border-[#0f828a] bg-[#e3f2fb]/70 shadow-xs scale-[1.02]'
+                        : 'border-[#d4eaf7] bg-white hover:bg-[#f4faff]'
+                    }`}
+                  >
+                    <div className="aspect-[16/10] overflow-hidden rounded-xl">
+                      <img
+                        src={item.thumbSrc}
+                        alt={item.title}
+                        className="size-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <p className="mt-2 text-xs sm:text-sm font-bold text-[#10304f] truncate">
+                      {item.title}
+                    </p>
+                    <p className="text-[11px] text-[#7395af] truncate hidden sm:block">
+                      {item.subtitle}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. SECTION: "Nhịp ngày & đêm" (Day & Night Rhythm) */}
+      <section className="py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <p className="inline-flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#0f828a]">
+              <LeafIcon className="size-5 text-emerald-500" />
+              <span>NHỊP NGÀY & ĐÊM</span>
+              <LeafIcon className="size-5 text-emerald-500" />
+            </p>
+            <h2 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif">
+              Thời gian trôi êm đềm
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            <div className="rounded-[28px] bg-white border border-[#cbe5f5] p-6 sm:p-8 shadow-xs">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#fef3c7] text-[#d97706]">
+                <Sun className="size-6" />
+              </div>
+              <h3 className="mt-5 text-2xl font-black text-[#10304f] font-serif">
+                Ban ngày rực rỡ
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-[#527797]">
+                Ánh nắng chan hòa chiếu rọi từng luống rau, quảng trường rộn ràng tiếng chuông và những chuyến khinh khí cầu nhộn nhịp cập bến.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-[#0f828a]">
+                <span className="rounded-full bg-[#e3f2fb] px-3 py-1">Tưới cây</span>
+                <span className="rounded-full bg-[#e3f2fb] px-3 py-1">Thu hoạch</span>
+                <span className="rounded-full bg-[#e3f2fb] px-3 py-1">Đón khách</span>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] bg-white border border-[#cbe5f5] p-6 sm:p-8 shadow-xs">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#e0e7ff] text-[#4f46e5]">
+                <Moon className="size-6" />
+              </div>
+              <h3 className="mt-5 text-2xl font-black text-[#10304f] font-serif">
+                Ban đêm thanh bình
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-[#527797]">
+                Ánh đèn lồng ấm áp thắp sáng các ô cửa sổ, sao trời lấp lánh phản chiếu trên biển mây tĩnh lặng, mang lại cảm giác an yên sau ngày dài.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-[#4f46e5]">
+                <span className="rounded-full bg-[#eef2ff] px-3 py-1">Thắp đèn</span>
+                <span className="rounded-full bg-[#eef2ff] px-3 py-1">Ngắm sao</span>
+                <span className="rounded-full bg-[#eef2ff] px-3 py-1">Thư giãn</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. SECTION: Nền tảng & FAQ */}
+      <section id="nen-tang" className="py-12 sm:py-20 bg-[#f7fbfe] border-t border-[#d8ebf7]">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs mb-3">
+              <Leaf className="size-3.5 text-emerald-600" />
+              THÔNG TIN DỰ ÁN & HỎI ĐÁP
+            </span>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#10304f] font-serif tracking-tight leading-tight">
+              Sẵn sàng đón bạn lên những tầng mây
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-[#386284] leading-relaxed">
+              Thị Trấn Mây là dự án game thư giãn đang trong giai đoạn phát triển ý tưởng và hoàn thiện mỹ thuật.
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* 4. SECTION: "Trên những tầng mây" - Wrapped in Rounded Container */}
-      <section id="thi-tran" className="py-8 sm:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-[32px] bg-gradient-to-b from-[#f4f9fd] to-[#edf6fc] border border-[#d6ecf8] p-6 sm:p-10 shadow-xs">
-            {/* Section Heading */}
-            <div className="text-center">
-              <h2 className="inline-flex items-center justify-center gap-2.5 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#10304f] font-serif">
-                <LeafIcon className="size-5 text-emerald-500" />
-                <span>Trên những tầng mây</span>
-                <LeafIcon className="size-5 text-emerald-500" />
-              </h2>
-            </div>
-
-            {/* Panorama Image */}
-            <div className="mt-8 overflow-hidden rounded-[22px] shadow-xs">
-              <img
-                src="/images/games/thi-tran-may/detail-v1/floating-islands.webp"
-                alt="Quần thể đảo mây kết nối quanh thị trấn"
-                className="w-full max-h-[360px] object-cover transition-transform duration-700 hover:scale-[1.01] cursor-pointer"
-                onClick={() =>
-                  setLightboxImage({
-                    src: '/images/games/thi-tran-may/detail-v1/floating-islands.webp',
-                    title: 'Quần thể đảo mây kết nối quanh thị trấn',
-                    alt: 'Quần thể đảo mây kết nối quanh thị trấn',
-                  })
-                }
-                loading="lazy"
-              />
-            </div>
-
-            {/* 3 Gallery Cards */}
-            <div className="mt-6 grid gap-5 sm:grid-cols-3">
-              {GALLERY_ITEMS.map((item) => (
-                <div
-                  key={item.id}
-                  className="group cursor-pointer text-center"
-                  onClick={() =>
-                    setLightboxImage({
-                      src: item.fullSrc,
-                      title: item.title,
-                      alt: item.alt,
-                    })
-                  }
-                >
-                  <div className="overflow-hidden rounded-[20px] shadow-xs transition-transform duration-300 group-hover:scale-[1.02]">
-                    <img
-                      src={item.thumbSrc}
-                      alt={item.alt}
-                      className="aspect-[16/9] w-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <h3 className="mt-2.5 text-base font-bold text-[#10304f]">{item.title}</h3>
-                  <p className="text-xs text-[#7395af]">{item.subtitle}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. SECTION: "Một ngày ở Thị Trấn Mây" (Daily Rhythm) - Wrapped in Rounded Container */}
-      <section className="py-8 sm:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-[32px] bg-gradient-to-b from-[#f4f9fd] to-[#edf6fc] border border-[#d6ecf8] p-8 sm:p-12 shadow-xs">
-            {/* Eyebrow & Title */}
-            <div className="text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#118a94]">
-                HÌNH DUNG TRẢI NGHIỆM
-              </p>
-              <h2 className="mt-2.5 inline-flex items-center justify-center gap-2.5 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#10304f] font-serif">
-                <LeafIcon className="size-5 text-emerald-500" />
-                <span>Một ngày ở Thị Trấn Mây</span>
-                <LeafIcon className="size-5 text-emerald-500" />
-              </h2>
-            </div>
-
-            {/* 4 Steps Chain with connecting lines */}
-            <div className="mt-12 sm:mt-14">
-              <div className="grid grid-cols-2 gap-8 lg:grid-cols-4 lg:gap-4 relative">
-                {/* Step 1 */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex size-18 sm:size-22 items-center justify-center rounded-full bg-[#fffcf3] text-amber-500 shadow-sm ring-6 ring-amber-100/70 transition-transform hover:scale-110">
-                    <Sun className="size-9 sm:size-11" />
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-bold text-[#10304f]">
-                      <span className="text-[#118a94]">01</span> Buổi sáng
-                    </div>
-                    <p className="mt-0.5 text-xs text-[#527797]">Đánh thức thị trấn</p>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex size-18 sm:size-22 items-center justify-center rounded-full bg-[#f4fcf7] text-emerald-500 shadow-sm ring-6 ring-emerald-100/70 transition-transform hover:scale-110">
-                    <Sprout className="size-9 sm:size-11" />
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-bold text-[#10304f]">
-                      <span className="text-[#118a94]">02</span> Buổi trưa
-                    </div>
-                    <p className="mt-0.5 text-xs text-[#527797]">Chăm sóc khu vườn</p>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex size-18 sm:size-22 items-center justify-center rounded-full bg-[#f2f9ff] text-sky-500 shadow-sm ring-6 ring-sky-100/70 transition-transform hover:scale-110">
-                    <Cloud className="size-9 sm:size-11" />
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-bold text-[#10304f]">
-                      <span className="text-[#118a94]">03</span> Buổi chiều
-                    </div>
-                    <p className="mt-0.5 text-xs text-[#527797]">Khám phá đảo mây</p>
-                  </div>
-                </div>
-
-                {/* Step 4 */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex size-18 sm:size-22 items-center justify-center rounded-full bg-[#f9f5ff] text-purple-500 shadow-sm ring-6 ring-purple-100/70 transition-transform hover:scale-110">
-                    <Moon className="size-9 sm:size-11" />
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-sm font-bold text-[#10304f]">
-                      <span className="text-[#118a94]">04</span> Buổi tối
-                    </div>
-                    <p className="mt-0.5 text-xs text-[#527797]">Thu xếp góc nhỏ</p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="mt-8 text-center text-xs text-[#7395af]">
-                Minh họa nhịp trải nghiệm dự kiến.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. SECTION: "Nền tảng dự kiến" & "Về bản concept" */}
-      <section id="nen-tang" className="py-8 sm:py-12">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-8 lg:grid-cols-12 items-stretch">
             {/* Left Card: Nền tảng dự kiến */}
-            <div className="flex flex-col justify-between rounded-[28px] bg-[#edf6fc] border border-[#d3eaf8] p-6 sm:p-8 shadow-xs">
+            <div className="lg:col-span-5 rounded-3xl bg-white border border-[#cce4f5] p-6 sm:p-8 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="text-center">
-                  <h2 className="inline-flex items-center justify-center gap-2 text-xl sm:text-2xl font-black text-[#10304f] font-serif">
-                    <LeafIcon className="size-4.5 text-emerald-500" />
-                    <span>Nền tảng dự kiến</span>
-                    <LeafIcon className="size-4.5 text-emerald-500" />
-                  </h2>
-                </div>
+                <h3 className="text-xl font-black text-[#10304f] font-serif flex items-center gap-2">
+                  <Smartphone className="size-5 text-[#0f828a]" />
+                  <span>Nền tảng hỗ trợ</span>
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm text-[#587e9e] leading-relaxed">
+                  Trải nghiệm êm dịu, đồng bộ liền mạch trên mọi thiết bị bạn yêu thích.
+                </p>
 
-                <div className="mt-7 grid grid-cols-2 gap-4">
-                  {/* Mobile Box */}
-                  <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-6 shadow-xs border border-sky-100/50">
-                    <Smartphone className="size-11 text-[#0f828a]" />
-                    <span className="mt-2.5 font-bold text-base text-[#10304f]">Mobile</span>
-                    <span className="mt-2 rounded-full bg-[#0f828a] px-3 py-0.5 text-[11px] font-bold text-white">
-                      Dự kiến
-                    </span>
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-start gap-4 p-4 sm:p-5 rounded-2xl bg-[#f2f8fc] border border-sky-100 hover:border-[#0f828a]/40 transition-colors">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#0f828a] shadow-xs border border-sky-100">
+                      <Smartphone className="size-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm sm:text-base text-[#10304f]">Ứng dụng Di động</h4>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Dự kiến</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#527797] leading-relaxed">
+                        Tối ưu cho những phiên chơi ngắn, dễ dàng chăm sóc vườn và ghé thăm bạn bè.
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Web Box */}
-                  <div className="flex flex-col items-center justify-center rounded-2xl bg-white p-6 shadow-xs border border-sky-100/50">
-                    <Globe className="size-11 text-[#0f828a]" />
-                    <span className="mt-2.5 font-bold text-base text-[#10304f]">Web</span>
-                    <span className="mt-2 rounded-full bg-[#0f828a] px-3 py-0.5 text-[11px] font-bold text-white">
-                      Dự kiến
-                    </span>
+                  <div className="flex items-start gap-4 p-4 sm:p-5 rounded-2xl bg-[#f2f8fc] border border-sky-100 hover:border-[#0f828a]/40 transition-colors">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#0f828a] shadow-xs border border-sky-100">
+                      <Globe className="size-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm sm:text-base text-[#10304f]">Trình duyệt Web</h4>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">Dự kiến</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#527797] leading-relaxed">
+                        Chơi trực tiếp trên PC/Laptop, thưởng thức trọn vẹn khung cảnh trên màn hình lớn.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4 p-4 sm:p-5 rounded-2xl bg-[#f2f8fc] border border-sky-100 hover:border-[#0f828a]/40 transition-colors">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#0f828a] shadow-xs border border-sky-100">
+                      <Cloud className="size-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm sm:text-base text-[#10304f]">Lưu trữ Đám mây</h4>
+                        <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold text-sky-800">Đồng bộ</span>
+                      </div>
+                      <p className="mt-1 text-xs text-[#527797] leading-relaxed">
+                        Tiến trình được liên kết với tài khoản ZENX GO, chơi tiếp tục mọi lúc mọi nơi.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <p className="mt-6 text-center text-xs text-[#7395af]">
-                Chưa có bản chơi thử hoặc lịch phát hành.
-              </p>
+              <div className="mt-8 pt-5 border-t border-sky-100 flex items-center justify-between text-xs text-[#7395af]">
+                <span>Trạng thái: <strong className="text-[#10304f]">Concept Art</strong></span>
+                <span className="text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">ZENX GO Ecosystem</span>
+              </div>
             </div>
 
-            {/* Right Card: Về bản concept */}
-            <div className="flex flex-col justify-between rounded-[28px] bg-[#edf6fc] border border-[#d3eaf8] p-6 sm:p-8 shadow-xs">
+            {/* Right Card: FAQ */}
+            <div className="lg:col-span-7 rounded-3xl bg-white border border-[#cce4f5] p-6 sm:p-8 shadow-sm flex flex-col justify-between">
               <div>
-                <div className="text-center">
-                  <h2 className="inline-flex items-center justify-center gap-2 text-xl sm:text-2xl font-black text-[#10304f] font-serif">
-                    <LeafIcon className="size-4.5 text-emerald-500" />
-                    <span>Về bản concept</span>
-                    <LeafIcon className="size-4.5 text-emerald-500" />
-                  </h2>
-                </div>
+                <h3 className="text-xl font-black text-[#10304f] font-serif flex items-center gap-2">
+                  <HelpCircle className="size-5 text-[#0f828a]" />
+                  <span>Về bản concept & Câu hỏi thường gặp</span>
+                </h3>
+                <p className="mt-1.5 text-xs sm:text-sm text-[#587e9e] leading-relaxed mb-6">
+                  Những giải đáp chi tiết về định hướng và quá trình xây dựng thế giới Thị Trấn Mây.
+                </p>
 
-                <div className="mt-7 space-y-3">
+                <div className="space-y-3.5">
                   {FAQS.map((faq) => {
                     const isOpen = !!openFaqs[faq.id];
                     return (
                       <div
                         key={faq.id}
-                        className="rounded-2xl bg-white border border-[#e2eff8] px-4 py-3.5 shadow-xs transition-colors"
+                        className="rounded-2xl bg-[#f7fbfe] border border-sky-100/90 overflow-hidden transition-all duration-200 hover:border-sky-200 shadow-2xs"
                       >
                         <button
                           type="button"
                           onClick={() => toggleFaq(faq.id)}
-                          className="flex w-full items-center justify-between text-left font-bold text-xs sm:text-sm text-[#10304f]"
+                          className="flex w-full items-center justify-between p-4 sm:p-5 text-left font-bold text-xs sm:text-sm text-[#10304f] cursor-pointer hover:text-[#0f828a] transition-colors"
                         >
-                          <span className="font-bold">{faq.question}</span>
-                          <span className="font-normal text-[#527797] text-xs sm:text-sm hidden sm:inline ml-auto mr-3">
-                            {faq.answer}
-                          </span>
-                          <ChevronDown
-                            className={`size-4 text-[#0f828a] transition-transform duration-200 shrink-0 ${
-                              isOpen ? 'rotate-180' : ''
-                            }`}
-                          />
+                          <span className="font-bold pr-3">{faq.question}</span>
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white border border-sky-100 shadow-2xs">
+                            <ChevronDown
+                              className={`size-4 text-[#0f828a] transition-transform duration-200 ${
+                                isOpen ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </div>
                         </button>
                         {isOpen && (
-                          <div className="mt-2 sm:hidden text-xs text-[#527797] border-t border-sky-50 pt-2">
+                          <div className="px-5 pb-5 text-xs sm:text-sm text-[#466a88] leading-relaxed border-t border-sky-100/60 pt-3 bg-white/40">
                             {faq.answer}
                           </div>
                         )}
@@ -592,8 +526,11 @@ export function ThiTranMayHome() {
                 </div>
               </div>
 
-              <div className="mt-6 text-center text-xs text-[#7395af]">
-                &nbsp;
+              <div className="mt-8 pt-5 border-t border-sky-100 flex items-center justify-between text-xs text-[#7395af]">
+                <span>Cần hỗ trợ thêm?</span>
+                <Link href={portalUrl('/support')} className="text-[#0f828a] hover:underline font-semibold">
+                  Gửi câu hỏi tới đội ngũ →
+                </Link>
               </div>
             </div>
           </div>

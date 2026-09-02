@@ -146,7 +146,7 @@ async function seedGames() {
     {
       code: 'VTHL', name: 'Vương Triều Hỏa Long', slug: 'vuong-trieu-hoa-long', subdomain: 'hoalong', recordType: 'DEMO',
       tagline: 'Xây dựng vương triều, thống lĩnh chiến trường.', shortDescription: 'Concept chiến thuật mô phỏng về vương quyền và ngọn lửa rồng thiêng.', longDescription: null,
-      lifecycleStatus: 'COMING_SOON', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'DARK_STRATEGY', featured: false, primaryGame: false, isPublic: publishDemos, sortOrder: 2,
+      lifecycleStatus: 'COMING_SOON', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'DARK_STRATEGY', featured: true, primaryGame: false, isPublic: publishDemos, sortOrder: 2,
       genres: ['STRATEGY', 'SLG'], platforms: ['MOBILE', 'WEB'], heroDesktopUrl: '/images/games/vuong-trieu-hoa-long/hero-desktop.webp', heroMobileUrl: '/images/games/vuong-trieu-hoa-long/hero-mobile.webp', coverUrl: '/images/games/vuong-trieu-hoa-long/key-art.png', iconUrl: '/images/games/vuong-trieu-hoa-long/avatar.webp', logoUrl: '/images/games/vuong-trieu-hoa-long/avatar.webp',
       primaryCtaLabel: 'Tìm hiểu dự án', primaryCtaPath: '/gioi-thieu', secondaryCtaLabel: null, secondaryCtaPath: null,
       theme: { primary: '#9b4938', secondary: '#c89254', surface: '#1e1b1c', text: '#fff4df', heading: 'display-serif', body: 'sans-serif', radius: 'small', motion: 'cinematic' }, features: { sections: ['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ARTICLE_GRID', 'COMMUNITY_CTA'], routes: ['NEWS'], demo: true }, articles: [
@@ -158,7 +158,7 @@ async function seedGames() {
     {
       code: 'TTM', name: 'Thị Trấn Mây', slug: 'thi-tran-may', subdomain: 'thitranmay', recordType: 'DEMO',
       tagline: 'Xây một góc nhỏ trên những tầng mây.', shortDescription: 'Concept casual mô phỏng về một thị trấn bình yên giữa tầng mây.', longDescription: null,
-      lifecycleStatus: 'CONCEPT', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'PLAYFUL_CASUAL', featured: false, primaryGame: false, isPublic: publishDemos, sortOrder: 3,
+      lifecycleStatus: 'CONCEPT', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'PLAYFUL_CASUAL', featured: true, primaryGame: false, isPublic: publishDemos, sortOrder: 3,
       genres: ['CASUAL', 'SIMULATION'], platforms: ['MOBILE', 'WEB'], heroDesktopUrl: '/images/games/thi-tran-may/hero-desktop.webp', heroMobileUrl: '/images/games/thi-tran-may/hero-mobile.webp', coverUrl: '/images/games/thi-tran-may/key-art.png', iconUrl: '/images/games/thi-tran-may/avatar.webp', logoUrl: '/images/games/thi-tran-may/avatar.webp',
       primaryCtaLabel: 'Khám phá concept', primaryCtaPath: '/', secondaryCtaLabel: null, secondaryCtaPath: null,
       theme: { primary: '#69bce8', secondary: '#f6c958', surface: '#fffdf7', text: '#193b5a', heading: 'rounded-sans', body: 'sans-serif', radius: 'large', motion: 'playful' }, features: { sections: ['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ARTICLE_GRID', 'COMMUNITY_CTA'], routes: ['NEWS'], demo: true }, articles: [
@@ -170,7 +170,7 @@ async function seedGames() {
     {
       code: 'CTO', name: 'Chiến Tuyến Orion', slug: 'chien-tuyen-orion', subdomain: 'orion', recordType: 'DEMO',
       tagline: 'Biệt đội tinh nhuệ bảo vệ thuộc địa không gian.', shortDescription: 'Concept tactical shooter khoa học viễn tưởng về biệt đội Orion và những chiến tuyến ngoài không gian.', longDescription: null,
-      lifecycleStatus: 'CONCEPT', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'SCI_FI_SHOOTER', featured: false, primaryGame: false, isPublic: publishDemos, sortOrder: 4,
+      lifecycleStatus: 'CONCEPT', operationalStatus: 'AVAILABLE', releaseYear: null, themePreset: 'SCI_FI_SHOOTER', featured: true, primaryGame: false, isPublic: publishDemos, sortOrder: 4,
       genres: ['SHOOTER'], platforms: ['PC', 'MOBILE'], heroDesktopUrl: '/images/games/chien-tuyen-orion/hero-desktop.webp', heroMobileUrl: '/images/games/chien-tuyen-orion/hero-mobile.webp', coverUrl: '/images/games/chien-tuyen-orion/key-art.png', iconUrl: '/images/games/chien-tuyen-orion/avatar.webp', logoUrl: '/images/games/chien-tuyen-orion/avatar.webp',
       primaryCtaLabel: 'Khám phá concept', primaryCtaPath: '/', secondaryCtaLabel: null, secondaryCtaPath: null,
       theme: { primary: '#6c8cff', secondary: '#57d7ff', surface: '#0b1224', text: '#e8f0ff', heading: 'display-sans', body: 'sans-serif', radius: 'medium', motion: 'cinematic' }, features: { sections: ['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ARTICLE_GRID', 'COMMUNITY_CTA'], routes: ['NEWS'], demo: true }, articles: [

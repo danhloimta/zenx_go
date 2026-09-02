@@ -43,7 +43,7 @@ export function HomeNavbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all shadow-xs">
-      <div className="mx-auto flex min-h-[76px] sm:min-h-[80px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+      <div className="mx-auto flex min-h-[64px] sm:min-h-[76px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-2 sm:py-3">
         {/* Left: Brand Logo */}
         <div className="flex items-center gap-6 lg:gap-8">
           <BrandLogo href="/" />

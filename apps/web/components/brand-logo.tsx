@@ -25,7 +25,9 @@ export function BrandLogo({
         alt="ZENX GO"
         className={cn(
           "object-contain transition-all",
-          compact ? "h-10 sm:h-11 w-auto max-w-[165px]" : "h-12 sm:h-14 w-auto max-w-[195px]"
+          compact
+            ? "h-7 sm:h-9 w-auto max-w-[120px] sm:max-w-[165px]"
+            : "h-8 sm:h-12 w-auto max-w-[135px] sm:max-w-[195px]"
         )}
       />
     </Link>

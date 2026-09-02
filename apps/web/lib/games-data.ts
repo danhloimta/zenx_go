@@ -30,6 +30,7 @@ export interface GameItem {
   featuredBadge?: string;
   alt: string;
   focalPoint?: string;
+  characterArt?: string;
   preRegisterReward?: string;
   features: GameFeature[];
   releaseTarget?: string;
@@ -116,6 +117,19 @@ export function gameItemFromSummary(summary: GameSummary): GameItem {
   const splitAt = Math.ceil(titleWords.length / 2);
   const titleLines = titleWords.length > 2 ? [titleWords.slice(0, splitAt).join(' '), titleWords.slice(splitAt).join(' ')] : undefined;
   const websiteUrl = gameUrl(summary.subdomain);
+  const characterArt = summary.slug === 'luc-dia-dam-me'
+    ? '/images/games/luc-dia-dam-me/nhan_vat3.png'
+    : summary.slug === 'vuong-trieu-hoa-long'
+      ? '/images/games/vuong-trieu-hoa-long/key-art.png'
+      : summary.slug === 'chien-tuyen-orion'
+        ? '/images/games/chien-tuyen-orion/key-art.png'
+        : summary.coverUrl ?? '';
+  const focalPoint = summary.slug === 'luc-dia-dam-me'
+    ? '75% 30%'
+    : summary.slug === 'vuong-trieu-hoa-long'
+      ? '70% center'
+      : 'center';
+
   return {
     id: summary.code,
     slug: summary.slug,
@@ -138,6 +152,8 @@ export function gameItemFromSummary(summary: GameSummary): GameItem {
     isFeatured: summary.featured,
     featuredBadge: summary.featured ? 'Nổi bật' : undefined,
     alt: summary.name,
+    focalPoint,
+    characterArt,
     features: [],
     releaseTarget: summary.releaseYear ? String(summary.releaseYear) : undefined,
     assets: {

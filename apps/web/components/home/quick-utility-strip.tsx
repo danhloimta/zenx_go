@@ -64,23 +64,23 @@ const UTILITY_ITEMS = [
 
 export function QuickUtilityStrip() {
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 sm:-mt-12 relative z-30 pb-4">
-      <div className="rounded-3xl bg-white border border-slate-200/90 shadow-2xl p-4 sm:p-5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 divide-y sm:divide-y-0 divide-slate-100">
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 relative z-30 pb-4">
+      <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-3.5 sm:p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           {UTILITY_ITEMS.map((item, idx) => (
             <Link
               key={item.id}
               href={item.href}
-              className={`group flex items-center gap-3.5 p-2.5 sm:p-3 rounded-2xl hover:bg-slate-50/80 transition-all ${
-                idx !== 0 ? 'lg:border-l lg:border-slate-100 lg:pl-5' : ''
-              } ${idx > 1 ? 'pt-3 sm:pt-2.5' : ''}`}
+              className={`group flex items-center gap-2.5 sm:gap-3.5 p-2 sm:p-2.5 rounded-2xl hover:bg-slate-50/90 transition-all min-w-0 ${
+                idx !== 0 ? 'lg:border-l lg:border-slate-100 lg:pl-4' : ''
+              } ${idx === 4 ? 'col-span-2 sm:col-span-1' : ''}`}
             >
               {item.icon}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#00873E] transition-colors truncate">
                   {item.title}
                 </h3>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
                   {item.subtitle}
                 </p>
               </div>

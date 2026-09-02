@@ -143,47 +143,47 @@ export function GamesSection({ games, dataUnavailable = false }: { games: GameIt
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 via-35% to-transparent pointer-events-none" />
 
               {/* Top Floating Glass Badges */}
-              <div className="absolute top-3 inset-x-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
+              <div className="absolute top-4 inset-x-4 z-10 flex items-center justify-between gap-2 pointer-events-none">
                 {/* Category Badge */}
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-black/60 text-slate-200 backdrop-blur-md border border-white/10 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-extrabold uppercase bg-black/70 text-slate-100 backdrop-blur-md border border-white/15 shadow-sm">
                   {getGameIcon(game.slug)}
                   <span>{game.categoryDisplay}</span>
                 </span>
 
                 {/* Status Badge */}
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-black/60 text-slate-200 backdrop-blur-md border border-white/10 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-black/70 text-slate-100 backdrop-blur-md border border-white/15 shadow-sm">
                   <span className={`size-1.5 rounded-full ${getStatusDot(game.statusColor)}`} />
                   <span>{game.status}</span>
                 </span>
               </div>
 
               {/* Bottom Compact Info & Button */}
-              <div className="absolute inset-x-0 bottom-0 p-4 sm:p-4.5 z-10 flex flex-col justify-end">
+              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6 z-10 flex flex-col justify-end">
                 {/* Platforms Row */}
-                <div className="flex items-center gap-1 text-[10px] font-medium text-slate-300 mb-1 drop-shadow">
-                  {game.platforms.includes('PC') && <Monitor className="size-2.5 text-slate-400" />}
-                  {game.platforms.includes('Mobile') && <Smartphone className="size-2.5 text-slate-400" />}
-                  {game.platforms.includes('Web') && <Globe className="size-2.5 text-slate-400" />}
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-slate-300 mb-1.5 drop-shadow">
+                  {game.platforms.includes('PC') && <Monitor className="size-3 text-slate-400" />}
+                  {game.platforms.includes('Mobile') && <Smartphone className="size-3 text-slate-400" />}
+                  {game.platforms.includes('Web') && <Globe className="size-3 text-slate-400" />}
                   <span>{game.platforms.join(' • ')}</span>
                 </div>
 
                 {/* Game Title - Compact & Crisp */}
-                <h3 className="font-game-title text-base sm:text-lg font-black text-white uppercase tracking-wide leading-snug drop-shadow-md group-hover:text-emerald-300 transition-colors">
+                <h3 className="font-game-title text-lg sm:text-xl font-black text-white uppercase tracking-wide leading-snug drop-shadow-md group-hover:text-emerald-300 transition-colors">
                   {game.title}
                 </h3>
 
                 {/* Slogan */}
-                <p className="mt-0.5 text-[11px] font-medium text-slate-300 line-clamp-1 drop-shadow-xs">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-slate-300 line-clamp-1 drop-shadow-xs">
                   {game.slogan}
                 </p>
 
                 {/* Compact Action Button */}
-                <div className="mt-3">
+                <div className="mt-4">
                   <span
-                    className="w-full h-8.5 sm:h-9 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white font-bold text-[11px] sm:text-xs shadow-md group-hover:shadow-emerald-950/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full h-10 px-5 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white font-bold text-xs sm:text-sm shadow-md group-hover:shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>{game.ctaText || 'Truy cập trang chủ'}</span>
-                    <ArrowRight className="size-3 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </div>
               </div>

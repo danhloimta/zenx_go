@@ -29,6 +29,8 @@ function GameFrame({ children }: { children: React.ReactNode }) {
   const isFullWebsite = game.recordType !== 'DEMO';
   const isThiTranMay = game.slug === 'thi-tran-may';
   const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
+  const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
+  const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
   const routeEnabled = (route: 'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD', section: string) => game.featureConfig.sections.includes(section) && (isFullWebsite || game.featureConfig.routes?.includes(route) === true);
 
   const thiTranMayNav = [
@@ -44,6 +46,18 @@ function GameFrame({ children }: { children: React.ReactNode }) {
     ['#the-gioi', 'Thế giới'],
     ['#nhat-ky', 'Nhật ký'],
     ['#roadmap', 'Roadmap'],
+  ];
+
+  const hoaLongNav = [
+    ['#gioi-thieu', 'Giới thiệu'],
+    ['#chien-truong', 'Chiến trường'],
+    ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
+  ];
+
+  const orionNav = [
+    ['#binh-chung', 'Binh chủng'],
+    ['#chien-dia', 'Chiến địa'],
+    ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
   ];
 
   const standardNavItems = [
@@ -75,6 +89,9 @@ function GameFrame({ children }: { children: React.ReactNode }) {
         '#nen-tang': '/tai-game',
         '#nhat-ky': '/tin-tuc',
         '#roadmap': '/roadmap',
+        '#chien-truong': '/',
+        '#binh-chung': '/',
+        '#chien-dia': '/',
       };
       const page = pageByAnchor[href];
       if (page) window.location.assign(gameUrl(game.subdomain, page));
@@ -89,13 +106,17 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           ? 'border-black/5 bg-[#fafaf8]/80 text-[#152238]/80 backdrop-blur-md'
           : isThiTranMay
           ? 'border-black/5 bg-[#e3f2fb]/90 text-[#123b63]/80 backdrop-blur-md'
-          : 'border-black/10 bg-slate-950 text-white/80'
+          : isHoaLong
+          ? 'border-[#251b14] bg-[#070706] text-[#ead8b5]/80'
+          : isOrion
+          ? 'border-slate-800 bg-[#070b14] text-slate-300'
+          : 'border-white/10 bg-slate-950 text-white/80'
       } text-xs font-semibold`}>
         <div className="mx-auto flex min-h-9 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             href={portalUrl('/')}
             className={`inline-flex items-center gap-2 transition-colors ${
-              isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : 'hover:text-white'
+              isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : isHoaLong ? 'hover:text-amber-300' : isOrion ? 'hover:text-cyan-300' : 'hover:text-white'
             }`}
             aria-label="Quay lại ZENX GO"
           >
@@ -106,7 +127,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
               <Link
                 href={portalUrl('/account')}
                 className={`flex items-center gap-1.5 transition-colors ${
-                  isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : 'hover:text-white'
+                  isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : isHoaLong ? 'hover:text-amber-300' : isOrion ? 'hover:text-cyan-300' : 'hover:text-white'
                 }`}
               >
                 <UserRound className="size-3.5" /> <span>{account.data.email || 'Tài khoản'}</span>
@@ -115,7 +136,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
               <Link
                 href={loginUrl}
                 className={`flex items-center gap-1.5 transition-colors ${
-                  isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : 'hover:text-white'
+                  isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : isHoaLong ? 'hover:text-amber-300' : isOrion ? 'hover:text-cyan-300' : 'hover:text-white'
                 }`}
               >
                 <UserRound className="size-3.5" /> <span>Tài khoản</span>
@@ -125,7 +146,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
             <Link
               href={portalUrl('/support')}
               className={`transition-colors ${
-                isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : 'hover:text-white'
+                isLucDiaDamMe ? 'hover:text-[#152238]' : isThiTranMay ? 'hover:text-[#123b63]' : isHoaLong ? 'hover:text-amber-300' : isOrion ? 'hover:text-cyan-300' : 'hover:text-white'
               }`}
             >
               Hỗ trợ
@@ -140,7 +161,11 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           ? 'border-b border-transparent bg-[#e3f2fb]/90 backdrop-blur-md'
           : isLucDiaDamMe
           ? 'border-b border-black/5 bg-[#fafaf8]/85 backdrop-blur-md shadow-2xs'
-          : 'border-b border-black/5 bg-white/90 backdrop-blur-xl shadow-xs'
+          : isHoaLong
+          ? 'border-b border-[#251b14] bg-[#0c0b0a]/95 backdrop-blur-md shadow-lg'
+          : isOrion
+          ? 'border-b border-slate-800 bg-[#0a0f1d]/95 backdrop-blur-md shadow-lg text-white'
+          : 'border-b border-white/10 bg-slate-950/95 backdrop-blur-xl shadow-xs'
       }`}>
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
@@ -153,6 +178,18 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                 <span className="text-xl sm:text-2xl font-medium font-serif tracking-wide text-[#152238]">
                   LỤC ĐỊA ĐAM MÊ
                 </span>
+              ) : isHoaLong ? (
+                <div className="flex items-center gap-2.5">
+                  {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-amber-500/30" /> : null}
+                  <span className="text-base sm:text-xl font-bold font-serif tracking-wide text-white">VƯƠNG TRIỀU HỎA LONG</span>
+                  <span className="rounded-full bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 text-[10px] uppercase font-sans font-bold text-amber-300">Demo</span>
+                </div>
+              ) : isOrion ? (
+                <div className="flex items-center gap-2.5">
+                  {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-cyan-500/30" /> : null}
+                  <span className="text-base sm:text-lg font-black tracking-wider text-white uppercase font-mono">CHIẾN TUYẾN ORION</span>
+                  <span className="rounded-full bg-cyan-950/90 border border-cyan-500/40 px-2 py-0.5 text-[10px] uppercase font-mono font-bold text-cyan-300">DEMO</span>
+                </div>
               ) : (
                 <>
                   {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover" /> : null}
@@ -191,6 +228,33 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
             </nav>
+          ) : isHoaLong ? (
+            <nav className="hidden items-center gap-8 text-sm font-semibold text-[#ead8b5] md:flex font-serif">
+              {hoaLongNav.map(([href, label]) => (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => handleScroll(href)}
+                  className="hover:text-amber-300 transition-colors cursor-pointer"
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : isOrion ? (
+            <nav className="hidden items-center gap-8 text-sm font-bold text-slate-300 md:flex font-mono">
+              {orionNav.map(([href, label]) => (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => handleScroll(href)}
+                  className="hover:text-cyan-400 transition-colors cursor-pointer"
+                >
+                  {label}
+                </button>
+              ))}
+              {routeEnabled('NEWS', 'ARTICLE_GRID') ? <Link href={gameUrl(game.subdomain, '/tin-tuc')} className="hover:text-cyan-400 transition-colors">Tin tức</Link> : null}
+            </nav>
           ) : (
             <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
               {standardNavItems.map(([href, label]) => (
@@ -218,19 +282,90 @@ function GameFrame({ children }: { children: React.ReactNode }) {
               >
                 Tải game
               </Link>
+            ) : isHoaLong ? (
+              account.data ? (
+                <Link
+                  href={portalUrl('/account')}
+                  className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-amber-500/30 bg-amber-950/40 text-amber-300"
+                  aria-label="Tài khoản"
+                >
+                  {mediaUrl(account.data.profile?.avatarUrl) ? (
+                    <img src={mediaUrl(account.data.profile.avatarUrl)} alt="" className="size-full object-cover" />
+                  ) : (
+                    <UserRound className="size-4" />
+                  )}
+                </Link>
+              ) : (
+                <Link
+                  href={loginUrl}
+                  className="hidden sm:inline-flex min-h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-[#c85a17] to-[#a53b13] hover:from-[#d96620] hover:to-[#b74316] px-5 text-xs font-bold text-white shadow-md transition-all active:scale-98"
+                >
+                  <LogIn className="size-3.5" />
+                  <span>Đăng nhập</span>
+                </Link>
+              )
+            ) : isOrion ? (
+              account.data ? (
+                <Link
+                  href={portalUrl('/account')}
+                  className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-cyan-500/30 bg-cyan-950/40 text-cyan-300"
+                  aria-label="Tài khoản"
+                >
+                  {mediaUrl(account.data.profile?.avatarUrl) ? (
+                    <img src={mediaUrl(account.data.profile.avatarUrl)} alt="" className="size-full object-cover" />
+                  ) : (
+                    <UserRound className="size-4" />
+                  )}
+                </Link>
+              ) : (
+                <Link
+                  href={loginUrl}
+                  className="hidden sm:inline-flex min-h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 px-5 text-xs font-bold text-white shadow-md transition-all active:scale-98 font-mono"
+                >
+                  <LogIn className="size-3.5" />
+                  <span>ĐĂNG NHẬP</span>
+                </Link>
+              )
             ) : (
               <>
                 {account.data ? <Link href={portalUrl('/payment')} className="hidden items-center gap-1.5 rounded-full border border-black/10 px-3 py-2 text-xs font-semibold sm:inline-flex"><Coins className="size-3.5" /> {formatAmount(wallet.data?.balance ?? 0)} Coin</Link> : null}
                 {account.data ? <Link href={portalUrl('/account')} className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-black/10 bg-black/5" aria-label="Tài khoản">{mediaUrl(account.data.profile?.avatarUrl) ? <img src={mediaUrl(account.data.profile.avatarUrl)} alt="" className="size-full object-cover" /> : <UserRound className="size-4" />}</Link> : <Link href={loginUrl} className="hidden min-h-10 items-center gap-2 rounded-full bg-[var(--game-primary)] px-4 text-xs font-bold text-white sm:inline-flex"><LogIn className="size-3.5" /> Đăng nhập</Link>}
               </>
             )}
-            <button type="button" className="flex size-10 items-center justify-center rounded-xl border border-black/10 md:hidden text-[#12243d]" onClick={() => setOpen((value) => !value)} aria-label="Mở menu">{open ? <X className="size-5" /> : <Menu className="size-5" />}</button>
+            <button
+              type="button"
+              className={`flex size-10 items-center justify-center rounded-xl border md:hidden ${
+                isHoaLong
+                  ? 'border-amber-500/30 bg-amber-950/40 text-amber-300'
+                  : isOrion
+                  ? 'border-cyan-500/30 bg-cyan-950/40 text-cyan-300'
+                  : isLucDiaDamMe
+                  ? 'border-black/10 text-[#152238]'
+                  : isThiTranMay
+                  ? 'border-black/10 text-[#123b63]'
+                  : 'border-white/20 text-white'
+              }`}
+              onClick={() => setOpen((value) => !value)}
+              aria-label="Mở menu"
+            >
+              {open ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
           </div>
         </div>
 
         {/* Mobile Nav */}
         {open ? (
-          <nav className="border-t border-black/10 bg-white px-4 py-3 md:hidden">
+          <nav className={`border-t px-4 py-3 md:hidden ${
+            isHoaLong
+              ? 'border-[#251b14] bg-[#0e0d0b] text-[#ead8b5]'
+              : isOrion
+              ? 'border-slate-800 bg-[#070b14] text-slate-300 font-mono'
+              : isThiTranMay
+              ? 'border-black/10 bg-white text-[#123b63]'
+              : isLucDiaDamMe
+              ? 'border-black/10 bg-white text-[#152238]'
+              : 'border-white/10 bg-slate-950 text-white'
+          }`}>
             <div className="mx-auto flex max-w-7xl flex-col gap-1 text-sm font-semibold">
               {isThiTranMay
                 ? thiTranMayNav.map(([href, label]) => (
@@ -238,7 +373,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                       key={href}
                       type="button"
                       onClick={() => handleScroll(href)}
-                      className="text-left rounded-lg px-3 py-3 hover:bg-black/5 text-[#123b63]"
+                      className="text-left rounded-lg px-3 py-3 hover:bg-[#123b63]/10 text-[#123b63]"
                     >
                       {label}
                     </button>
@@ -254,8 +389,30 @@ function GameFrame({ children }: { children: React.ReactNode }) {
                       {label}
                     </button>
                   ))
+                : isHoaLong
+                ? hoaLongNav.map(([href, label]) => (
+                    <button
+                      key={href}
+                      type="button"
+                      onClick={() => handleScroll(href)}
+                      className="text-left rounded-lg px-3 py-3 hover:bg-amber-950/40 text-[#ead8b5] font-serif"
+                    >
+                      {label}
+                    </button>
+                  ))
+                : isOrion
+                ? orionNav.map(([href, label]) => (
+                    <button
+                      key={href}
+                      type="button"
+                      onClick={() => handleScroll(href)}
+                      className="text-left rounded-lg px-3 py-3 hover:bg-slate-800/80 text-cyan-200"
+                    >
+                      {label}
+                    </button>
+                  ))
                 : standardNavItems.map(([href, label]) => (
-                    <Link key={href} href={gameUrl(game.subdomain, href)} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 hover:bg-black/5">
+                    <Link key={href} href={gameUrl(game.subdomain, href)} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 hover:bg-white/10">
                       {label}
                     </Link>
                   ))}
@@ -312,6 +469,50 @@ function GameFrame({ children }: { children: React.ReactNode }) {
           </div>
           <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
             <p>© 2026</p>
+          </div>
+        </footer>
+      ) : isHoaLong ? (
+        <footer className="border-t border-[#251b14] bg-[#060605] text-[#ead8b5] px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-2xl font-black tracking-tight text-white font-serif">{game.name}</h3>
+              <p className="mt-1 text-xs text-amber-500/80">Concept chiến thuật mô phỏng thế giới rồng thiêng — ZENX GO</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-6 text-sm text-[#baa98a]">
+              <Link href={portalUrl('/games')} className="hover:text-amber-300 transition-colors">Game Hub</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/support')} className="hover:text-amber-300 transition-colors">Hỗ trợ</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/terms')} className="hover:text-amber-300 transition-colors">Điều khoản</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/privacy')} className="hover:text-amber-300 transition-colors">Bảo mật</Link>
+            </div>
+          </div>
+          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-[#251b14] flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-[#7d6f58] gap-2">
+            <p>© {new Date().getFullYear()} ZENX GO • Vương Triều Hỏa Long</p>
+            <p>Bản thiết kế minh họa — chưa phát hành.</p>
+          </div>
+        </footer>
+      ) : isOrion ? (
+        <footer className="border-t border-slate-800 bg-[#070b14] text-slate-400 px-4 py-12 sm:px-6 lg:px-8 font-mono text-xs">
+          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-xl font-black tracking-tight text-white font-sans">{game.name}</h3>
+              <p className="mt-1 text-xs text-cyan-500/80">Concept game bắn súng chiến thuật không gian — ZENX GO</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300 font-sans">
+              <Link href={portalUrl('/games')} className="hover:text-cyan-400 transition-colors">Game Hub</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/support')} className="hover:text-cyan-400 transition-colors">Hỗ trợ</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/terms')} className="hover:text-cyan-400 transition-colors">Điều khoản</Link>
+              <span className="opacity-20">|</span>
+              <Link href={portalUrl('/privacy')} className="hover:text-cyan-400 transition-colors">Bảo mật</Link>
+            </div>
+          </div>
+          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 gap-2">
+            <p>© {new Date().getFullYear()} ZENX GO • CHIẾN TUYẾN ORION</p>
+            <p>Bản thiết kế minh họa — chưa phát hành.</p>
           </div>
         </footer>
       ) : (

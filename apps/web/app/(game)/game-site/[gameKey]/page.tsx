@@ -6,6 +6,8 @@ import { useGame } from '@/components/game/game-context';
 import { gameUrl, portalUrl } from '@/lib/domain';
 import { ThiTranMayHome } from '@/components/game/thi-tran-may-home';
 import { LucDiaDamMeHome } from '@/components/game/luc-dia-dam-me-home';
+import { VuongTrieuHoaLongHome } from '@/components/game/vuong-trieu-hoa-long-home';
+import { ChienTuyenOrionHome } from '@/components/game/chien-tuyen-orion-home';
 
 export default function GameHomePage() {
   const game = useGame();
@@ -16,6 +18,14 @@ export default function GameHomePage() {
 
   if (game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia') {
     return <LucDiaDamMeHome />;
+  }
+
+  if (game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong') {
+    return <VuongTrieuHoaLongHome />;
+  }
+
+  if (game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion') {
+    return <ChienTuyenOrionHome />;
   }
 
   const sections = game.featureConfig.sections;

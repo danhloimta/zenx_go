@@ -17,12 +17,12 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
   const [activeIndex, setActiveIndex] = useState(0);
   const currentGame = games[activeIndex] ?? games[0];
 
-  // Auto slide every 7 seconds
+  // Auto slide every 5 seconds
   useEffect(() => {
-    if (!games.length) return;
+    if (!games.length || games.length <= 1) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % games.length);
-    }, 7000);
+    }, 5000);
     return () => clearInterval(timer);
   }, [games.length]);
 
@@ -57,9 +57,18 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
     <section className="relative w-full overflow-hidden min-h-[540px] sm:min-h-[600px] lg:min-h-[660px] flex items-center bg-slate-950 group">
       {/* 100% Pure, Unaltered, High-Saturation Game Artwork */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        {currentGame.assets.heroDesktop ? <img key={currentGame.id} src={currentGame.assets.heroDesktop} alt={currentGame.alt} className="size-full object-cover object-center scale-100 contrast-[1.04] brightness-[1.02] transition-all duration-700 ease-out" style={{ objectPosition: currentGame.focalPoint || 'center' }} /> : <div className="size-full bg-slate-900" />}
+        {currentGame.assets.heroDesktop ? (
+          <img
+            key={currentGame.id}
+            src={currentGame.assets.heroDesktop}
+            alt={currentGame.alt}
+            className="size-full object-cover object-[72%_center] sm:object-center scale-100 contrast-[1.04] brightness-[1.02] transition-all duration-700 ease-out"
+          />
+        ) : (
+          <div className="size-full bg-slate-900" />
+        )}
 
-        {/* Adaptive Theme Vignette - Only softly enhances readability without washing out colors */}
+        {/* Adaptive Theme Vignette - Enhances text readability without washing out game artwork */}
         {isDarkTheme ? (
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 via-35% to-transparent pointer-events-none" />
         ) : (
@@ -67,38 +76,38 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
         )}
       </div>
 
-      {/* Floating Left Nav Arrow */}
+      {/* Floating Left Nav Arrow (Hidden on Mobile) */}
       <button
         type="button"
         onClick={prevSlide}
-        className="absolute left-3 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-30 flex size-11 sm:size-12 items-center justify-center rounded-full bg-white/90 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        className="hidden sm:flex absolute left-4 lg:left-8 top-1/2 -translate-y-1/2 z-30 size-11 sm:size-12 items-center justify-center rounded-full bg-white/90 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 transition-all hover:scale-105 active:scale-95 cursor-pointer"
         aria-label="Previous Slide"
       >
         <ChevronLeft className="size-5 sm:size-6" />
       </button>
 
-      {/* Floating Right Nav Arrow */}
+      {/* Floating Right Nav Arrow (Hidden on Mobile) */}
       <button
         type="button"
         onClick={nextSlide}
-        className="absolute right-3 sm:right-6 lg:right-8 top-1/2 -translate-y-1/2 z-30 flex size-11 sm:size-12 items-center justify-center rounded-full bg-white/90 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        className="hidden sm:flex absolute right-4 lg:right-8 top-1/2 -translate-y-1/2 z-30 size-11 sm:size-12 items-center justify-center rounded-full bg-white/90 hover:bg-white text-slate-700 hover:text-slate-950 shadow-xl border border-slate-200/90 transition-all hover:scale-105 active:scale-95 cursor-pointer"
         aria-label="Next Slide"
       >
         <ChevronRight className="size-5 sm:size-6" />
       </button>
 
       {/* Aligned Inner Content Container */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-12 py-16 sm:py-20 lg:py-24">
+      <div className="relative z-20 w-full max-w-7xl mx-auto px-5 sm:px-10 lg:px-12 py-12 sm:py-20 lg:py-24">
         <div className="max-w-xl lg:max-w-2xl">
           {/* Top Tag: GAME MỚI / NỔI BẬT */}
-          <span className={`inline-block text-xs font-black tracking-widest uppercase mb-2 ${
+          <span className={`inline-block text-[11px] sm:text-xs font-black tracking-widest uppercase mb-2 ${
             isDarkTheme ? 'text-[#22c55e]' : 'text-[#00873E]'
           }`}>
             {currentGame.featuredBadge ? 'GAME MỚI' : 'NỔI BẬT'}
           </span>
 
           {/* Main Title */}
-          <h1 className={`font-game-title text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[1.06] ${
+          <h1 className={`font-game-title text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase leading-[1.08] ${
             isDarkTheme ? 'text-white drop-shadow-md' : 'text-slate-950 drop-shadow-xs'
           }`}>
             {currentGame.titleLines ? (
@@ -113,23 +122,23 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
           </h1>
 
           {/* Slogan */}
-          <p className={`mt-3 sm:mt-3.5 text-lg sm:text-xl font-bold tracking-tight ${
+          <p className={`mt-2.5 sm:mt-3.5 text-base sm:text-xl font-bold tracking-tight ${
             isDarkTheme ? 'text-slate-200 drop-shadow-sm' : 'text-slate-900 drop-shadow-2xs'
           }`}>
             {currentGame.slogan}
           </p>
 
           {/* Synopsis / Description */}
-          <p className={`mt-2.5 text-xs sm:text-sm font-medium leading-relaxed max-w-lg line-clamp-2 sm:line-clamp-3 ${
+          <p className={`mt-2 sm:mt-2.5 text-xs sm:text-sm font-medium leading-relaxed max-w-lg line-clamp-2 sm:line-clamp-3 ${
             isDarkTheme ? 'text-slate-300 drop-shadow-sm' : 'text-slate-700'
           }`}>
             {currentGame.synopsis || 'Thế giới mở rộng lớn, đồ họa chân thực và chiến trường đỉnh cao mang đến trải nghiệm nhập vai tuyệt đỉnh.'}
           </p>
 
           {/* Meta Tags Row (Genre, Platforms, Age Rating) */}
-          <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-2.5">
+          <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2 sm:gap-2.5">
             {/* Category Tag */}
-            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
+            <span className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
               isDarkTheme
                 ? 'bg-slate-900/80 border border-slate-700 text-slate-200'
                 : 'bg-white/90 border border-slate-200/90 text-slate-800'
@@ -139,7 +148,7 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
             </span>
 
             {/* Platforms Tag */}
-            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
+            <span className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
               isDarkTheme
                 ? 'bg-slate-900/80 border border-slate-700 text-slate-200'
                 : 'bg-white/90 border border-slate-200/90 text-slate-800'
@@ -151,7 +160,7 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
             </span>
 
             {/* 18+ / Age Rating Badge */}
-            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
+            <span className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold backdrop-blur-md shadow-2xs ${
               isDarkTheme
                 ? 'bg-slate-900/80 border border-slate-700 text-slate-200'
                 : 'bg-white/90 border border-slate-200/90 text-slate-800'
@@ -162,24 +171,24 @@ export function HeroShowcase({ games, dataUnavailable = false }: { games: GameIt
           </div>
 
           {/* CTA Action Buttons */}
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-6 sm:mt-8 flex flex-row items-center gap-3 sm:gap-4 max-w-sm sm:max-w-none">
             <a
               href={currentGame.primaryCtaUrl ?? currentGame.websiteUrl}
-              className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all"
+              className="inline-flex items-center justify-center gap-2 h-11 sm:h-12 px-5 sm:px-8 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all"
             >
               <Play className="size-4 fill-white text-white" />
-              <span>{currentGame.primaryCtaText ?? 'Chơi ngay'}</span>
+              <span>{currentGame.primaryCtaText ?? 'Khám phá dự án'}</span>
             </a>
 
             <a
               href={currentGame.secondaryCtaUrl ?? currentGame.roadmapUrl ?? currentGame.websiteUrl}
-              className={`inline-flex items-center justify-center gap-2 h-12 px-7 rounded-xl text-xs sm:text-sm font-bold shadow-2xs hover:shadow-xs active:scale-98 transition-all ${
+              className={`inline-flex items-center justify-center gap-2 h-11 sm:h-12 px-4 sm:px-7 rounded-xl text-xs sm:text-sm font-bold shadow-2xs hover:shadow-xs active:scale-98 transition-all ${
                 isDarkTheme
                   ? 'bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white backdrop-blur-md'
                   : 'bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-800'
               }`}
             >
-              <span>{currentGame.secondaryCtaText ?? 'Khám phá thêm'}</span>
+              <span>{currentGame.secondaryCtaText ?? 'Xem lộ trình'}</span>
             </a>
           </div>
         </div>

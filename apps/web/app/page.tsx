@@ -27,7 +27,7 @@ export default async function HomePage() {
   const result = await getPortalHome();
   const home = result.data;
   const games = home?.games.map(gameItemFromSummary) ?? [];
-  const heroGames = (home?.heroGames.length ? home.heroGames : home?.games ?? []).map(gameItemFromSummary);
+  const heroGames = ((home?.heroGames && home.heroGames.length > 1) ? home.heroGames : (home?.games ?? [])).map(gameItemFromSummary);
   const news = home?.latestArticles ?? [];
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-between selection:bg-[#00873E]/20 selection:text-slate-900 scroll-smooth">
