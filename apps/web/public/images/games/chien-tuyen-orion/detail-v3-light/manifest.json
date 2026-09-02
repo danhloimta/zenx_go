@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "game": "chien-tuyen-orion",
+  "design": "design/chien-tuyen-orion-detail-v3-light.png",
+  "note": "Generated illustrations, not gameplay screenshots.",
+  "slots": {
+    "hero": "hero.webp",
+    "heroMobile": "hero-mobile.webp",
+    "roles": [
+      "role-assault.webp",
+      "role-recon.webp",
+      "role-support.webp"
+    ],
+    "roleThumbs": [
+      "role-assault-thumb.webp",
+      "role-recon-thumb.webp",
+      "role-support-thumb.webp"
+    ],
+    "battlefieldPanorama": "battlefield-panorama.webp",
+    "locations": [
+      "location-helix.webp",
+      "location-orion-belt.webp",
+      "location-anomaly.webp"
+    ],
+    "locationThumbs": [
+      "location-helix-thumb.webp",
+      "location-orion-belt-thumb.webp",
+      "location-anomaly-thumb.webp"
+    ],
+    "equipmentStrip": "equipment-strip.webp",
+    "equipment": [
+      "equipment-weapon.webp",
+      "equipment-armor.webp",
+      "equipment-device.webp"
+    ]
+  },
+  "assets": {
+    "battlefield-panorama.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/battlefield-panorama.webp",
+      "width": 1800,
+      "height": 600,
+      "bytes": 108818,
+      "alt": "Chiến trường thuộc địa và vành đai năng lượng Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "equipment-armor.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/equipment-armor.webp",
+      "width": 591,
+      "height": 887,
+      "bytes": 17436,
+      "alt": "Giáp tác chiến Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "equipment-device.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/equipment-device.webp",
+      "width": 591,
+      "height": 887,
+      "bytes": 14220,
+      "alt": "Công cụ chiến thuật Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "equipment-strip.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/equipment-strip.webp",
+      "width": 1774,
+      "height": 887,
+      "bytes": 44490,
+      "alt": "Vũ khí, trang bị và công cụ chiến thuật Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "equipment-weapon.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/equipment-weapon.webp",
+      "width": 591,
+      "height": 887,
+      "bytes": 12444,
+      "alt": "Vũ khí khoa học viễn tưởng của Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "hero-mobile.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/hero-mobile.webp",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 127398,
+      "alt": "Biệt đội Orion trong khu vực dị thường",
+      "provenance": "existing-key-art"
+    },
+    "hero.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/hero.webp",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 142482,
+      "alt": "Biệt đội Orion tiến qua thuộc địa không gian giữa cơn bão năng lượng",
+      "provenance": "existing-key-art"
+    },
+    "location-anomaly-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-anomaly-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 37820,
+      "alt": "Vùng năng lượng dị thường ngoài không gian",
+      "provenance": "ai-reconstruction"
+    },
+    "location-anomaly.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-anomaly.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 112502,
+      "alt": "Vùng năng lượng dị thường ngoài không gian",
+      "provenance": "ai-reconstruction"
+    },
+    "location-helix-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-helix-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 37858,
+      "alt": "Khu đô thị đổ nát của thuộc địa Helix",
+      "provenance": "ai-reconstruction"
+    },
+    "location-helix.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-helix.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 105852,
+      "alt": "Khu đô thị đổ nát của thuộc địa Helix",
+      "provenance": "ai-reconstruction"
+    },
+    "location-orion-belt-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-orion-belt-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 21974,
+      "alt": "Trạm nghiên cứu trên vành đai Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "location-orion-belt.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/location-orion-belt.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 74724,
+      "alt": "Trạm nghiên cứu trên vành đai Orion",
+      "provenance": "ai-reconstruction"
+    },
+    "role-assault-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-assault-thumb.webp",
+      "width": 640,
+      "height": 427,
+      "bytes": 22790,
+      "alt": "Chiến binh Orion trong vai trò đột kích",
+      "provenance": "ai-reconstruction"
+    },
+    "role-assault.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-assault.webp",
+      "width": 1200,
+      "height": 800,
+      "bytes": 68760,
+      "alt": "Chiến binh Orion trong vai trò đột kích",
+      "provenance": "ai-reconstruction"
+    },
+    "role-recon-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-recon-thumb.webp",
+      "width": 640,
+      "height": 427,
+      "bytes": 24156,
+      "alt": "Chiến binh Orion trong vai trò trinh sát",
+      "provenance": "ai-reconstruction"
+    },
+    "role-recon.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-recon.webp",
+      "width": 1200,
+      "height": 800,
+      "bytes": 73352,
+      "alt": "Chiến binh Orion trong vai trò trinh sát",
+      "provenance": "ai-reconstruction"
+    },
+    "role-support-thumb.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-support-thumb.webp",
+      "width": 640,
+      "height": 427,
+      "bytes": 25892,
+      "alt": "Chiến binh Orion trong vai trò hỗ trợ",
+      "provenance": "ai-reconstruction"
+    },
+    "role-support.webp": {
+      "src": "/images/games/chien-tuyen-orion/detail-v3-light/role-support.webp",
+      "width": 1200,
+      "height": 800,
+      "bytes": 79016,
+      "alt": "Chiến binh Orion trong vai trò hỗ trợ",
+      "provenance": "ai-reconstruction"
+    }
+  }
+}

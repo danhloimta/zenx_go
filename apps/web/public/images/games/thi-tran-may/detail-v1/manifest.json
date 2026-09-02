@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "game": "thi-tran-may",
+  "design": "design/thi-tran-may-detail-v1.png",
+  "note": "Concept illustrations; AI reconstructions are not exact extracted layers or gameplay screenshots.",
+  "slots": {
+    "hero": "hero",
+    "heroMobile": "heroMobile",
+    "introduction": "townSquare",
+    "experiencePillars": [
+      "townSquareThumb",
+      "gardenThumb",
+      "floatingIslandsThumb"
+    ],
+    "galleryPanorama": "floatingIslands",
+    "gallery": [
+      "townSquare",
+      "garden",
+      "airships"
+    ],
+    "galleryThumbs": [
+      "townSquareThumb",
+      "gardenThumb",
+      "airshipsThumb"
+    ],
+    "closingBanner": "floatingIslands"
+  },
+  "assets": {
+    "hero": {
+      "src": "/images/games/thi-tran-may/detail-v1/hero.webp",
+      "width": 1600,
+      "height": 900,
+      "bytes": 204226,
+      "alt": "Thị trấn nổi giữa bầu trời và những tầng mây",
+      "objectPosition": "58% 48%",
+      "provenance": "existing-key-art"
+    },
+    "heroMobile": {
+      "src": "/images/games/thi-tran-may/detail-v1/hero-mobile.webp",
+      "width": 1080,
+      "height": 1350,
+      "bytes": 164224,
+      "alt": "Thị trấn và tháp đồng hồ trên đảo mây",
+      "objectPosition": "50% 50%",
+      "provenance": "existing-mobile-art"
+    },
+    "townSquare": {
+      "src": "/images/games/thi-tran-may/detail-v1/town-square.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 219226,
+      "alt": "Quảng trường và tháp đồng hồ của Thị Trấn Mây",
+      "objectPosition": "50% 50%",
+      "provenance": "ai-reconstruction"
+    },
+    "garden": {
+      "src": "/images/games/thi-tran-may/detail-v1/garden.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 247836,
+      "alt": "Khu vườn và những ngôi nhà trên đảo mây",
+      "objectPosition": "50% 55%",
+      "provenance": "ai-reconstruction"
+    },
+    "airships": {
+      "src": "/images/games/thi-tran-may/detail-v1/airships.webp",
+      "width": 1200,
+      "height": 675,
+      "bytes": 66512,
+      "alt": "Khinh khí cầu bay trên những tầng mây",
+      "objectPosition": "60% 45%",
+      "provenance": "ai-reconstruction"
+    },
+    "floatingIslands": {
+      "src": "/images/games/thi-tran-may/detail-v1/floating-islands.webp",
+      "width": 1800,
+      "height": 600,
+      "bytes": 196614,
+      "alt": "Quần thể đảo mây kết nối quanh thị trấn",
+      "objectPosition": "45% 50%",
+      "provenance": "ai-reconstruction"
+    },
+    "townSquareThumb": {
+      "src": "/images/games/thi-tran-may/detail-v1/town-square-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 76986,
+      "alt": "Quảng trường",
+      "objectPosition": "50% 50%",
+      "provenance": "ai-reconstruction"
+    },
+    "gardenThumb": {
+      "src": "/images/games/thi-tran-may/detail-v1/garden-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 83804,
+      "alt": "Khu vườn",
+      "objectPosition": "50% 55%",
+      "provenance": "ai-reconstruction"
+    },
+    "airshipsThumb": {
+      "src": "/images/games/thi-tran-may/detail-v1/airships-thumb.webp",
+      "width": 640,
+      "height": 360,
+      "bytes": 28014,
+      "alt": "Khinh khí cầu",
+      "objectPosition": "60% 45%",
+      "provenance": "ai-reconstruction"
+    },
+    "floatingIslandsThumb": {
+      "src": "/images/games/thi-tran-may/detail-v1/floating-islands-thumb.webp",
+      "width": 640,
+      "height": 213,
+      "bytes": 38688,
+      "alt": "Đảo mây",
+      "objectPosition": "45% 50%",
+      "provenance": "ai-reconstruction"
+    }
+  }
+}

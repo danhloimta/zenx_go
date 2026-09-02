@@ -1,5 +1,5 @@
+import type { GameSummary, GameArticleSummary } from '@zenx-go/api-client';
 import { gameUrl } from './domain';
-import type { GameArticleSummary, GameSummary } from '@zenx-go/api-client';
 
 export interface GameFeature {
   icon: string;
@@ -13,8 +13,8 @@ export interface GameItem {
   subdomain: string;
   websiteUrl: string;
   recordType: 'REAL' | 'DEMO';
-  lifecycleStatus: 'CONCEPT' | 'IN_DEVELOPMENT' | 'INTERNAL_TEST' | 'CLOSED_BETA' | 'OPEN_BETA' | 'LIVE' | 'COMING_SOON' | 'SUNSET';
-  operationalStatus: 'AVAILABLE' | 'MAINTENANCE' | 'DEGRADED' | 'UNAVAILABLE';
+  lifecycleStatus: 'IN_DEVELOPMENT' | 'INTERNAL_TEST' | 'CLOSED_BETA' | 'OPEN_BETA' | 'LIVE' | 'COMING_SOON' | 'CONCEPT' | 'SUNSET';
+  operationalStatus: 'AVAILABLE' | 'MAINTENANCE' | 'DEGRADED' | 'DECOMMISSIONED' | 'UNAVAILABLE';
   themePreset: 'EDITORIAL_FANTASY' | 'DARK_STRATEGY' | 'PLAYFUL_CASUAL' | 'SCI_FI_SHOOTER';
   number: string;
   title: string;
@@ -146,7 +146,7 @@ export const GAMES_DATA: GameItem[] = [
     number: '03',
     title: 'Thị Trấn Mây',
     titleLines: ['Thị Trấn Mây'],
-    slogan: 'Xây một góc nhỏ trên những tầng mây.',
+    slogan: 'Nông trại bồng bềnh, gắn kết bạn bè.',
     synopsis: 'Tựa game nông trại và xây dựng cộng đồng ấm áp trên các đảo bay. Tự tay trang trí ngôi nhà mơ ước, trồng cây thần nông và giao lưu với bạn bè khắp nơi.',
     category: 'Casual',
     categoryDisplay: 'Casual',
@@ -184,16 +184,18 @@ export const GAMES_DATA: GameItem[] = [
     title: 'Chiến Tuyến Orion',
     titleLines: ['Chiến Tuyến', 'Orion'],
     slogan: 'Biệt đội tinh nhuệ bảo vệ thuộc địa không gian.',
-    synopsis: 'Concept tactical shooter khoa học viễn tưởng về biệt đội Orion và những chiến tuyến ngoài không gian.',
+    synopsis: 'Game bắn súng chiến thuật khoa học viễn tưởng (Sci-Fi Tactical Shooter) góc nhìn thứ ba, nơi các đặc vụ Orion phối hợp hỏa lực ngăn chặn các cuộc xâm lăng ngoài thiên hà.',
     category: 'Bắn súng',
-    categoryDisplay: 'Tactical Shooter',
+    categoryDisplay: 'Bắn súng',
     platforms: ['PC', 'Mobile'],
     status: 'Concept',
     statusColor: 'purple',
+    releaseTarget: 'Năm 2027',
+    preRegisterReward: 'Skin Súng Năng Lượng Plasma + Huy hiệu Đặc vụ Orion',
     features: [
       { icon: 'Crosshair', title: 'Đấu Súng Chiến Thuật', desc: 'Phối hợp kỹ năng đặc vụ và địa hình chiến đấu khoa học viễn tưởng.' },
       { icon: 'Bot', title: 'Bộ Giáp Mecha', desc: 'Triệu hồi chiến giáp trợ chiến với hỏa lực hạng nặng.' },
-      { icon: 'Sparkles', title: 'Chiến Tuyến Ngoài Không Gian', desc: 'Bảo vệ thuộc địa giữa những cuộc xâm lăng ngoài thiên hà.' },
+      { icon: 'Sparkles', title: 'Đồ Họa Unreal Engine', desc: 'Môi trường trạm không gian chân thực với hiệu ứng ánh sáng đỉnh cao.' },
     ],
     alt: 'Biệt đội Orion tiến qua thuộc địa không gian giữa cơn bão năng lượng',
     focalPoint: '72% 43%',
@@ -258,17 +260,28 @@ export function gameItemFromSummary(summary: GameSummary): GameItem {
   };
 }
 
-export function newsItemFromArticle(article: GameArticleSummary, index: number): NewsItem {
-  const published = article.publishedAt ? new Date(article.publishedAt) : new Date();
-  const date = `${String(published.getDate()).padStart(2, '0')} Th${String(published.getMonth() + 1).padStart(2, '0')}, ${published.getFullYear()}`;
+const DEFAULT_NEWS_IMAGES = [
+  '/images/games/vuong-trieu-hoa-long/hero-desktop.webp',
+  '/images/games/luc-dia-dam-me/hero-desktop.webp',
+  '/images/games/chien-tuyen-orion/hero-desktop.webp',
+];
+
+export function newsItemFromArticle(article: GameArticleSummary, index = 0): NewsItem {
+  const date = article.publishedAt
+    ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(article.publishedAt))
+    : '28 Th08, 2026';
+  const category = (article.category === 'ANNOUNCEMENT' ? 'Thông báo' : article.category === 'EVENT' ? 'Sự kiện' : article.category === 'MAINTENANCE' ? 'Bảo trì' : 'Development Update') as NewsItem['category'];
+  const categoryColor = category === 'Thông báo' ? 'blue' : category === 'Sự kiện' ? 'amber' : category === 'Bảo trì' ? 'purple' : 'emerald';
+  const fallbackImg = DEFAULT_NEWS_IMAGES[index % DEFAULT_NEWS_IMAGES.length] ?? '/images/games/luc-dia-dam-me/hero-desktop.webp';
+  
   return {
-    id: `article-${article.slug}`,
-    category: article.category === 'ANNOUNCEMENT' ? 'Thông báo' : article.category === 'EVENT' ? 'Sự kiện' : 'Development Update',
-    categoryColor: index % 2 === 0 ? 'emerald' : 'blue',
-    gameTitle: 'Lục Địa Đam Mê',
+    id: article.slug,
+    category,
+    categoryColor,
+    gameTitle: index === 0 ? 'Vương Triều Hỏa Long' : index === 1 ? 'Lục Địa Đam Mê' : 'Chiến Tuyến Orion',
     title: article.title,
     description: article.excerpt,
-    imageUrl: article.coverImageUrl ?? '/images/games/luc-dia-dam-me/hero-desktop.webp',
+    imageUrl: article.coverImageUrl ?? fallbackImg,
     date,
     readTime: '4 phút đọc',
     href: gameUrl('lucdia', `/tin-tuc/${article.slug}`),
@@ -279,11 +292,11 @@ export const NEWS_DATA: NewsItem[] = [
   {
     id: 'news-1',
     category: 'Development Update',
-    categoryColor: 'emerald',
-    gameTitle: 'Lục Địa Đam Mê',
-    title: 'Không gian gameplay là ưu tiên',
-    description: 'Mỗi khung hình được xây dựng để thế giới và nhân vật luôn là tâm điểm của trải nghiệm.',
-    imageUrl: '/images/games/luc-dia-dam-me/hero-desktop.webp',
+    categoryColor: 'amber',
+    gameTitle: 'Vương Triều Hỏa Long',
+    title: 'Không gian gameplay là ưu tiên hàng đầu',
+    description: 'Mỗi khung hình của Vương Triều Hỏa Long được xây dựng để thế giới thần thoại và nhân vật luôn là tâm điểm của trải nghiệm hành động.',
+    imageUrl: '/images/games/vuong-trieu-hoa-long/hero-desktop.webp',
     date: '01 Th09, 2026',
     readTime: '3 phút đọc',
     href: gameUrl('lucdia', '/tin-tuc/khong-gian-gameplay-la-uu-tien'),
@@ -293,8 +306,8 @@ export const NEWS_DATA: NewsItem[] = [
     category: 'Development Update',
     categoryColor: 'blue',
     gameTitle: 'Lục Địa Đam Mê',
-    title: 'World Remake',
-    description: 'Lộ trình đại tu môi trường mở và kiến trúc thành trì giữa mây.',
+    title: 'World Remake: Đại tu thế giới mở',
+    description: 'Lộ trình đại tu toàn diện môi trường mở, hệ thống chiếu sáng và kiến trúc thành trì giữa tầng không mây.',
     imageUrl: '/images/games/luc-dia-dam-me/hero-desktop.webp',
     date: '28 Th08, 2026',
     readTime: '4 phút đọc',
@@ -303,11 +316,11 @@ export const NEWS_DATA: NewsItem[] = [
   {
     id: 'news-3',
     category: 'Development Update',
-    categoryColor: 'emerald',
-    gameTitle: 'Lục Địa Đam Mê',
-    title: 'Character Update',
-    description: 'Hướng tiếp cận mới cho tạo hình và hành trình của nhân vật trong thế giới đang được xây dựng lại.',
-    imageUrl: '/images/games/luc-dia-dam-me/avatar.webp',
+    categoryColor: 'purple',
+    gameTitle: 'Chiến Tuyến Orion',
+    title: 'Character Update: Tạo hình đặc vụ',
+    description: 'Hướng tiếp cận mới cho tạo hình chiến giáp và hành trình của các đặc vụ trong thuộc địa không gian.',
+    imageUrl: '/images/games/chien-tuyen-orion/hero-desktop.webp',
     date: '25 Th08, 2026',
     readTime: '5 phút đọc',
     href: gameUrl('lucdia', '/tin-tuc/character-update'),
