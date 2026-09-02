@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   ArrowRight,
   ChevronDown,
@@ -17,52 +18,54 @@ import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
 import { formatAmount, mediaUrl } from '@/lib/utils';
 
+const NAV_ITEMS = [
+  { href: '/', label: 'Trang chủ' },
+  { href: '/games', label: 'Trò chơi' },
+  { href: '/news', label: 'Tin tức' },
+  { href: '/events', label: 'Sự kiện' },
+  { href: '/community', label: 'Cộng đồng' },
+  { href: '/rewards', label: 'Ưu đãi' },
+  { href: '/support', label: 'Hỗ trợ' },
+];
+
 export function HomeNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [coinDropdownOpen, setCoinDropdownOpen] = useState(false);
+  const pathname = usePathname();
   const account = useAccount();
   const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
+
+  const isLinkActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md transition-all shadow-xs">
       <div className="mx-auto flex min-h-[76px] sm:min-h-[80px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3">
         {/* Left: Brand Logo */}
-        <div className="flex items-center gap-8 lg:gap-10">
+        <div className="flex items-center gap-6 lg:gap-8">
           <BrandLogo href="/" />
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden items-center gap-2 md:flex">
-            <Link
-              href="/"
-              className="relative px-3.5 py-2 text-sm font-bold text-[#00873E] transition-colors after:absolute after:bottom-0 after:left-3.5 after:right-3.5 after:h-0.5 after:rounded-full after:bg-[#00873E]"
-            >
-              Trang chủ
-            </Link>
-            <Link
-              href="#games"
-              className="px-3.5 py-2 text-sm font-semibold text-slate-700 hover:text-[#00873E] transition-colors"
-            >
-              Trò chơi
-            </Link>
-            <Link
-              href="#news"
-              className="px-3.5 py-2 text-sm font-semibold text-slate-700 hover:text-[#00873E] transition-colors"
-            >
-              Tin tức
-            </Link>
-            <Link
-              href="#community"
-              className="px-3.5 py-2 text-sm font-semibold text-slate-700 hover:text-[#00873E] transition-colors"
-            >
-              Cộng đồng
-            </Link>
-            <Link
-              href="/support"
-              className="px-3.5 py-2 text-sm font-semibold text-slate-700 hover:text-[#00873E] transition-colors"
-            >
-              Hỗ trợ
-            </Link>
+          <nav className="hidden items-center gap-1 lg:gap-1.5 md:flex">
+            {NAV_ITEMS.map((item) => {
+              const active = isLinkActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`relative px-3 py-2 text-xs lg:text-sm font-bold transition-colors ${
+                    active
+                      ? 'text-[#00873E] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:rounded-full after:bg-[#00873E]'
+                      : 'text-slate-600 hover:text-[#00873E]'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
 
@@ -196,45 +199,28 @@ export function HomeNavbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
         <div className="border-t border-slate-100 bg-white px-5 py-4 md:hidden animate-in slide-in-from-top-2 duration-200 shadow-xl">
           <nav className="flex flex-col gap-1 pb-3">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl bg-emerald-50 px-3.5 py-2.5 text-sm font-bold text-[#00873E]"
-            >
-              <span>Trang chủ</span>
-            </Link>
-            <Link
-              href="#games"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <span>Trò chơi</span>
-            </Link>
-            <Link
-              href="#news"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <span>Tin tức</span>
-            </Link>
-            <Link
-              href="#community"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <span>Cộng đồng</span>
-            </Link>
-            <Link
-              href="/support"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <span>Hỗ trợ</span>
-            </Link>
+            {NAV_ITEMS.map((item) => {
+              const active = isLinkActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-bold transition-all ${
+                    active
+                      ? 'bg-emerald-50 text-[#00873E]'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  {active && <span className="size-1.5 rounded-full bg-[#00873E]" />}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="border-t border-slate-100 pt-3 flex flex-col gap-2">

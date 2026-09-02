@@ -9,8 +9,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError, type SupportTicket } from '@zenx-go/api-client';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { BrandLogo } from '@/components/brand-logo';
-import { PageFooter } from '@/components/page-footer';
+import { HomeFooter } from '@/components/home/home-footer';
+import { HomeNavbar } from '@/components/home/home-navbar';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -129,5 +129,13 @@ function SuccessState({ ticket }: { ticket: SupportTicket }) {
 }
 
 function PageFrame({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-[#F8FAFC] text-slate-900"><header className="border-b border-slate-100 bg-white"><div className="mx-auto flex h-[76px] max-w-[1240px] items-center justify-between px-5 sm:px-8"><BrandLogo /><Link href="/support" className="text-sm font-semibold text-slate-600 hover:text-[#00873E]">Trung tâm hỗ trợ</Link></div></header><main className="px-5 py-10 sm:px-8 sm:py-14">{children}</main><PageFooter /></div>;
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between">
+      <HomeNavbar />
+      <main className="flex-1 px-4 py-10 sm:px-6 lg:px-8 sm:py-14">
+        {children}
+      </main>
+      <HomeFooter games={[]} />
+    </div>
+  );
 }

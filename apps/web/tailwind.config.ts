@@ -10,6 +10,13 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "Plus Jakarta Sans", "Inter", "sans-serif"],
+        serif: ["var(--font-cormorant)", "var(--font-serif)", "Cormorant Garamond", "Playfair Display", "serif"],
+        playfair: ["var(--font-serif)", "Playfair Display", "serif"],
+        cormorant: ["var(--font-cormorant)", "Cormorant Garamond", "serif"],
+        cinzel: ["var(--font-cinzel)", "Cinzel", "serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

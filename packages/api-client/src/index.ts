@@ -477,7 +477,7 @@ export interface CreateSupportTicketRequest {
 export type GameRecordType = "REAL" | "DEMO";
 export type GameLifecycleStatus = "CONCEPT" | "IN_DEVELOPMENT" | "INTERNAL_TEST" | "CLOSED_BETA" | "OPEN_BETA" | "LIVE" | "COMING_SOON" | "SUNSET";
 export type GameOperationalStatus = "AVAILABLE" | "MAINTENANCE" | "DEGRADED" | "UNAVAILABLE";
-export type GameArticleCategory = "DEVELOPMENT_UPDATE" | "ANNOUNCEMENT" | "EVENT";
+export type GameArticleCategory = "DEVELOPMENT_UPDATE" | "ANNOUNCEMENT" | "EVENT" | "MAINTENANCE";
 export type GameMilestoneStatus = "COMPLETED" | "IN_PROGRESS" | "UPCOMING" | "PLANNED";
 
 export interface GameGenre {
@@ -500,6 +500,7 @@ export interface ThemeConfig {
 
 export interface FeatureConfig {
   sections: string[];
+  routes?: Array<'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD'>;
   downloads?: "COMING_SOON" | boolean;
   demo?: boolean;
   [key: string]: unknown;
@@ -522,6 +523,10 @@ export interface GameSummary {
   coverUrl?: string | null;
   heroDesktopUrl?: string | null;
   heroMobileUrl?: string | null;
+  primaryCtaLabel?: string | null;
+  primaryCtaPath?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaPath?: string | null;
   featured: boolean;
   primaryGame: boolean;
   sortOrder: number;
@@ -538,6 +543,13 @@ export interface GameArticleSummary {
   publishedAt?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  readTimeMinutes?: number;
+  href?: string;
+  game?: {
+    name: string;
+    slug: string;
+    subdomain: string;
+  };
 }
 
 export interface GameArticleDetail extends GameArticleSummary {
@@ -564,6 +576,72 @@ export interface GameDetail extends GameSummary {
 
 export interface GameListResponse {
   items: GameSummary[];
+}
+
+export interface PortalAnnouncement {
+  code: string;
+  title: string;
+  message: string;
+  ctaLabel?: string | null;
+  ctaPath?: string | null;
+  startsAt: string;
+  endsAt?: string | null;
+}
+
+export interface PortalEventSummary {
+  title: string;
+  slug: string;
+  excerpt: string;
+  coverImageUrl?: string | null;
+  startsAt: string;
+  endsAt?: string | null;
+  publishedAt?: string | null;
+  status: "ACTIVE" | "UPCOMING" | "ENDED";
+  href: string;
+  game?: {
+    name: string;
+    slug: string;
+    subdomain: string;
+  };
+}
+
+export interface PortalEventDetail extends PortalEventSummary {
+  contentHtml: string;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+}
+
+export type PortalArticleSummary = Omit<GameArticleSummary, "game" | "href"> & {
+  href: string;
+  game: {
+    name: string;
+    slug: string;
+    subdomain: string;
+  };
+};
+
+export interface PortalNewsResponse {
+  items: PortalArticleSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PortalEventsResponse {
+  items: PortalEventSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface PortalHomeResponse {
+  announcement: PortalAnnouncement | null;
+  heroGames: GameSummary[];
+  games: GameSummary[];
+  latestArticles: PortalArticleSummary[];
+  activeEvents: PortalEventSummary[];
 }
 
 export function createZenxApiClient(options: ApiClientOptions = {}) {
@@ -699,6 +777,14 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       articles: (slug: string) => client.get<{ items: GameArticleSummary[] }>(`/games/${encodeURIComponent(slug)}/articles`),
       article: (slug: string, articleSlug: string) => client.get<GameArticleDetail>(`/games/${encodeURIComponent(slug)}/articles/${encodeURIComponent(articleSlug)}`),
       roadmap: (slug: string) => client.get<{ items: GameMilestone[] }>(`/games/${encodeURIComponent(slug)}/roadmap`),
+    },
+    portal: {
+      home: () => client.get<PortalHomeResponse>('/portal/home'),
+      news: (query?: { game?: string; category?: string; page?: number; pageSize?: number }) =>
+        client.get<PortalNewsResponse>('/portal/news', query),
+      events: (query?: { game?: string; status?: string; page?: number; pageSize?: number }) =>
+        client.get<PortalEventsResponse>('/portal/events', query),
+      event: (slug: string) => client.get<PortalEventDetail>(`/portal/events/${encodeURIComponent(slug)}`),
     },
   };
 }

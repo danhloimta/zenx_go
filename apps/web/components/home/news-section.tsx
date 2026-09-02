@@ -4,17 +4,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronRight, Clock3, Newspaper, Sparkles } from 'lucide-react';
 import { NewsItem } from '@/lib/games-data';
-import { gameUrl } from '@/lib/domain';
 
 const NEWS_CATEGORIES = [
   'Tất cả',
-  'Development Update',
+  'Tiến độ phát triển',
   'Thông báo',
   'Sự kiện',
   'Bảo trì',
 ];
 
-export function NewsSection({ news }: { news: NewsItem[] }) {
+export function NewsSection({ news, dataUnavailable = false }: { news: NewsItem[]; dataUnavailable?: boolean }) {
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
 
   const filteredNews = selectedCategory === 'Tất cả'
@@ -49,7 +48,7 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
 
         {/* View All Button */}
         <Link
-          href={gameUrl('lucdia', '/tin-tuc')}
+          href="/news"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/90 text-xs font-bold text-slate-700 hover:text-[#00873E] hover:border-[#00873E]/40 hover:bg-emerald-50/30 shadow-2xs transition-all w-fit shrink-0"
         >
           <span>Xem tất cả bài viết</span>
@@ -80,7 +79,11 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
       </div>
 
       {/* High-Clarity Spotlight News Layout */}
-      {featuredArticle && (
+      {dataUnavailable ? (
+        <div className="rounded-3xl border border-dashed border-amber-300 bg-amber-50 p-10 text-center text-sm text-amber-900">
+          Không thể tải bản tin lúc này. Vui lòng thử lại sau.
+        </div>
+      ) : featuredArticle ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
           {/* Left Column (7/12): Featured Spotlight Hero Article */}
           <Link
@@ -90,11 +93,7 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
           >
             {/* 100% Pure, Sharp High-Res Background Image */}
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-              <img
-                src={featuredArticle.imageUrl}
-                alt={featuredArticle.title}
-                className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108"
-              />
+              {featuredArticle.imageUrl ? <img src={featuredArticle.imageUrl} alt={featuredArticle.title} className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108" /> : <div className="size-full bg-slate-800" />}
 
               {/* Minimal Bottom Vignette Only */}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 via-35% to-transparent pointer-events-none" />
@@ -159,11 +158,7 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
               >
                 {/* 100% Full-Bleed Artwork for Side Cards */}
                 <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108"
-                  />
+                    {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108" /> : <div className="size-full bg-slate-800" />}
 
                   {/* Minimal Bottom Vignette */}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 via-40% to-transparent pointer-events-none" />
@@ -206,6 +201,10 @@ export function NewsSection({ news }: { news: NewsItem[] }) {
               </Link>
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-600">
+          Chưa có bài viết mới.
         </div>
       )}
     </section>

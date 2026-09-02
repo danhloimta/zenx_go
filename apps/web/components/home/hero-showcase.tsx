@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { GameItem } from '@/lib/games-data';
 
-export function HeroShowcase({ games }: { games: GameItem[] }) {
+export function HeroShowcase({ games, dataUnavailable = false }: { games: GameItem[]; dataUnavailable?: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const currentGame = games[activeIndex] ?? games[0];
 
@@ -34,7 +34,17 @@ export function HeroShowcase({ games }: { games: GameItem[] }) {
     setActiveIndex((prev) => (prev + 1) % games.length);
   };
 
-  if (!currentGame) return null;
+  if (!currentGame) {
+    return (
+      <section className="relative flex min-h-[540px] items-center justify-center overflow-hidden bg-slate-950 px-6 text-center text-white sm:min-h-[600px] lg:min-h-[660px]">
+        <div className="max-w-md">
+          <Gamepad2 className="mx-auto size-10 text-emerald-400" />
+          <h1 className="mt-5 text-2xl font-black">{dataUnavailable ? 'Không thể tải dữ liệu game' : 'Chưa có game nổi bật'}</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">{dataUnavailable ? 'Hệ thống đang cập nhật. Vui lòng thử lại sau.' : 'Các thế giới mới sẽ được cập nhật tại đây.'}</p>
+        </div>
+      </section>
+    );
+  }
 
   // Determine if active game is a dark artwork (e.g. Orion, Hỏa Long) or light artwork (Lục Địa, Thị Trấn Mây)
   const isDarkTheme =
@@ -47,13 +57,7 @@ export function HeroShowcase({ games }: { games: GameItem[] }) {
     <section className="relative w-full overflow-hidden min-h-[540px] sm:min-h-[600px] lg:min-h-[660px] flex items-center bg-slate-950 group">
       {/* 100% Pure, Unaltered, High-Saturation Game Artwork */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <img
-          key={currentGame.id}
-          src={currentGame.assets.heroDesktop}
-          alt={currentGame.alt}
-          className="size-full object-cover object-center scale-100 contrast-[1.04] brightness-[1.02] transition-all duration-700 ease-out"
-          style={{ objectPosition: currentGame.focalPoint || 'center' }}
-        />
+        {currentGame.assets.heroDesktop ? <img key={currentGame.id} src={currentGame.assets.heroDesktop} alt={currentGame.alt} className="size-full object-cover object-center scale-100 contrast-[1.04] brightness-[1.02] transition-all duration-700 ease-out" style={{ objectPosition: currentGame.focalPoint || 'center' }} /> : <div className="size-full bg-slate-900" />}
 
         {/* Adaptive Theme Vignette - Only softly enhances readability without washing out colors */}
         {isDarkTheme ? (
@@ -160,22 +164,22 @@ export function HeroShowcase({ games }: { games: GameItem[] }) {
           {/* CTA Action Buttons */}
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <a
-              href={currentGame.websiteUrl}
+              href={currentGame.primaryCtaUrl ?? currentGame.websiteUrl}
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-xl bg-[#00873E] hover:bg-[#007033] text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg active:scale-98 transition-all"
             >
               <Play className="size-4 fill-white text-white" />
-              <span>Chơi ngay</span>
+              <span>{currentGame.primaryCtaText ?? 'Chơi ngay'}</span>
             </a>
 
             <a
-              href={currentGame.roadmapUrl ?? currentGame.websiteUrl}
+              href={currentGame.secondaryCtaUrl ?? currentGame.roadmapUrl ?? currentGame.websiteUrl}
               className={`inline-flex items-center justify-center gap-2 h-12 px-7 rounded-xl text-xs sm:text-sm font-bold shadow-2xs hover:shadow-xs active:scale-98 transition-all ${
                 isDarkTheme
                   ? 'bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white backdrop-blur-md'
                   : 'bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-800'
               }`}
             >
-              <span>Khám phá thêm</span>
+              <span>{currentGame.secondaryCtaText ?? 'Khám phá thêm'}</span>
             </a>
           </div>
         </div>

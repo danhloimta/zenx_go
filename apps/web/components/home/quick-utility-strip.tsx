@@ -31,7 +31,7 @@ const UTILITY_ITEMS = [
     id: 'events',
     title: 'Sự kiện nổi bật',
     subtitle: 'Quà tặng mỗi ngày',
-    href: '#news',
+    href: '/events',
     icon: (
       <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 border border-rose-100/80 group-hover:scale-105 transition-transform">
         <Gift className="size-5.5" />
@@ -42,7 +42,7 @@ const UTILITY_ITEMS = [
     id: 'vip',
     title: 'VIP & Ưu đãi',
     subtitle: 'Đặc quyền hấp dẫn',
-    href: '/account',
+    href: '/rewards',
     icon: (
       <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-100/80 group-hover:scale-105 transition-transform">
         <Crown className="size-5.5" />

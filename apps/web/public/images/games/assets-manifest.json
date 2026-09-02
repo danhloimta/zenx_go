@@ -6,11 +6,11 @@
       "alt": "Kỵ sĩ có cánh của Lục Địa Đam Mê trên thành phố giữa mây",
       "focalPoint": "72% 48%",
       "assets": {
-        "source": "/images/games/luc-dia-dam-me/key-art.png",
-        "heroDesktop": "/images/games/luc-dia-dam-me/hero-desktop.webp",
-        "heroMobile": "/images/games/luc-dia-dam-me/hero-mobile.webp",
-        "thumbnail": "/images/games/luc-dia-dam-me/thumbnail.webp",
-        "avatar": "/images/games/luc-dia-dam-me/avatar.webp"
+        "source": "/images/games/luc-dia-dam-me/hero.png",
+        "heroDesktop": "/images/games/luc-dia-dam-me/hero.png",
+        "heroMobile": "/images/games/luc-dia-dam-me/hero.png",
+        "thumbnail": "/images/games/luc-dia-dam-me/nhan_vat3.png",
+        "avatar": "/images/games/luc-dia-dam-me/logo.png"
       }
     },
     {

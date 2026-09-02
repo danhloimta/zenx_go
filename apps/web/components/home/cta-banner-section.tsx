@@ -15,9 +15,9 @@ export function CtaBannerSection() {
         {/* Left Side Character Artwork - Ultra Sharp & Clear */}
         <div className="absolute -left-6 sm:left-0 bottom-0 top-0 w-72 sm:w-[400px] lg:w-[440px] pointer-events-none overflow-hidden opacity-90 sm:opacity-100">
           <img
-            src="/images/games/luc-dia-dam-me/hero-desktop.webp"
+            src="/images/games/luc-dia-dam-me/nhan_vat3.png"
             alt="Lục Địa Đam Mê Knight"
-            className="size-full object-cover object-left-center scale-100 contrast-105 brightness-105"
+            className="size-full object-cover object-[75%_25%] scale-100 contrast-105 brightness-105"
           />
           {/* Subtle gradient blend on inner edge only */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent via-55% to-[#040f1a]" />
@@ -98,7 +98,7 @@ export function CtaBannerSection() {
             </Button>
 
             <Link
-              href="/support"
+              href="/community"
               className="inline-flex items-center gap-2 h-12 px-5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/90 text-slate-200 hover:text-white text-xs sm:text-sm font-bold backdrop-blur-md transition-all shadow-md"
             >
               <Users className="size-4 text-slate-400" />

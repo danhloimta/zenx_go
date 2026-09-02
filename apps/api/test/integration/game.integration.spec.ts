@@ -67,7 +67,8 @@ describe('Game catalog API (SQL Server)', () => {
     const orion = await http().get('/api/v1/games/by-subdomain/orion');
     expect(orion.status).toBe(200);
     expect(orion.body.data).toMatchObject({ slug: 'chien-tuyen-orion', subdomain: 'orion', themePreset: 'SCI_FI_SHOOTER', heroDesktopUrl: '/images/games/chien-tuyen-orion/hero-desktop.webp', heroMobileUrl: '/images/games/chien-tuyen-orion/hero-mobile.webp' });
-    expect(orion.body.data.featureConfig.sections).toEqual(['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'COMMUNITY_CTA']);
+    expect(orion.body.data.featureConfig.sections).toEqual(['HERO', 'GAME_INTRODUCTION', 'FEATURE_GRID', 'ARTICLE_GRID', 'COMMUNITY_CTA']);
+    expect(orion.body.data.featureConfig.routes).toEqual(['NEWS']);
   });
 
   it('returns clear 404s for unknown slug and subdomain', async () => {

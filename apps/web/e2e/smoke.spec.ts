@@ -45,7 +45,7 @@ test('game cards and article cards link to their public destinations', async ({ 
     await expect(avatar.locator('..')).toHaveAttribute('href', new RegExp(`^http://${subdomain}\\.lvh\\.me:3300/`));
   }
   const articleCard = page.getByRole('link', { name: /Đọc bài viết/ }).first();
-  await expect(articleCard).toHaveAttribute('href', /^http:\/\/lucdia\.lvh\.me:3300\/tin-tuc\//);
+  await expect(articleCard).toHaveAttribute('href', /^http:\/\/orion\.lvh\.me:3300\/tin-tuc\//);
 });
 
 test('game article metadata uses the article canonical URL', async ({ page }) => {
@@ -57,10 +57,13 @@ test('game article metadata uses the article canonical URL', async ({ page }) =>
 test('demo game routes outside the homepage return a real 404', async ({ page }) => {
   for (const subdomain of ['hoalong', 'thitranmay', 'orion']) {
     await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': `${subdomain}.lvh.me:3300` });
-    for (const path of ['/gioi-thieu', '/tin-tuc', '/roadmap', '/tai-game']) {
+    for (const path of ['/gioi-thieu', '/roadmap', '/tai-game']) {
       const response = await page.goto(`http://lvh.me:3300${path}`);
       expect(response?.status(), `${subdomain}${path}`).toBe(404);
     }
+    const newsResponse = await page.goto('http://lvh.me:3300/tin-tuc');
+    expect(newsResponse?.status(), `${subdomain}/tin-tuc`).toBe(200);
+    await expect(page.getByRole('heading', { name: 'Development Updates', exact: true })).toBeVisible();
   }
 });
 

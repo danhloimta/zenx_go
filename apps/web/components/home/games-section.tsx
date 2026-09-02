@@ -25,7 +25,7 @@ const CATEGORIES = [
   { key: 'Bắn súng', label: 'Bắn súng', icon: Crosshair },
 ];
 
-export function GamesSection({ games }: { games: GameItem[] }) {
+export function GamesSection({ games, dataUnavailable = false }: { games: GameItem[]; dataUnavailable?: boolean }) {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   const filteredGames = selectedCategory === 'ALL'
@@ -127,7 +127,7 @@ export function GamesSection({ games }: { games: GameItem[] }) {
 
       {/* Pure High-Vibrancy Poster Cards Grid (4 Columns) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-        {filteredGames.map((game) => (
+        {dataUnavailable ? <div className="sm:col-span-2 lg:col-span-4 rounded-3xl border border-dashed border-amber-300 bg-amber-50 p-10 text-center text-sm text-amber-900">Không thể tải danh sách game lúc này. Vui lòng thử lại sau.</div> : filteredGames.length ? filteredGames.map((game) => (
           <a
             key={game.id}
             href={game.websiteUrl}
@@ -137,12 +137,7 @@ export function GamesSection({ games }: { games: GameItem[] }) {
             {/* Full Poster Container */}
             <div className="relative aspect-[3/4.2] w-full overflow-hidden">
               {/* 100% Pure, Unaltered, High-Saturation Game Artwork */}
-              <img
-                src={game.assets.thumbnail}
-                alt={game.alt}
-                className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108"
-                style={{ objectPosition: game.focalPoint || 'center' }}
-              />
+              {game.assets.thumbnail ? <img src={game.assets.thumbnail} alt={game.alt} className="size-full object-cover object-center scale-100 contrast-[1.03] brightness-[1.02] transition-transform duration-700 ease-out group-hover:scale-108" style={{ objectPosition: game.focalPoint || 'center' }} /> : <div className="size-full bg-slate-800" />}
 
               {/* Minimal Bottom Vignette Only - No White Overlay anywhere */}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 via-35% to-transparent pointer-events-none" />
@@ -194,7 +189,7 @@ export function GamesSection({ games }: { games: GameItem[] }) {
               </div>
             </div>
           </a>
-        ))}
+        )) : <div className="sm:col-span-2 lg:col-span-4 rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-600">Chưa có game phù hợp với bộ lọc hiện tại.</div>}
       </div>
     </section>
   );

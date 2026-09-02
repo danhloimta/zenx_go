@@ -84,6 +84,10 @@ export class GameService {
       coverUrl: game.coverUrl,
       heroDesktopUrl: game.heroDesktopUrl,
       heroMobileUrl: game.heroMobileUrl,
+      primaryCtaLabel: game.primaryCtaLabel,
+      primaryCtaPath: game.primaryCtaPath,
+      secondaryCtaLabel: game.secondaryCtaLabel,
+      secondaryCtaPath: game.secondaryCtaPath,
       featured: game.featured,
       primaryGame: game.primaryGame,
       sortOrder: game.sortOrder,
@@ -156,7 +160,8 @@ function parseThemeConfig(value: string): Record<string, unknown> {
 
 function parseFeatureConfig(value: string): Record<string, unknown> & { sections: string[] } {
   const parsed = parseJsonObject(value, 'featureConfig');
-  if (!Array.isArray(parsed.sections) || parsed.sections.some((section) => typeof section !== 'string') || (parsed.downloads !== undefined && parsed.downloads !== 'COMING_SOON' && typeof parsed.downloads !== 'boolean')) {
+  const routeKeys = ['ABOUT', 'NEWS', 'ROADMAP', 'DOWNLOAD'];
+  if (!Array.isArray(parsed.sections) || parsed.sections.some((section) => typeof section !== 'string') || (parsed.routes !== undefined && (!Array.isArray(parsed.routes) || parsed.routes.some((route) => typeof route !== 'string' || !routeKeys.includes(route)))) || (parsed.downloads !== undefined && parsed.downloads !== 'COMING_SOON' && typeof parsed.downloads !== 'boolean')) {
     throw new DomainError(ErrorCode.GAME_CONFIG_INVALID, 'Invalid featureConfig', 500);
   }
   return parsed as Record<string, unknown> & { sections: string[] };
@@ -176,7 +181,7 @@ function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
-function markdownToSafeHtml(markdown: string) {
+export function markdownToSafeHtml(markdown: string) {
   return markdown.split(/\r?\n\r?\n/).map((block) => {
     const escaped = escapeHtml(block.trim());
     if (!escaped) return '';
