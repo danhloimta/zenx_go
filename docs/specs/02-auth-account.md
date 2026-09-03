@@ -98,7 +98,7 @@ Avatar upload giới hạn 2 MB, chỉ JPEG/PNG/WebP và kiểm tra file signatu
 
 ## Test evidence
 
-- Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, config/OTP specs.
+- Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, `apps/api/src/otp/otp.service.spec.ts`, `apps/api/src/social/social.service.spec.ts`, `apps/api/src/config/config.module.spec.ts`.
 - Integration: `apps/api/test/integration/vertical-slice.integration.spec.ts`, `sensitive-profile.integration.spec.ts`.
 - Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`.
 - Test gap: provider OAuth thật chưa có credentials trong local/test; email/SMS delivery thật chưa được kiểm thử ngoài mock seam.

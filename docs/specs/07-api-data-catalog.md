@@ -113,6 +113,15 @@
 | `API-HEALTH`                                                                                                                           | `GET /health` | Public/internal | `IMPLEMENTED` | Reports API status, database status and timestamp. |
 | SePay ingress được ghi ở `API-PAYMENT-SEPAY-WEBHOOK` trong bảng Payment API; đây là một route duy nhất, không tạo thêm alias tracking. |
 
+## Non-controller HTTP surfaces
+
+Các surface này được mount trong `apps/api/src/main.ts`, không phải method của controller; chúng vẫn được tracking vì có HTTP behavior observable.
+
+| ID                | Method/path      | Auth               | Status        | Purpose                                                 | Source/test                                          |
+| ----------------- | ---------------- | ------------------ | ------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+| `SURFACE-SWAGGER` | `GET /docs`      | Internal/developer | `INTERNAL`    | Swagger UI và OpenAPI explorer cho API runtime.         | `apps/api/src/main.ts`; manual local smoke           |
+| `SURFACE-UPLOADS` | `GET /uploads/*` | Public asset URL   | `IMPLEMENTED` | Serve avatar/static uploads từ configured `UPLOAD_DIR`. | `apps/api/src/main.ts`, account service; account E2E |
+
 ## Data model boundary
 
 | Model/table                                                       | Dữ liệu chính                                                                | Public exposure                                         |
@@ -124,12 +133,13 @@
 | `OtpRequest` / `otp_requests`                                     | Destination, purpose/channel, code hash, attempts/expiry/status.             | Không public trực tiếp.                                 |
 | `OtpVerification` / `otp_verifications`                           | One-time token hash, purpose, expiry/consumedAt.                             | Chỉ raw token một lần ở verify response.                |
 | `SocialIdentity` / `social_identities`                            | Provider identity/link/login timestamps.                                     | Chỉ boolean provider flags ở account response.          |
+| `RefreshSession` / `refresh_sessions`                             | Refresh token hash, expiry, revocation và rotation link.                     | Không public trực tiếp; chỉ cookie rotation.            |
 | `Wallet` / `wallets`                                              | User currency/balance.                                                       | Summary currency/balance/update time.                   |
 | `WalletTransaction` / `wallet_transactions`                       | Ledger amount, before/after, type/status/reference/idempotency.              | Public safe transaction; storage IDs loại bỏ.           |
 | `CoinPackage` / `coin_packages`                                   | Active package price/coin/sort.                                              | Public active list.                                     |
 | `Payment` / `payments`                                            | Payment lifecycle/provider payload/callback metadata.                        | Public payment fields; payload secrets/storage IDs lọc. |
 | `SupportCategory`, `SupportFaq`, `SupportTicket`                  | FAQ catalog và user ticket lifecycle.                                        | FAQ public; ticket user-scoped.                         |
-| `Game`, `Genre`, `GamePlatform`                                   | Public game catalog, filtering và host mapping.                              | Public summaries/details theo `isPublic`.               |
+| `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping.        | Public summaries/details theo `isPublic`.               |
 | `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | Published content, roadmap, events, announcement windows.                    | Public khi status/time/isPublic rules pass.             |
 
 ## Error/status conventions
@@ -143,7 +153,7 @@
 
 ## Test evidence and gaps
 
-- API unit suites nằm cạnh service trong `apps/api/src/**/*.spec.ts`.
+- API unit suites nằm cạnh service trong `apps/api/src/**/*.spec.ts`: config, OTP, payment provider, social, support, sensitive profile và common guards/normalization/serialization/domain policy/web-domain.
 - Integration inventory: `apps/api/test/integration/*.integration.spec.ts`.
 - Browser flows: `apps/web/e2e/*.spec.ts`.
 - Test gap: OAuth provider thật, payment provider ngoài mock/SePay và admin/CMS API chưa có source implementation.

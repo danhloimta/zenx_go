@@ -26,12 +26,16 @@ ZENX GO là monorepo TypeScript gồm cổng tài khoản, ví ZENX Coin, paymen
 | `/preview/games/[slug]`                                     | Preview game trên root portal khi không dùng wildcard host.                              | `INTERNAL`    |
 | `/game-site/[gameKey]/tai-game`                             | Distribution URL chưa có, middleware/page chủ động trả 404.                              | `HIDDEN`      |
 | `/_host-error`                                              | Fallback khi truy cập game-site trên host không hợp lệ.                                  | `INTERNAL`    |
+| `/docs`                                                     | Swagger UI cho REST contract ở API runtime.                                              | `INTERNAL`    |
+| `/uploads/*`                                                | Static asset serving cho avatar upload từ `UPLOAD_DIR`.                                  | `IMPLEMENTED` |
 
 Middleware bỏ qua `/api`, `_next` và asset; kiểm tra base domain, game subdomain được cấu hình, canonical redirect cho `www`, rồi rewrite host game sang internal route. Session cookie dùng chung `.lvh.me` ở local và `COOKIE_DOMAIN` ở production.
 
 ## API boundary
 
 - Global prefix là `/api/v1`.
+- Swagger UI được mount tại `/docs`; đây là technical surface, không phải controller endpoint.
+- Express static middleware mount `/uploads`; file avatar được lưu dưới `/uploads/avatars/`.
 - `AuthGuard` đọc access cookie, kiểm tra JWT type `access`, account status và user tồn tại.
 - `OriginGuard` bảo vệ các browser mutation; webhook/payment callback có decorator bỏ qua origin khi cần.
 - Response interceptor chuẩn hóa envelope `{ data, error }`, ngoại trừ webhook đã đánh dấu skip.
@@ -62,6 +66,6 @@ Middleware bỏ qua `/api`, `_next` và asset; kiểm tra base domain, game subd
 
 ## Test/runtime references
 
-- Local setup và quality gates: root `README.md`.
+- Local setup, `/docs` API explorer và quality gates: root `README.md`.
 - API integration dùng database có hậu tố `_test` và migration/seed hiện hành.
 - Browser E2E chạy root portal và game hosts trên isolated ports, kiểm tra desktop/mobile ở các suite tương ứng.

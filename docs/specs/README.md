@@ -40,6 +40,7 @@ Một mục có thể ghi chú thêm dependency, nhưng chỉ dùng một status
 - Feature: `FEAT-<DOMAIN>-<NNN>`.
 - Screen: `SCR-<DOMAIN>-<NAME>`.
 - API: `API-<DOMAIN>-<NAME>`.
+- Non-controller HTTP surface: `SURFACE-<NAME>`.
 - Source và test phải dùng absolute repository path hoặc path tương đối rõ ràng.
 - Header mỗi tài liệu ghi ngày và commit cuối cùng đã rà soát.
 - Khi route/API/behavior thay đổi, cập nhật domain document, screen/API catalog và matrix trong cùng change set.

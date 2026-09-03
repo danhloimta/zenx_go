@@ -82,6 +82,7 @@ Chọn coin package + payment method
 
 - `apps/api/test/integration/vertical-slice.integration.spec.ts`: create payment, signed callback, duplicate callback, wallet credit/debit/idempotency/paging/export.
 - `apps/api/test/integration/sepay.integration.spec.ts`: signature, account/amount/type validation, duplicate/conflict webhook và terminal states.
+- Unit: `apps/api/src/payment/payment.provider.spec.ts` kiểm tra mock callback signature và payload.
 - `apps/web/e2e/vertical-slice.spec.ts`: wallet/payment flow và transaction detail.
 - `apps/web/e2e/sepay-ui.spec.ts`: payment UI/provider states.
 - Test gap: payment provider thật ngoài mock/SePay seam và payout/withdrawal chưa có trong source.
