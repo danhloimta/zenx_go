@@ -71,6 +71,19 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 
 ## State and navigation baseline
 
+## Admin
+
+| ID                    | Route                         | Auth                  | Status        | Mục đích / hành động chính                                                                                  | Source                                             | API/data                                             | Test                         |
+| --------------------- | ----------------------------- | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------- | ---------------------------- |
+| `SCR-ADMIN-HOME`      | `/admin`                      | `SUPER_ADMIN`         | `IMPLEMENTED` | KPI user, user mới và hoạt động admin gần nhất.                                                              | `apps/web/app/admin/page.tsx`                      | `/admin/me`, `/admin/dashboard`                      | `admin.spec.ts`               |
+| `SCR-ADMIN-USERS`     | `/admin/users`                | `SUPER_ADMIN`         | `IMPLEMENTED` | Tìm kiếm, lọc status, phân trang và mở chi tiết user.                                                        | `apps/web/app/admin/users/page.tsx`                | `GET /admin/users`                                   | `admin.spec.ts`               |
+| `SCR-ADMIN-USER`      | `/admin/users/[userId]`       | `SUPER_ADMIN`         | `IMPLEMENTED` | Xem/sửa hồ sơ, status, session, mật khẩu tạm, CCCD reveal và wallet read-only.                              | `apps/web/app/admin/users/[userId]/page.tsx`       | `/admin/users/:userId/*`                            | `admin.spec.ts`               |
+| `SCR-ADMIN-AUDIT-LOG` | `/admin/audit-logs`           | `SUPER_ADMIN`         | `IMPLEMENTED` | Danh sách hoạt động quản trị, lọc theo action/target và mở liên kết user.                                  | `apps/web/app/admin/audit-logs/page.tsx`           | `GET /admin/audit-logs`                              | `admin.spec.ts`               |
+
+- Admin pages dùng `AdminShell` riêng, không dùng player `AppShell`.
+- User chưa đăng nhập được chuyển về login với `returnTo=/admin`; account không có role nhận 403.
+- User có mật khẩu tạm bị chuyển sang `/account/change-password` trước khi vào màn hình khác.
+
 - Account/auth/wallet/payment/support client screens expose loading skeletons, API error messages, empty states and mutation pending states where applicable.
 - Server content pages use API loader error/empty fallback; missing game/article/event/ticket routes resolve to not found or user-scoped error.
 - AppShell redirects incomplete authenticated accounts to `/account/complete-profile`, except while already on onboarding.

@@ -55,6 +55,7 @@ Middleware bỏ qua `/api`, `_next` và asset; kiểm tra base domain, game subd
 | `FEAT-SUPPORT-001`  | FAQ/tickets               | `apps/api/src/support`                                                       | `/support/*`                                       | support integration/E2E                             | `IMPLEMENTED` |
 | `FEAT-GAME-001`     | Game catalog/sites        | `apps/api/src/game`, `apps/web/app/(game)`                                   | `/games/*`, internal game-site pages               | game/portal integration, portal E2E                 | `IMPLEMENTED` |
 | `FEAT-CONTENT-001`  | Portal news/events        | `apps/api/src/portal`, `apps/web/app/news`, `apps/web/app/events`            | `/portal/*`                                        | portal integration/E2E                              | `IMPLEMENTED` |
+| `FEAT-ADMIN-001`    | Admin account operations   | `apps/api/src/admin`, `apps/web/app/admin`                                    | `/admin/*`                                          | `admin.integration.spec.ts`, `admin.spec.ts`       | `IMPLEMENTED` |
 
 ## Shared lifecycle states
 

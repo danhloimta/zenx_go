@@ -12,7 +12,11 @@ process.env.E2E_API_BASE_URL = e2eApiBaseUrl;
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // The browser suites share one seeded SQL Server database. Running them in
+  // parallel creates cross-test fixture races and can exhaust the local SQL
+  // Server connection budget, so keep the release gate deterministic.
+  fullyParallel: false,
+  workers: 1,
   reporter: [['list']],
   use: { baseURL: e2eWebOrigin, trace: 'on-first-retry' },
   webServer: [
@@ -64,11 +68,35 @@ export default defineConfig({
       url: 'http://127.0.0.1:3300/api/v1/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { ...process.env, PORT: '3300', NEXT_DIST_DIR: '.next-e2e', NEXT_PUBLIC_API_BASE_URL: '/api/v1', API_PROXY_ORIGIN: e2eApiOrigin, PUBLIC_BASE_DOMAIN: 'lvh.me', PUBLIC_WEB_ORIGIN: e2eWebOrigin },
+      env: {
+        ...process.env,
+        PORT: '3300',
+        NEXT_DIST_DIR: '.next-e2e',
+        NEXT_PUBLIC_API_BASE_URL: '/api/v1',
+        API_PROXY_ORIGIN: e2eApiOrigin,
+        PUBLIC_BASE_DOMAIN: 'lvh.me',
+        PUBLIC_WEB_ORIGIN: e2eWebOrigin,
+      },
     },
   ],
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'], launchOptions: { args: ['--host-resolver-rules=MAP lvh.me 127.0.0.1,MAP *.lvh.me 127.0.0.1'] } } },
-    { name: 'mobile-chrome', use: { ...devices['Pixel 7'], launchOptions: { args: ['--host-resolver-rules=MAP lvh.me 127.0.0.1,MAP *.lvh.me 127.0.0.1'] } } },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--host-resolver-rules=MAP lvh.me 127.0.0.1,MAP *.lvh.me 127.0.0.1'],
+        },
+      },
+    },
+    {
+      name: 'mobile-chrome',
+      use: {
+        ...devices['Pixel 7'],
+        launchOptions: {
+          args: ['--host-resolver-rules=MAP lvh.me 127.0.0.1,MAP *.lvh.me 127.0.0.1'],
+        },
+      },
+    },
   ],
 });

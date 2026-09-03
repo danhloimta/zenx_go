@@ -106,6 +106,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     // initial/refetch request may still be in flight. Do not redirect based on
     // the stale snapshot until that request settles.
     if (account.isLoading || account.isFetching) return;
+    if (user?.mustChangePassword && pathname !== '/account/change-password') {
+      router.replace('/account/change-password');
+      return;
+    }
     if (
       user &&
       user.profile.profileCompletedAt === null &&
@@ -184,7 +188,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                       )}
                     >
                       <Icon
-                        className={cn('size-5 shrink-0', active ? 'text-[#00873E]' : 'text-slate-500')}
+                        className={cn(
+                          'size-5 shrink-0',
+                          active ? 'text-[#00873E]' : 'text-slate-500',
+                        )}
                         strokeWidth={active ? 2.2 : 1.8}
                       />
                       <span>{item.label}</span>
@@ -197,7 +204,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </nav>
 
         {/* Support Box */}
-        <div className="m-4 rounded-2xl border border-slate-100 bg-[#F9FCFA] p-4 text-xs" id="support">
+        <div
+          className="m-4 rounded-2xl border border-slate-100 bg-[#F9FCFA] p-4 text-xs"
+          id="support"
+        >
           <p className="font-bold text-slate-900">Cần hỗ trợ?</p>
           <p className="mt-1 text-slate-500 leading-tight">Chúng tôi luôn sẵn sàng hỗ trợ bạn</p>
           <div className="mt-3.5 space-y-2">
@@ -414,7 +424,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                   {/* Divider & Logout */}
                   <div className="my-1 border-t border-slate-100" />
                   <div className="pt-0.5">
-                    <LogoutButton variant="ghost" className="w-full justify-start text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg px-3 py-2 h-auto" />
+                    <LogoutButton
+                      variant="ghost"
+                      className="w-full justify-start text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg px-3 py-2 h-auto"
+                    />
                   </div>
                 </div>
               )}
@@ -428,9 +441,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </header>
 
         {/* Main View Area */}
-        <main className="min-h-[calc(100vh-140px)] px-4 py-6 sm:px-8 lg:px-9">
-          {children}
-        </main>
+        <main className="min-h-[calc(100vh-140px)] px-4 py-6 sm:px-8 lg:px-9">{children}</main>
         <PageFooter app />
       </div>
     </div>
@@ -438,15 +449,25 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 }
 
 function getPageMeta(pathname: string) {
-  if (pathname === '/account') return { category: 'TỔNG QUAN', title: 'Tổng quan tài khoản', icon: Home };
-  if (pathname.startsWith('/payment')) return { category: 'VÍ ZENX', title: 'Nạp Coin', icon: Coins };
-  if (pathname.startsWith('/wallet/transactions')) return { category: 'VÍ ZENX', title: 'Lịch sử giao dịch', icon: Clock3 };
-  if (pathname.startsWith('/wallet')) return { category: 'VÍ ZENX', title: 'Số dư ví', icon: WalletCards };
-  if (pathname.startsWith('/account/support')) return { category: 'HỖ TRỢ', title: 'Yêu cầu của tôi', icon: MessageCircle };
-  if (pathname.startsWith('/support')) return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ', icon: CircleHelp };
-  if (pathname.includes('change-password')) return { category: 'TÀI KHOẢN', title: 'Đổi mật khẩu', icon: KeyRound };
-  if (pathname.includes('social')) return { category: 'TÀI KHOẢN', title: 'Liên kết tài khoản', icon: Link2 };
-  if (pathname.includes('security')) return { category: 'TÀI KHOẢN', title: 'Bảo mật', icon: ShieldCheck };
-  if (pathname.includes('profile')) return { category: 'TÀI KHOẢN', title: 'Thông tin cá nhân', icon: UserRound };
+  if (pathname === '/account')
+    return { category: 'TỔNG QUAN', title: 'Tổng quan tài khoản', icon: Home };
+  if (pathname.startsWith('/payment'))
+    return { category: 'VÍ ZENX', title: 'Nạp Coin', icon: Coins };
+  if (pathname.startsWith('/wallet/transactions'))
+    return { category: 'VÍ ZENX', title: 'Lịch sử giao dịch', icon: Clock3 };
+  if (pathname.startsWith('/wallet'))
+    return { category: 'VÍ ZENX', title: 'Số dư ví', icon: WalletCards };
+  if (pathname.startsWith('/account/support'))
+    return { category: 'HỖ TRỢ', title: 'Yêu cầu của tôi', icon: MessageCircle };
+  if (pathname.startsWith('/support'))
+    return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ', icon: CircleHelp };
+  if (pathname.includes('change-password'))
+    return { category: 'TÀI KHOẢN', title: 'Đổi mật khẩu', icon: KeyRound };
+  if (pathname.includes('social'))
+    return { category: 'TÀI KHOẢN', title: 'Liên kết tài khoản', icon: Link2 };
+  if (pathname.includes('security'))
+    return { category: 'TÀI KHOẢN', title: 'Bảo mật', icon: ShieldCheck };
+  if (pathname.includes('profile'))
+    return { category: 'TÀI KHOẢN', title: 'Thông tin cá nhân', icon: UserRound };
   return { category: 'TÀI KHOẢN', title: 'Tài khoản ZENX', icon: Home };
 }

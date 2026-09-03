@@ -29,7 +29,11 @@ export class AuthService {
 
   async register(dto: RegisterDto): Promise<AuthTokens> {
     if (!dto.acceptTerms || !dto.acceptPrivacy) {
-      throw new DomainError('INVALID_CREDENTIALS', 'Terms and privacy acceptance are required', 400);
+      throw new DomainError(
+        'INVALID_CREDENTIALS',
+        'Terms and privacy acceptance are required',
+        400,
+      );
     }
     const usernameNormalized = normalizeUsername(dto.username);
     const emailNormalized = normalizeEmail(dto.email);
@@ -38,20 +42,34 @@ export class AuthService {
       where: { OR: [{ usernameNormalized }, { emailNormalized }, { phoneNormalized }] },
       select: { usernameNormalized: true, emailNormalized: true, phoneNormalized: true },
     });
-    if (existing?.usernameNormalized === usernameNormalized) throw new DomainError(ErrorCode.USERNAME_ALREADY_EXISTS, 'Username already exists', 409);
-    if (existing?.emailNormalized === emailNormalized) throw new DomainError(ErrorCode.EMAIL_ALREADY_EXISTS, 'Email already exists', 409);
-    if (existing?.phoneNormalized === phoneNormalized) throw new DomainError(ErrorCode.PHONE_ALREADY_EXISTS, 'Phone already exists', 409);
+    if (existing?.usernameNormalized === usernameNormalized)
+      throw new DomainError(ErrorCode.USERNAME_ALREADY_EXISTS, 'Username already exists', 409);
+    if (existing?.emailNormalized === emailNormalized)
+      throw new DomainError(ErrorCode.EMAIL_ALREADY_EXISTS, 'Email already exists', 409);
+    if (existing?.phoneNormalized === phoneNormalized)
+      throw new DomainError(ErrorCode.PHONE_ALREADY_EXISTS, 'Phone already exists', 409);
     await this.otp.consumeVerificationToken(dto.verificationToken, 'VERIFY_PHONE', dto.phone);
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.prisma.user.create({
       data: {
-        username: dto.username.trim(), usernameNormalized, email: dto.email.trim(), emailNormalized,
-        phone: dto.phone.trim(), phoneNormalized, passwordHash, status: AccountStatus.ACTIVE,
+        username: dto.username.trim(),
+        usernameNormalized,
+        email: dto.email.trim(),
+        emailNormalized,
+        phone: dto.phone.trim(),
+        phoneNormalized,
+        passwordHash,
+        status: AccountStatus.ACTIVE,
         phoneVerifiedAt: new Date(),
-        profile: { create: {
-          fullName: dto.username.trim(), gender: 'UNSPECIFIED', termsVersion: this.config.getOrThrow('termsVersion'),
-          privacyVersion: this.config.getOrThrow('privacyVersion'), acceptedAt: new Date(),
-        } },
+        profile: {
+          create: {
+            fullName: dto.username.trim(),
+            gender: 'UNSPECIFIED',
+            termsVersion: this.config.getOrThrow('termsVersion'),
+            privacyVersion: this.config.getOrThrow('privacyVersion'),
+            acceptedAt: new Date(),
+          },
+        },
         wallet: { create: { currency: 'ZENX', balance: 0n } },
       },
       include: { profile: true },
@@ -63,63 +81,122 @@ export class AuthService {
     const identity = dto.username.trim();
     const usernameNormalized = normalizeUsername(identity);
     const emailNormalized = normalizeEmail(identity);
-    const user = await this.prisma.user.findFirst({ where: { OR: [{ usernameNormalized }, { emailNormalized }] }, include: { profile: true } });
+    const user = await this.prisma.user.findFirst({
+      where: { OR: [{ usernameNormalized }, { emailNormalized }] },
+      include: { profile: true },
+    });
     if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) {
-      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Invalid username/email or password', 401);
+      throw new DomainError(
+        ErrorCode.INVALID_CREDENTIALS,
+        'Invalid username/email or password',
+        401,
+      );
     }
-    if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
-    if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.LOCKED)
+      throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
+    if (user.status === AccountStatus.SUSPENDED)
+      throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
     const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo);
-    return { ...await this.issueTokens(user.id, user.username, user), redirectTo };
+    return { ...(await this.issueTokens(user.id, user.username, user)), redirectTo };
   }
 
   async loginWithSocial(userId: string): Promise<AuthTokens> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
-    if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
-    if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.LOCKED)
+      throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
+    if (user.status === AccountStatus.SUSPENDED)
+      throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
     return this.issueTokens(user.id, user.username, user);
   }
 
   async verifyAccessToken(token?: string): Promise<{ sub: string; username: string }> {
-    if (!token) throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
-    let payload: { sub: string; username: string; type?: string };
+    if (!token)
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
+    let payload: { sub: string; username: string; type?: string; av?: number };
     try {
-      payload = await this.jwt.verifyAsync<{ sub: string; username: string; type?: string }>(token);
+      payload = await this.jwt.verifyAsync<{
+        sub: string;
+        username: string;
+        type?: string;
+        av?: number;
+      }>(token);
     } catch {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
     }
-    if (payload.type !== 'access') throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { status: true } });
+    if (payload.type !== 'access')
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { status: true, authVersion: true },
+    });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
-    if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
-    if (user.status === AccountStatus.SUSPENDED) throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.LOCKED)
+      throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
+    if (user.status === AccountStatus.SUSPENDED)
+      throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if ((payload.av ?? 0) !== user.authVersion)
+      throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
     return payload;
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
-    let payload: { sub: string; username: string; sid: string };
+    let payload: { sub: string; username: string; sid: string; av?: number };
     try {
-      payload = await this.jwt.verifyAsync(refreshToken, { secret: this.config.getOrThrow('jwtRefreshSecret') });
+      payload = await this.jwt.verifyAsync(refreshToken, {
+        secret: this.config.getOrThrow('jwtRefreshSecret'),
+      });
     } catch {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
-    const session = await this.prisma.refreshSession.findUnique({ where: { id: payload.sid }, include: { user: { include: { profile: true } } } });
-    if (!session || session.expiresAt <= new Date() || !(await argon2.verify(session.tokenHash, refreshToken))) {
+    const session = await this.prisma.refreshSession.findUnique({
+      where: { id: payload.sid },
+      include: { user: { include: { profile: true } } },
+    });
+    if (
+      !session ||
+      session.expiresAt <= new Date() ||
+      !(await argon2.verify(session.tokenHash, refreshToken)) ||
+      (payload.av ?? 0) !== session.user.authVersion
+    ) {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
     if (session.revokedAt) {
-      if (session.replacedById && Date.now() - session.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS) {
-        throw new DomainError(ErrorCode.REFRESH_IN_PROGRESS, 'Refresh session is being rotated; retry with the current cookie', 409);
+      if (
+        session.replacedById &&
+        Date.now() - session.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS
+      ) {
+        throw new DomainError(
+          ErrorCode.REFRESH_IN_PROGRESS,
+          'Refresh session is being rotated; retry with the current cookie',
+          409,
+        );
       }
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
     const replacementId = randomUUID();
-    const claimed = await this.prisma.refreshSession.updateMany({ where: { id: session.id, revokedAt: null }, data: { revokedAt: new Date(), replacedById: replacementId } });
+    const claimed = await this.prisma.refreshSession.updateMany({
+      where: { id: session.id, revokedAt: null },
+      data: { revokedAt: new Date(), replacedById: replacementId },
+    });
     if (claimed.count !== 1) {
-      const current = await this.prisma.refreshSession.findUnique({ where: { id: session.id }, select: { revokedAt: true, replacedById: true } });
-      if (current?.revokedAt && current.replacedById && Date.now() - current.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS) {
-        throw new DomainError(ErrorCode.REFRESH_IN_PROGRESS, 'Refresh session is being rotated; retry with the current cookie', 409);
+      const current = await this.prisma.refreshSession.findUnique({
+        where: { id: session.id },
+        select: { revokedAt: true, replacedById: true },
+      });
+      if (
+        current?.revokedAt &&
+        current.replacedById &&
+        Date.now() - current.revokedAt.getTime() <= REFRESH_RECOVERY_WINDOW_MS
+      ) {
+        throw new DomainError(
+          ErrorCode.REFRESH_IN_PROGRESS,
+          'Refresh session is being rotated; retry with the current cookie',
+          409,
+        );
       }
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }
@@ -129,8 +206,14 @@ export class AuthService {
   async logout(refreshToken?: string) {
     if (!refreshToken) return;
     try {
-      const payload = await this.jwt.verifyAsync<{ sid: string }>(refreshToken, { secret: this.config.getOrThrow('jwtRefreshSecret'), ignoreExpiration: true });
-      await this.prisma.refreshSession.updateMany({ where: { id: payload.sid, revokedAt: null }, data: { revokedAt: new Date() } });
+      const payload = await this.jwt.verifyAsync<{ sid: string }>(refreshToken, {
+        secret: this.config.getOrThrow('jwtRefreshSecret'),
+        ignoreExpiration: true,
+      });
+      await this.prisma.refreshSession.updateMany({
+        where: { id: payload.sid, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     } catch {
       // Logout is intentionally idempotent.
     }
@@ -139,25 +222,71 @@ export class AuthService {
   async forgotPassword(email: string) {
     const normalized = normalizeEmail(email);
     const user = await this.prisma.user.findUnique({ where: { emailNormalized: normalized } });
-    if (user) await this.otp.send({ channel: 'EMAIL', purpose: 'RESET_PASSWORD', destination: user.email, userId: user.id });
+    if (user)
+      await this.otp.send({
+        channel: 'EMAIL',
+        purpose: 'RESET_PASSWORD',
+        destination: user.email,
+        userId: user.id,
+      });
     return { accepted: true };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.prisma.user.findUnique({ where: { emailNormalized: normalizeEmail(dto.email) } });
+    const user = await this.prisma.user.findUnique({
+      where: { emailNormalized: normalizeEmail(dto.email) },
+    });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     await this.otp.consumeVerificationToken(dto.verificationToken, 'RESET_PASSWORD', dto.email);
-    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash: await argon2.hash(dto.newPassword) } });
-    await this.prisma.refreshSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash: await argon2.hash(dto.newPassword),
+        mustChangePassword: false,
+        authVersion: { increment: 1 },
+      },
+    });
+    await this.prisma.refreshSession.updateMany({
+      where: { userId: user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     return { reset: true };
   }
 
-  private async issueTokens(userId: string, username: string, user: unknown, sessionId = randomUUID()): Promise<AuthTokens> {
+  private async issueTokens(
+    userId: string,
+    username: string,
+    user: unknown,
+    sessionId = randomUUID(),
+  ): Promise<AuthTokens> {
     const sid = sessionId;
-    const accessToken = await this.jwt.signAsync({ sub: userId, username, type: 'access' }, { expiresIn: ACCESS_TTL_SECONDS });
-    const refreshToken = await this.jwt.signAsync({ sub: userId, username, sid, type: 'refresh' }, { secret: this.config.getOrThrow('jwtRefreshSecret'), expiresIn: REFRESH_TTL_SECONDS });
-    await this.prisma.refreshSession.create({ data: { id: sid, userId, tokenHash: await argon2.hash(refreshToken), expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000) } });
-    const source = user as { id: string; username: string; email?: string; phone?: string; status?: string; profile?: unknown };
+    const source = user as {
+      id: string;
+      username: string;
+      email?: string;
+      phone?: string;
+      status?: string;
+      profile?: unknown;
+      authVersion?: number;
+      mustChangePassword?: boolean;
+    };
+    const authVersion = source.authVersion ?? 0;
+    const accessToken = await this.jwt.signAsync(
+      { sub: userId, username, type: 'access', av: authVersion },
+      { expiresIn: ACCESS_TTL_SECONDS },
+    );
+    const refreshToken = await this.jwt.signAsync(
+      { sub: userId, username, sid, type: 'refresh', av: authVersion },
+      { secret: this.config.getOrThrow('jwtRefreshSecret'), expiresIn: REFRESH_TTL_SECONDS },
+    );
+    await this.prisma.refreshSession.create({
+      data: {
+        id: sid,
+        userId,
+        tokenHash: await argon2.hash(refreshToken),
+        expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
+      },
+    });
     return {
       accessToken,
       refreshToken,
@@ -167,6 +296,9 @@ export class AuthService {
         ...(source.email !== undefined ? { email: source.email } : {}),
         ...(source.phone !== undefined ? { phone: source.phone } : {}),
         ...(source.status !== undefined ? { status: source.status } : {}),
+        ...(source.mustChangePassword !== undefined
+          ? { mustChangePassword: source.mustChangePassword }
+          : {}),
         ...(source.profile !== undefined ? { profile: source.profile } : {}),
       },
     };

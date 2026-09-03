@@ -8,19 +8,21 @@ datasource db {
 }
 
 model User {
-  id                 String             @id @default(uuid()) @db.UniqueIdentifier
-  username           String             @db.NVarChar(64)
-  usernameNormalized String             @unique @map("username_normalized") @db.NVarChar(64)
-  email              String             @db.NVarChar(320)
-  emailNormalized    String             @unique @map("email_normalized") @db.NVarChar(320)
-  phone              String?            @db.NVarChar(32)
-  phoneNormalized    String?            @unique @map("phone_normalized") @db.NVarChar(32)
-  passwordHash       String?            @map("password_hash") @db.NVarChar(255)
-  status             String             @default("PENDING") @db.VarChar(16)
-  phoneVerifiedAt   DateTime?          @map("phone_verified_at")
-  emailVerifiedAt   DateTime?          @map("email_verified_at")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
+  id                 String              @id @default(uuid()) @db.UniqueIdentifier
+  username           String              @db.NVarChar(64)
+  usernameNormalized String              @unique @map("username_normalized") @db.NVarChar(64)
+  email              String              @db.NVarChar(320)
+  emailNormalized    String              @unique @map("email_normalized") @db.NVarChar(320)
+  phone              String?             @db.NVarChar(32)
+  phoneNormalized    String?             @unique @map("phone_normalized") @db.NVarChar(32)
+  passwordHash       String?             @map("password_hash") @db.NVarChar(255)
+  status             String              @default("PENDING") @db.VarChar(16)
+  authVersion        Int                 @default(0) @map("auth_version")
+  mustChangePassword Boolean             @default(false) @map("must_change_password")
+  phoneVerifiedAt    DateTime?           @map("phone_verified_at")
+  emailVerifiedAt    DateTime?           @map("email_verified_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
   profile            UserProfile?
   socialIdentities   SocialIdentity[]
   wallet             Wallet?
@@ -30,47 +32,81 @@ model User {
   otpRequests        OtpRequest[]
   supportTickets     SupportTicket[]
   sensitiveProfile   SensitiveProfile?
+  roles              UserRole[]
+  adminAuditLogs     AdminAuditLog[]     @relation("AdminAuditActor")
 
   @@index([status])
   @@map("users")
 }
 
+model UserRole {
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
+  userId    String   @map("user_id") @db.UniqueIdentifier
+  role      String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role, userId])
+  @@map("user_roles")
+}
+
+model AdminAuditLog {
+  id          String   @id @default(uuid()) @db.UniqueIdentifier
+  actorUserId String   @map("actor_user_id") @db.UniqueIdentifier
+  action      String   @db.VarChar(64)
+  targetType  String   @map("target_type") @db.VarChar(32)
+  targetId    String?  @map("target_id") @db.UniqueIdentifier
+  reason      String   @db.NVarChar(500)
+  metadata    String   @db.NVarChar(Max)
+  ipAddress   String?  @map("ip_address") @db.VarChar(64)
+  userAgent   String?  @map("user_agent") @db.NVarChar(512)
+  createdAt   DateTime @default(now()) @map("created_at")
+  actor       User     @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([action, createdAt])
+  @@map("admin_audit_logs")
+}
+
 model Game {
-  id                 String           @id @default(uuid()) @db.UniqueIdentifier
-  code               String           @unique @db.VarChar(32)
-  name               String           @db.NVarChar(160)
-  slug               String           @unique @db.VarChar(160)
-  subdomain          String           @unique @db.VarChar(63)
-  recordType         String           @map("record_type") @db.VarChar(16)
-  tagline            String           @db.NVarChar(500)
-  shortDescription   String           @map("short_description") @db.NVarChar(1000)
-  longDescription    String?          @map("long_description") @db.NVarChar(Max)
-  lifecycleStatus    String           @map("lifecycle_status") @db.VarChar(24)
-  operationalStatus  String           @default("AVAILABLE") @map("operational_status") @db.VarChar(24)
-  releaseYear        Int?             @map("release_year")
-  themePreset        String           @map("theme_preset") @db.VarChar(40)
-  themeConfig        String           @map("theme_config") @db.NVarChar(Max)
-  featureConfig      String           @map("feature_config") @db.NVarChar(Max)
-  logoUrl            String?          @map("logo_url") @db.NVarChar(2048)
-  iconUrl            String?          @map("icon_url") @db.NVarChar(2048)
-  coverUrl           String?          @map("cover_url") @db.NVarChar(2048)
-  heroDesktopUrl     String?          @map("hero_desktop_url") @db.NVarChar(2048)
-  heroMobileUrl      String?          @map("hero_mobile_url") @db.NVarChar(2048)
-  primaryCtaLabel    String?          @map("primary_cta_label") @db.NVarChar(80)
-  primaryCtaPath     String?          @map("primary_cta_path") @db.NVarChar(2048)
-  secondaryCtaLabel  String?          @map("secondary_cta_label") @db.NVarChar(80)
-  secondaryCtaPath   String?          @map("secondary_cta_path") @db.NVarChar(2048)
-  featured           Boolean          @default(false)
-  primaryGame        Boolean          @default(false) @map("primary_game")
-  isPublic           Boolean          @default(false) @map("is_public")
-  sortOrder          Int              @default(0) @map("sort_order")
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
-  genres             GameGenre[]
-  platforms          GamePlatform[]
-  articles           GameArticle[]
-  milestones         GameMilestone[]
-  events             GameEvent[]
+  id                String          @id @default(uuid()) @db.UniqueIdentifier
+  code              String          @unique @db.VarChar(32)
+  name              String          @db.NVarChar(160)
+  slug              String          @unique @db.VarChar(160)
+  subdomain         String          @unique @db.VarChar(63)
+  recordType        String          @map("record_type") @db.VarChar(16)
+  tagline           String          @db.NVarChar(500)
+  shortDescription  String          @map("short_description") @db.NVarChar(1000)
+  longDescription   String?         @map("long_description") @db.NVarChar(Max)
+  lifecycleStatus   String          @map("lifecycle_status") @db.VarChar(24)
+  operationalStatus String          @default("AVAILABLE") @map("operational_status") @db.VarChar(24)
+  releaseYear       Int?            @map("release_year")
+  themePreset       String          @map("theme_preset") @db.VarChar(40)
+  themeConfig       String          @map("theme_config") @db.NVarChar(Max)
+  featureConfig     String          @map("feature_config") @db.NVarChar(Max)
+  logoUrl           String?         @map("logo_url") @db.NVarChar(2048)
+  iconUrl           String?         @map("icon_url") @db.NVarChar(2048)
+  coverUrl          String?         @map("cover_url") @db.NVarChar(2048)
+  heroDesktopUrl    String?         @map("hero_desktop_url") @db.NVarChar(2048)
+  heroMobileUrl     String?         @map("hero_mobile_url") @db.NVarChar(2048)
+  primaryCtaLabel   String?         @map("primary_cta_label") @db.NVarChar(80)
+  primaryCtaPath    String?         @map("primary_cta_path") @db.NVarChar(2048)
+  secondaryCtaLabel String?         @map("secondary_cta_label") @db.NVarChar(80)
+  secondaryCtaPath  String?         @map("secondary_cta_path") @db.NVarChar(2048)
+  featured          Boolean         @default(false)
+  primaryGame       Boolean         @default(false) @map("primary_game")
+  isPublic          Boolean         @default(false) @map("is_public")
+  sortOrder         Int             @default(0) @map("sort_order")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  genres            GameGenre[]
+  platforms         GamePlatform[]
+  articles          GameArticle[]
+  milestones        GameMilestone[]
+  events            GameEvent[]
 
   @@index([isPublic, sortOrder])
   @@index([subdomain, isPublic])
@@ -153,18 +189,18 @@ model GameMilestone {
 }
 
 model PortalAnnouncement {
-  id         String    @id @default(uuid()) @db.UniqueIdentifier
-  code       String    @unique @db.VarChar(64)
-  title      String    @db.NVarChar(160)
-  message    String    @db.NVarChar(500)
-  ctaLabel   String?   @map("cta_label") @db.NVarChar(80)
-  ctaPath    String?   @map("cta_path") @db.NVarChar(2048)
-  status     String    @default("PUBLISHED") @db.VarChar(16)
-  startsAt   DateTime  @map("starts_at")
-  endsAt     DateTime? @map("ends_at")
-  sortOrder  Int       @default(0) @map("sort_order")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @db.UniqueIdentifier
+  code      String    @unique @db.VarChar(64)
+  title     String    @db.NVarChar(160)
+  message   String    @db.NVarChar(500)
+  ctaLabel  String?   @map("cta_label") @db.NVarChar(80)
+  ctaPath   String?   @map("cta_path") @db.NVarChar(2048)
+  status    String    @default("PUBLISHED") @db.VarChar(16)
+  startsAt  DateTime  @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([status, startsAt, endsAt])
   @@map("portal_announcements")
@@ -194,42 +230,42 @@ model GameEvent {
 }
 
 model UserProfile {
-  id             String    @id @default(uuid()) @db.UniqueIdentifier
-  userId         String    @unique @map("user_id") @db.UniqueIdentifier
-  fullName       String    @map("full_name") @db.NVarChar(160)
-  avatarUrl      String?   @map("avatar_url") @db.NVarChar(2048)
-  dateOfBirth    DateTime? @map("date_of_birth") @db.Date
-  gender         String    @default("UNSPECIFIED") @db.VarChar(16)
-  city           String?   @db.NVarChar(120)
-  address        String?   @db.NVarChar(255)
+  id                 String    @id @default(uuid()) @db.UniqueIdentifier
+  userId             String    @unique @map("user_id") @db.UniqueIdentifier
+  fullName           String    @map("full_name") @db.NVarChar(160)
+  avatarUrl          String?   @map("avatar_url") @db.NVarChar(2048)
+  dateOfBirth        DateTime? @map("date_of_birth") @db.Date
+  gender             String    @default("UNSPECIFIED") @db.VarChar(16)
+  city               String?   @db.NVarChar(120)
+  address            String?   @db.NVarChar(255)
   profileCompletedAt DateTime? @map("profile_completed_at")
-  termsVersion   String    @map("terms_version") @db.NVarChar(32)
-  privacyVersion String    @map("privacy_version") @db.NVarChar(32)
-  acceptedAt     DateTime  @map("accepted_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  termsVersion       String    @map("terms_version") @db.NVarChar(32)
+  privacyVersion     String    @map("privacy_version") @db.NVarChar(32)
+  acceptedAt         DateTime  @map("accepted_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
 }
 
 model SensitiveProfile {
-  id                    String    @id @default(uuid()) @db.UniqueIdentifier
-  userId                String    @unique @map("user_id") @db.UniqueIdentifier
-  citizenIdCiphertext   String?   @map("citizen_id_ciphertext") @db.NVarChar(2048)
-  citizenIdIv           String?   @map("citizen_id_iv") @db.VarChar(32)
-  citizenIdAuthTag      String?   @map("citizen_id_auth_tag") @db.VarChar(32)
-  citizenIdLookupHash   String?   @map("citizen_id_lookup_hash") @db.Char(64)
-  citizenIdLast4        String?   @map("citizen_id_last4") @db.Char(4)
-  secretCodeHash        String?   @map("secret_code_hash") @db.NVarChar(255)
-  securityQuestionCode  String?   @map("security_question_code") @db.VarChar(40)
-  securityAnswerHash    String?   @map("security_answer_hash") @db.NVarChar(255)
-  securityVersion       Int       @default(0) @map("security_version")
-  failedChallengeCount  Int       @default(0) @map("failed_challenge_count")
-  challengeLockedUntil  DateTime? @map("challenge_locked_until")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(uuid()) @db.UniqueIdentifier
+  userId               String    @unique @map("user_id") @db.UniqueIdentifier
+  citizenIdCiphertext  String?   @map("citizen_id_ciphertext") @db.NVarChar(2048)
+  citizenIdIv          String?   @map("citizen_id_iv") @db.VarChar(32)
+  citizenIdAuthTag     String?   @map("citizen_id_auth_tag") @db.VarChar(32)
+  citizenIdLookupHash  String?   @map("citizen_id_lookup_hash") @db.Char(64)
+  citizenIdLast4       String?   @map("citizen_id_last4") @db.Char(4)
+  secretCodeHash       String?   @map("secret_code_hash") @db.NVarChar(255)
+  securityQuestionCode String?   @map("security_question_code") @db.VarChar(40)
+  securityAnswerHash   String?   @map("security_answer_hash") @db.NVarChar(255)
+  securityVersion      Int       @default(0) @map("security_version")
+  failedChallengeCount Int       @default(0) @map("failed_challenge_count")
+  challengeLockedUntil DateTime? @map("challenge_locked_until")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sensitive_profiles")
 }
@@ -248,14 +284,14 @@ model SecurityQuestion {
 }
 
 model SocialIdentity {
-  id              String         @id @default(uuid()) @db.UniqueIdentifier
-  userId          String         @map("user_id") @db.UniqueIdentifier
-  provider        String         @db.VarChar(16)
-  providerUserId  String         @map("provider_user_id") @db.NVarChar(255)
-  emailAtLinkTime String?        @map("email_at_link_time") @db.NVarChar(320)
-  linkedAt        DateTime       @default(now()) @map("linked_at")
-  lastLoginAt     DateTime?      @map("last_login_at")
-  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid()) @db.UniqueIdentifier
+  userId          String    @map("user_id") @db.UniqueIdentifier
+  provider        String    @db.VarChar(16)
+  providerUserId  String    @map("provider_user_id") @db.NVarChar(255)
+  emailAtLinkTime String?   @map("email_at_link_time") @db.NVarChar(320)
+  linkedAt        DateTime  @default(now()) @map("linked_at")
+  lastLoginAt     DateTime? @map("last_login_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerUserId])
   @@index([userId])
@@ -263,21 +299,21 @@ model SocialIdentity {
 }
 
 model OtpRequest {
-  id            String      @id @default(uuid()) @db.UniqueIdentifier
-  userId        String?     @map("user_id") @db.UniqueIdentifier
-  channel       String      @db.VarChar(16)
-  purpose       String      @db.VarChar(32)
-  destination   String      @db.NVarChar(320)
-  destinationNormalized String @map("destination_normalized") @db.NVarChar(320)
-  codeHash      String      @map("code_hash") @db.NVarChar(255)
-  status        String      @default("PENDING") @db.VarChar(16)
-  attemptCount  Int         @default(0) @map("attempt_count")
-  expiresAt     DateTime    @map("expires_at")
-  resendAfter   DateTime    @map("resend_after")
-  usedAt        DateTime?   @map("used_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  verifications OtpVerification[]
+  id                    String            @id @default(uuid()) @db.UniqueIdentifier
+  userId                String?           @map("user_id") @db.UniqueIdentifier
+  channel               String            @db.VarChar(16)
+  purpose               String            @db.VarChar(32)
+  destination           String            @db.NVarChar(320)
+  destinationNormalized String            @map("destination_normalized") @db.NVarChar(320)
+  codeHash              String            @map("code_hash") @db.NVarChar(255)
+  status                String            @default("PENDING") @db.VarChar(16)
+  attemptCount          Int               @default(0) @map("attempt_count")
+  expiresAt             DateTime          @map("expires_at")
+  resendAfter           DateTime          @map("resend_after")
+  usedAt                DateTime?         @map("used_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  user                  User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  verifications         OtpVerification[]
 
   @@index([destinationNormalized, purpose, createdAt])
   @@index([userId, purpose, createdAt])
@@ -285,14 +321,14 @@ model OtpRequest {
 }
 
 model OtpVerification {
-  id            String    @id @default(uuid()) @db.UniqueIdentifier
-  otpRequestId  String    @map("otp_request_id") @db.UniqueIdentifier
-  tokenHash     String    @unique @map("token_hash") @db.NVarChar(255)
-  purpose       String    @db.VarChar(32)
-  expiresAt     DateTime  @map("expires_at")
-  consumedAt    DateTime? @map("consumed_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  otpRequest    OtpRequest @relation(fields: [otpRequestId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid()) @db.UniqueIdentifier
+  otpRequestId String     @map("otp_request_id") @db.UniqueIdentifier
+  tokenHash    String     @unique @map("token_hash") @db.NVarChar(255)
+  purpose      String     @db.VarChar(32)
+  expiresAt    DateTime   @map("expires_at")
+  consumedAt   DateTime?  @map("consumed_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  otpRequest   OtpRequest @relation(fields: [otpRequestId], references: [id], onDelete: Cascade)
 
   @@index([purpose, expiresAt])
   @@map("otp_verifications")
@@ -326,25 +362,25 @@ model Wallet {
 }
 
 model WalletTransaction {
-  id              String                    @id @default(uuid()) @db.UniqueIdentifier
-  transactionNo   String                    @unique @map("transaction_no") @db.VarChar(40)
-  walletId        String                    @map("wallet_id") @db.UniqueIdentifier
-  userId          String                    @map("user_id") @db.UniqueIdentifier
-  paymentId       String?                   @map("payment_id") @db.UniqueIdentifier
-  type            String                    @db.VarChar(16)
-  amount          BigInt
-  balanceBefore   BigInt                    @map("balance_before")
-  balanceAfter    BigInt                    @map("balance_after")
-  status          String                    @default("SUCCESS") @db.VarChar(16)
-  referenceType   String                    @map("reference_type") @db.VarChar(64)
-  referenceId     String                    @map("reference_id") @db.VarChar(255)
-  idempotencyKey  String?                   @map("idempotency_key") @db.VarChar(255)
-  description     String?                   @db.NVarChar(500)
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  completedAt     DateTime?                 @map("completed_at")
-  wallet          Wallet                    @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user            User                      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  payment         Payment?                  @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             String    @id @default(uuid()) @db.UniqueIdentifier
+  transactionNo  String    @unique @map("transaction_no") @db.VarChar(40)
+  walletId       String    @map("wallet_id") @db.UniqueIdentifier
+  userId         String    @map("user_id") @db.UniqueIdentifier
+  paymentId      String?   @map("payment_id") @db.UniqueIdentifier
+  type           String    @db.VarChar(16)
+  amount         BigInt
+  balanceBefore  BigInt    @map("balance_before")
+  balanceAfter   BigInt    @map("balance_after")
+  status         String    @default("SUCCESS") @db.VarChar(16)
+  referenceType  String    @map("reference_type") @db.VarChar(64)
+  referenceId    String    @map("reference_id") @db.VarChar(255)
+  idempotencyKey String?   @map("idempotency_key") @db.VarChar(255)
+  description    String?   @db.NVarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  completedAt    DateTime? @map("completed_at")
+  wallet         Wallet    @relation(fields: [walletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user           User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment        Payment?  @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([walletId, createdAt])
   @@index([userId, createdAt])
@@ -353,15 +389,15 @@ model WalletTransaction {
 }
 
 model CoinPackage {
-  id         String             @id @default(uuid()) @db.UniqueIdentifier
-  code       String             @unique @db.VarChar(32)
-  name       String             @db.NVarChar(120)
-  priceVnd   BigInt             @map("price_vnd")
-  coinAmount BigInt             @map("coin_amount")
-  status     String             @default("ACTIVE") @db.VarChar(16)
-  sortOrder  Int                @default(0) @map("sort_order")
-  createdAt  DateTime           @default(now()) @map("created_at")
-  updatedAt  DateTime           @updatedAt @map("updated_at")
+  id         String    @id @default(uuid()) @db.UniqueIdentifier
+  code       String    @unique @db.VarChar(32)
+  name       String    @db.NVarChar(120)
+  priceVnd   BigInt    @map("price_vnd")
+  coinAmount BigInt    @map("coin_amount")
+  status     String    @default("ACTIVE") @db.VarChar(16)
+  sortOrder  Int       @default(0) @map("sort_order")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
   payments   Payment[]
 
   @@index([status, sortOrder])
@@ -369,24 +405,24 @@ model CoinPackage {
 }
 
 model Payment {
-  id                    String             @id @default(uuid()) @db.UniqueIdentifier
-  paymentNo             String             @unique @map("payment_no") @db.VarChar(40)
-  userId                String             @map("user_id") @db.UniqueIdentifier
-  coinPackageId         String             @map("coin_package_id") @db.UniqueIdentifier
-  amountVnd             BigInt             @map("amount_vnd")
-  coinAmount            BigInt             @map("coin_amount")
-  provider              String             @db.VarChar(64)
-  paymentMethod         String             @map("payment_method") @db.VarChar(32)
-  providerTransactionId String?            @map("provider_transaction_id") @db.VarChar(255)
-  idempotencyKey        String?            @map("idempotency_key") @db.VarChar(255)
-  providerPayload       String?            @map("provider_payload") @db.NVarChar(4000)
-  status                String             @default("CREATED") @db.VarChar(16)
-  createdAt             DateTime           @default(now()) @map("created_at")
-  paidAt                DateTime?          @map("paid_at")
-  expiredAt             DateTime?          @map("expired_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  user                  User               @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  coinPackage           CoinPackage        @relation(fields: [coinPackageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                    String              @id @default(uuid()) @db.UniqueIdentifier
+  paymentNo             String              @unique @map("payment_no") @db.VarChar(40)
+  userId                String              @map("user_id") @db.UniqueIdentifier
+  coinPackageId         String              @map("coin_package_id") @db.UniqueIdentifier
+  amountVnd             BigInt              @map("amount_vnd")
+  coinAmount            BigInt              @map("coin_amount")
+  provider              String              @db.VarChar(64)
+  paymentMethod         String              @map("payment_method") @db.VarChar(32)
+  providerTransactionId String?             @map("provider_transaction_id") @db.VarChar(255)
+  idempotencyKey        String?             @map("idempotency_key") @db.VarChar(255)
+  providerPayload       String?             @map("provider_payload") @db.NVarChar(4000)
+  status                String              @default("CREATED") @db.VarChar(16)
+  createdAt             DateTime            @default(now()) @map("created_at")
+  paidAt                DateTime?           @map("paid_at")
+  expiredAt             DateTime?           @map("expired_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+  user                  User                @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  coinPackage           CoinPackage         @relation(fields: [coinPackageId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   walletTransactions    WalletTransaction[]
 
   @@index([userId, createdAt])
@@ -396,30 +432,30 @@ model Payment {
 }
 
 model SupportCategory {
-  id         String          @id @default(uuid()) @db.UniqueIdentifier
-  code       String          @unique @db.VarChar(32)
-  name       String          @db.NVarChar(80)
-  status     String          @default("ACTIVE") @db.VarChar(16)
-  sortOrder  Int             @default(0) @map("sort_order")
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @updatedAt @map("updated_at")
-  faqs       SupportFaq[]
-  tickets    SupportTicket[]
+  id        String          @id @default(uuid()) @db.UniqueIdentifier
+  code      String          @unique @db.VarChar(32)
+  name      String          @db.NVarChar(80)
+  status    String          @default("ACTIVE") @db.VarChar(16)
+  sortOrder Int             @default(0) @map("sort_order")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  faqs      SupportFaq[]
+  tickets   SupportTicket[]
 
   @@index([status, sortOrder])
   @@map("support_categories")
 }
 
 model SupportFaq {
-  id          String          @id @default(uuid()) @db.UniqueIdentifier
-  categoryId  String          @map("category_id") @db.UniqueIdentifier
-  question    String          @db.NVarChar(500)
-  answer      String          @db.NVarChar(4000)
-  status      String          @default("ACTIVE") @db.VarChar(16)
-  sortOrder   Int             @default(0) @map("sort_order")
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  category    SupportCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  id         String          @id @default(uuid()) @db.UniqueIdentifier
+  categoryId String          @map("category_id") @db.UniqueIdentifier
+  question   String          @db.NVarChar(500)
+  answer     String          @db.NVarChar(4000)
+  status     String          @default("ACTIVE") @db.VarChar(16)
+  sortOrder  Int             @default(0) @map("sort_order")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  category   SupportCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([categoryId, question])
   @@index([categoryId, status, sortOrder])

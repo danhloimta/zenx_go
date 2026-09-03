@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { GameModule } from './game/game.module';
 import { DomainPolicyModule } from './common/domain-policy.module';
 import { PortalModule } from './portal/portal.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -26,15 +27,22 @@ import { PortalModule } from './portal/portal.module';
     LoggerModule.forRoot({
       pinoHttp: {
         genReqId: (request) => request.headers['x-request-id']?.toString() ?? randomUUID(),
-        redact: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-sepay-signature"]', 'res.headers["set-cookie"]'],
+        redact: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'req.headers["x-sepay-signature"]',
+          'res.headers["set-cookie"]',
+        ],
       },
     }),
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => [{
-        ttl: config.get<number>('rateLimitTtlMs') ?? 60_000,
-        limit: config.get<number>('rateLimitMax') ?? 30,
-      }],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('rateLimitTtlMs') ?? 60_000,
+          limit: config.get<number>('rateLimitMax') ?? 30,
+        },
+      ],
     }),
     HealthModule,
     AuthModule,
@@ -46,8 +54,12 @@ import { PortalModule } from './portal/portal.module';
     SupportModule,
     GameModule,
     PortalModule,
+    AdminModule,
     DomainPolicyModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: OriginGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: OriginGuard },
+  ],
 })
 export class AppModule {}

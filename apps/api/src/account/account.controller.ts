@@ -29,6 +29,7 @@ import {
 } from './dto';
 import { SocialService } from '../social/social.service';
 import { SensitiveProfileService } from './sensitive-profile.service';
+import { AllowPasswordChangeRequired } from '../common/password-change-required.decorator';
 
 @Controller('account')
 @UseGuards(AuthGuard)
@@ -39,7 +40,9 @@ export class AccountController {
     private readonly sensitiveProfile: SensitiveProfileService,
   ) {}
 
-  @Get('me') me(@Req() request: AuthenticatedRequest) {
+  @Get('me')
+  @AllowPasswordChangeRequired()
+  me(@Req() request: AuthenticatedRequest) {
     return this.account.getMe(request.user.sub);
   }
   @Patch('me') update(@Req() request: AuthenticatedRequest, @Body() dto: UpdateAccountDto) {
@@ -59,10 +62,9 @@ export class AccountController {
   ) {
     return this.account.uploadAvatar(request.user.sub, file);
   }
-  @Post('change-password') changePassword(
-    @Req() request: AuthenticatedRequest,
-    @Body() dto: ChangePasswordDto,
-  ) {
+  @Post('change-password')
+  @AllowPasswordChangeRequired()
+  changePassword(@Req() request: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
     return this.account.changePassword(request.user.sub, dto);
   }
   @Post('change-email') changeEmail(

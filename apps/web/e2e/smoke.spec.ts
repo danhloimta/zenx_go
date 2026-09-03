@@ -17,14 +17,20 @@ test('landing page exposes the account and wallet entry points', async ({ page }
 test('game hostnames resolve the shared game shell and routes', async ({ page }) => {
   await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.lvh.me:3300' });
   await page.goto('http://lvh.me:3300/');
-  await expect(page.getByRole('heading', { name: 'Lục Địa Đam Mê', exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Lục Địa Đam Mê', exact: true }).first(),
+  ).toBeVisible();
   await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'hoalong.lvh.me:3300' });
   await page.goto('http://lvh.me:3300/');
-  await expect(page.getByRole('heading', { name: 'Vương Triều Hỏa Long', exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Vương Triều Hỏa Long', exact: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText('Đang hoạt động', { exact: true }).first()).toBeVisible();
   await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'orion.lvh.me:3300' });
   await page.goto('http://lvh.me:3300/');
-  await expect(page.getByRole('heading', { name: 'Chiến Tuyến Orion', exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Chiến Tuyến Orion', exact: true }).first(),
+  ).toBeVisible();
   await expect(page.getByText('Đang hoạt động', { exact: true }).first()).toBeVisible();
 });
 
@@ -42,7 +48,10 @@ test('game cards and article cards link to their public destinations', async ({ 
     ['orion', 'Chiến Tuyến Orion'],
   ]) {
     const avatar = page.locator(`img[title="${title}"]`).first();
-    await expect(avatar.locator('..')).toHaveAttribute('href', new RegExp(`^http://${subdomain}\\.lvh\\.me:3300/`));
+    await expect(avatar.locator('..')).toHaveAttribute(
+      'href',
+      new RegExp(`^http://${subdomain}\\.lvh\\.me:3300/`),
+    );
   }
   const articleCard = page.getByRole('link', { name: /Đọc bài viết/ }).first();
   await expect(articleCard).toHaveAttribute('href', /^http:\/\/orion\.lvh\.me:3300\/tin-tuc\//);
@@ -51,10 +60,19 @@ test('game cards and article cards link to their public destinations', async ({ 
 test('game article metadata uses the article canonical URL', async ({ page }) => {
   await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': 'lucdia.lvh.me:3300' });
   await page.goto('http://lvh.me:3300/tin-tuc/world-remake');
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'http://lucdia.lvh.me:3300/tin-tuc/world-remake');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    'http://lucdia.lvh.me:3300/tin-tuc/world-remake',
+  );
 });
 
 test('all live game routes resolve and download remains unavailable', async ({ page }) => {
+  const newsHeadings: Record<string, string> = {
+    lucdia: 'Tin Tức Lục Địa',
+    hoalong: 'Tin Tức Vương Triều',
+    thitranmay: 'Tin Tức Mới Nhất',
+    orion: 'Nhật Ký Tác Chiến',
+  };
   for (const subdomain of ['lucdia', 'hoalong', 'thitranmay', 'orion']) {
     await page.context().setExtraHTTPHeaders({ 'x-forwarded-host': `${subdomain}.lvh.me:3300` });
     for (const path of ['/gioi-thieu', '/roadmap']) {
@@ -65,7 +83,9 @@ test('all live game routes resolve and download remains unavailable', async ({ p
     expect(downloadResponse?.status(), `${subdomain}/tai-game`).toBe(404);
     const newsResponse = await page.goto('http://lvh.me:3300/tin-tuc');
     expect(newsResponse?.status(), `${subdomain}/tin-tuc`).toBe(200);
-    await expect(page.getByRole('heading', { name: 'Tin tức mới nhất', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: newsHeadings[subdomain], exact: true }),
+    ).toBeVisible();
   }
 });
 
@@ -77,7 +97,9 @@ test('unknown game host returns a real 404', async ({ page }) => {
 
 test('login route renders its form', async ({ page }) => {
   await page.goto('/auth/login');
-  await expect(page.getByRole('heading', { name: 'Đăng nhập tài khoản', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Đăng nhập tài khoản', exact: true }),
+  ).toBeVisible();
   await expect(page.getByLabel('Tên đăng nhập hoặc email')).toBeVisible();
 });
 

@@ -30,6 +30,17 @@
 - Access token và refresh token được gửi bằng HttpOnly cookie; refresh session lưu hash và bị revoke khi xoay/logout/password change.
 - Access JWT có `type: access`; sensitive profile JWT có type riêng và không được AuthGuard chấp nhận như session.
 - Account `LOCKED`/`SUSPENDED` bị từ chối dù access JWT còn hạn.
+- Access JWT mang `authVersion`; thay đổi định danh, status, reset password hoặc revoke session làm token cũ mất hiệu lực ngay.
+- User có `mustChangePassword=true` chỉ được gọi account-me, change-password và logout; mọi API protected khác trả `PASSWORD_CHANGE_REQUIRED`.
+
+## Admin account operations (Phase 1)
+
+- Admin dùng chung login/session với portal; `AdminGuard` kiểm tra role `SUPER_ADMIN` trực tiếp từ database.
+- `UserRole` là bảng mở rộng role; Phase 1 chưa có UI phân quyền, role đầu tiên được cấp bằng lệnh bootstrap idempotent.
+- Admin có thể xem/chỉnh hồ sơ, chuyển `ACTIVE`/`SUSPENDED`, thu hồi session và đặt mật khẩu tạm. `LOCKED` chỉ do cơ chế bảo mật và read-only trong admin.
+- Email/phone khi admin sửa có thể được đánh dấu verified hoặc chưa verified theo input; username/email/phone thay đổi sẽ revoke session.
+- CCCD admin reveal qua endpoint riêng, bắt buộc lý do và audit từng lần; không trả secret code, security answer hoặc dữ liệu mã hóa.
+- Admin profile mutations dùng `expectedUpdatedAt`; conflict trả `STALE_ADMIN_UPDATE` thay vì ghi đè.
 
 ### OTP
 

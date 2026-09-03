@@ -77,4 +77,4 @@ Chọn category
 - Unit: `apps/api/src/support/support.service.spec.ts`.
 - Integration: `apps/api/test/integration/support.integration.spec.ts`.
 - Browser: `apps/web/e2e/support.spec.ts`, `apps/web/e2e/smoke.spec.ts`.
-- Test gap: staff/admin ticket operation UI chưa có trong source hiện tại.
+- Test gap: staff/admin ticket operation UI chưa có trong source hiện tại; đây là phạm vi phase Support sau Admin account operations.

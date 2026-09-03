@@ -27,6 +27,14 @@ pnpm dev
 
 The web app runs at `http://lvh.me:3000`, the API at `http://127.0.0.1:4000`, and Swagger at `http://127.0.0.1:4000/docs`. With the default local domain configuration, game hosts are available at `http://lucdia.lvh.me:3000`, `http://hoalong.lvh.me:3000`, `http://thitranmay.lvh.me:3000`, and `http://orion.lvh.me:3000`; `/preview/games/[slug]` is available when wildcard DNS is not. Browser E2E runs the API on port `4300` against the isolated test database.
 
+The Phase 1 admin area is available at `/admin` after an existing user is granted `SUPER_ADMIN`. Bootstrap an administrator with the idempotent command below (it never creates or prints a password):
+
+```bash
+pnpm admin:role grant --email=existing-user@example.com
+```
+
+Admin account operations, audit logging and the intentionally deferred CMS/support/finance admin phases are tracked in `docs/specs/`.
+
 `lvh.me` resolves to loopback and is used so the shared `.lvh.me` session cookie works across the portal and game hosts. Keep `NEXT_PUBLIC_API_BASE_URL=/api/v1` and let the web dev server proxy that path to the API.
 
 Production domain routing uses `PUBLIC_BASE_DOMAIN`, `PUBLIC_WEB_ORIGIN`, `ALLOWED_WEB_ORIGINS`, `ALLOW_GAME_SUBDOMAINS`, and `COOKIE_DOMAIN`. Configure wildcard DNS/TLS and route `/api/v1` on every public hostname to the same API before enabling cross-subdomain login.

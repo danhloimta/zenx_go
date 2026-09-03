@@ -81,4 +81,4 @@ Public game host được cấu hình mặc định gồm `lucdia`, `hoalong`, `
 
 - Integration: `apps/api/test/integration/game.integration.spec.ts`, `portal.integration.spec.ts`.
 - Browser: `apps/web/e2e/portal-content.spec.ts`, `vertical-slice.spec.ts`, `auth-subdomain.spec.ts`.
-- Test gap: CMS/admin editing, social/community membership, real game server, downloads and in-game topup are not implemented.
+- Test gap: CMS/admin editing, social/community membership, real game server, downloads and in-game topup are not implemented. Phase 1 admin hiện chỉ bao phủ account operations.

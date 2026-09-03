@@ -20,6 +20,7 @@
     "db:wait": "docker compose up -d --wait sqlserver",
     "db:migrate": "pnpm db:wait && pnpm --filter api prisma:deploy",
     "db:seed": "pnpm db:wait && pnpm --filter api prisma:seed",
+    "admin:role": "pnpm --filter api admin:role",
     "db:generate": "pnpm --filter api prisma:generate",
     "format": "prettier --write ."
   },

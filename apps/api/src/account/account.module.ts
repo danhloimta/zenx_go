@@ -6,5 +6,10 @@ import { AccountController } from './account.controller';
 import { AccountService } from './account.service';
 import { SensitiveProfileCrypto, SensitiveProfileService } from './sensitive-profile.service';
 
-@Module({ imports: [AuthModule, OtpModule, SocialModule], controllers: [AccountController], providers: [AccountService, SensitiveProfileService, SensitiveProfileCrypto] })
+@Module({
+  imports: [AuthModule, OtpModule, SocialModule],
+  controllers: [AccountController],
+  providers: [AccountService, SensitiveProfileService, SensitiveProfileCrypto],
+  exports: [SensitiveProfileCrypto],
+})
 export class AccountModule {}

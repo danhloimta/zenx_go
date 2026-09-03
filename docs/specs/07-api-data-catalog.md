@@ -11,7 +11,8 @@
 - Base path: `/api/v1`.
 - JSON responses dùng `{ data, error }`; HTTP status vẫn phản ánh success/failure. SePay webhook là exception có response `{ success: true }`.
 - Browser mutation chịu `OriginGuard`; signed payment/webhook callback đánh dấu skip origin.
-- `AuthGuard` dùng HttpOnly `zenx_access` cookie, chỉ nhận JWT `type: access`, kiểm tra account status và user ownership.
+- `AuthGuard` dùng HttpOnly `zenx_access` cookie, chỉ nhận JWT `type: access`, kiểm tra account status, `authVersion` và user ownership.
+- `/admin/*` dùng `AuthGuard` + live database `AdminGuard`; Phase 1 chỉ cấp role `SUPER_ADMIN`.
 - Refresh cookie là `zenx_refresh`, path `/api/v1/auth`; access cookie path `/`.
 - DTO validation chạy global với `whitelist`, `transform`, `forbidUnknownValues`.
 - API public không trả password hash, OTP/code hash, secret answer/hash, ciphertext identity hoặc storage IDs không cần thiết.
@@ -106,6 +107,21 @@
 | `API-PORTAL-EVENTS`     | `GET /portal/events`                     | Public | `IMPLEMENTED` | Published events page with game/status filters.              | portal service; portal integration        |
 | `API-PORTAL-EVENT`      | `GET /portal/events/:slug`               | Public | `IMPLEMENTED` | Event detail + safe HTML/SEO metadata.                       | portal service; portal integration        |
 
+## Admin API (Phase 1)
+
+| ID                              | Method/path                                             | Auth                         | Status        | Input/output boundary                                                                                 | Source/test                                      |
+| ------------------------------- | ------------------------------------------------------- | ---------------------------- | ------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `API-ADMIN-ME`                  | `GET /admin/me`                                         | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Admin summary, role và profile.                                                                        | `apps/api/src/admin`; admin integration          |
+| `API-ADMIN-DASHBOARD`           | `GET /admin/dashboard`                                  | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | User totals/status counts, registrations 7 ngày, recent users/activity.                               | admin service; admin integration                 |
+| `API-ADMIN-USERS`               | `GET /admin/users`                                      | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Search/filter/page user summaries, không password/hash/sensitive payload.                              | admin service; admin integration                 |
+| `API-ADMIN-USER`                | `GET /admin/users/:userId`                              | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Account/profile/roles/social, wallet read-only, recent ledger và related audit.                         | admin service; admin integration                 |
+| `API-ADMIN-USER-PROFILE`        | `PATCH /admin/users/:userId/profile`                    | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Full basic/contact profile, verified flags, reason và `expectedUpdatedAt`.                             | admin service; admin integration                 |
+| `API-ADMIN-USER-STATUS`         | `PATCH /admin/users/:userId/status`                     | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Chuyển `ACTIVE`/`SUSPENDED`, revoke token/session, reason và optimistic concurrency.                    | admin service; admin integration                 |
+| `API-ADMIN-REVOKE-SESSIONS`     | `POST /admin/users/:userId/revoke-sessions`             | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Tăng `authVersion`, revoke refresh sessions, reason.                                                    | admin service; admin integration                 |
+| `API-ADMIN-RESET-PASSWORD`      | `POST /admin/users/:userId/reset-password`              | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Hash mật khẩu tạm, bắt đổi lần login tiếp theo, revoke sessions, reason.                               | admin service; admin integration                 |
+| `API-ADMIN-SENSITIVE-REVEAL`    | `POST /admin/users/:userId/sensitive-profile/reveal`   | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Reason bắt buộc; trả CCCD plaintext sau audit; không secret/ciphertext.                                | admin service; admin integration                 |
+| `API-ADMIN-AUDIT-LOGS`          | `GET /admin/audit-logs`                                | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Page/filter actor/action/target/date, metadata đã redact.                                               | admin service; admin integration                 |
+
 ## Platform API
 
 | ID                                                                                                                                     | Method/path   | Auth            | Status        | Purpose                                            |
@@ -126,7 +142,9 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 
 | Model/table                                                       | Dữ liệu chính                                                                | Public exposure                                         |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `User` / `users`                                                  | Identity login, email/phone, status, verification timestamps, password hash. | Public account fields đã lọc; không passwordHash.       |
+| `User` / `users`                                                  | Identity login, email/phone, status, verification timestamps, authVersion, forced-password flag, password hash. | Public account fields đã lọc; không passwordHash.       |
+| `UserRole` / `user_roles`                                         | User-to-role assignments; Phase 1 dùng `SUPER_ADMIN`.                     | Chỉ admin authorization; không public.                  |
+| `AdminAuditLog` / `admin_audit_logs`                               | Append-only admin action, actor/target, reason, safe metadata, request context. | Chỉ `SUPER_ADMIN` qua audit API.                        |
 | `UserProfile` / `user_profiles`                                   | Basic profile, avatar, DOB/gender/city/address, terms/privacy.               | `AccountMe.profile`; không sensitive identity.          |
 | `SensitiveProfile` / `sensitive_profiles`                         | AES-GCM CCCD payload/metadata, Argon2 code/answer hashes, version/lockout.   | Summary masked hoặc reveal sau sensitive token.         |
 | `SecurityQuestion` / `security_questions`                         | Code, Vietnamese label, sort order, active flag.                             | Active options qua account questions endpoint.          |
@@ -150,10 +168,11 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 - Sensitive profile: `INVALID_SENSITIVE_PROFILE`, `INVALID_SENSITIVE_CHALLENGE`, `SENSITIVE_CHALLENGE_LOCKED`, `SENSITIVE_PROFILE_OTP_UNAVAILABLE`, `SENSITIVE_ACCESS_TOKEN_INVALID`, `SENSITIVE_SECURITY_REQUIRED`.
 - Wallet/payment: `INSUFFICIENT_BALANCE`, `PAYMENT_NOT_FOUND`, `PAYMENT_FAILED`, `INVALID_PAYMENT_CALLBACK`, `PAYMENT_ALREADY_PROCESSED` và các filter/idempotency errors.
 - Content/support: `GAME_NOT_FOUND`, `GAME_ARTICLE_NOT_FOUND`, `PORTAL_EVENT_NOT_FOUND`, `SUPPORT_CATEGORY_NOT_FOUND`, `SUPPORT_TICKET_NOT_FOUND`.
+- Admin: `ADMIN_ACCESS_REQUIRED`, `ADMIN_SELF_ACTION_FORBIDDEN`, `LAST_SUPER_ADMIN_PROTECTED`, `PASSWORD_CHANGE_REQUIRED`, `STALE_ADMIN_UPDATE`, `ADMIN_CONTACT_VERIFICATION_REQUIRED`, `ADMIN_STATUS_TRANSITION_INVALID`.
 
 ## Test evidence and gaps
 
 - API unit suites nằm cạnh service trong `apps/api/src/**/*.spec.ts`: config, OTP, payment provider, social, support, sensitive profile và common guards/normalization/serialization/domain policy/web-domain.
 - Integration inventory: `apps/api/test/integration/*.integration.spec.ts`.
 - Browser flows: `apps/web/e2e/*.spec.ts`.
-- Test gap: OAuth provider thật, payment provider ngoài mock/SePay và admin/CMS API chưa có source implementation.
+- Test gap: OAuth provider thật và payment provider ngoài mock/SePay chưa có source implementation. CMS và staff/support admin operations vẫn deferred; account-admin API/UI đã có integration/browser coverage.

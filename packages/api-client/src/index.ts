@@ -1,4 +1,4 @@
-export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 export type QueryValue = string | number | boolean | null | undefined;
 
@@ -15,7 +15,7 @@ export interface ApiEnvelope<T> {
   error: ApiErrorPayload | null;
 }
 
-export interface ApiRequestOptions extends Omit<RequestInit, "body" | "method"> {
+export interface ApiRequestOptions extends Omit<RequestInit, 'body' | 'method'> {
   body?: unknown;
   method?: HttpMethod;
 }
@@ -33,7 +33,7 @@ export class ApiError extends Error {
 
   constructor(payload: ApiErrorPayload, status: number) {
     super(payload.message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
     this.status = status;
     this.code = payload.code;
     this.details = payload.details;
@@ -43,13 +43,13 @@ export class ApiError extends Error {
     const envelope = isRecord(payload) && isRecord(payload.error) ? payload.error : undefined;
     const fallback: ApiErrorPayload = {
       code: `HTTP_${response.status}`,
-      message: response.statusText || "Request failed",
+      message: response.statusText || 'Request failed',
     };
 
     return new ApiError(
       {
-        code: typeof envelope?.code === "string" ? envelope.code : fallback.code,
-        message: typeof envelope?.message === "string" ? envelope.message : fallback.message,
+        code: typeof envelope?.code === 'string' ? envelope.code : fallback.code,
+        message: typeof envelope?.message === 'string' ? envelope.message : fallback.message,
         details: envelope?.details,
       },
       response.status,
@@ -58,7 +58,7 @@ export class ApiError extends Error {
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 function encodeBody(body: unknown): BodyInit | undefined {
@@ -67,7 +67,7 @@ function encodeBody(body: unknown): BodyInit | undefined {
   }
 
   if (
-    typeof body === "string" ||
+    typeof body === 'string' ||
     body instanceof FormData ||
     body instanceof Blob ||
     body instanceof ArrayBuffer ||
@@ -80,9 +80,9 @@ function encodeBody(body: unknown): BodyInit | undefined {
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Query): string {
-  const normalizedBase = baseUrl.replace(/\/$/, "");
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${normalizedBase}${normalizedPath}`, "http://zenx-go.local");
+  const normalizedBase = baseUrl.replace(/\/$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(`${normalizedBase}${normalizedPath}`, 'http://zenx-go.local');
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
@@ -94,7 +94,7 @@ function buildUrl(baseUrl: string, path: string, query?: Query): string {
 
   // Relative URLs must stay relative in the browser. Absolute URLs keep their
   // origin when a public API base URL is configured.
-  if (baseUrl.startsWith("http://") || baseUrl.startsWith("https://")) {
+  if (baseUrl.startsWith('http://') || baseUrl.startsWith('https://')) {
     return url.toString();
   }
 
@@ -106,8 +106,8 @@ async function readPayload(response: Response): Promise<unknown> {
     return null;
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
     return response.json();
   }
 
@@ -122,26 +122,31 @@ export class ApiClient {
   private refreshPromise: Promise<unknown> | null = null;
 
   constructor(options: ApiClientOptions = {}) {
-    this.baseUrl = options.baseUrl ?? "/api/v1";
+    this.baseUrl = options.baseUrl ?? '/api/v1';
     this.defaultHeaders = options.headers ?? {};
     this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis);
   }
 
-  async request<T>(path: string, options: ApiRequestOptions = {}, query?: Query, allowRefresh = true): Promise<T> {
+  async request<T>(
+    path: string,
+    options: ApiRequestOptions = {},
+    query?: Query,
+    allowRefresh = true,
+  ): Promise<T> {
     const headers = new Headers(this.defaultHeaders);
     for (const [key, value] of new Headers(options.headers).entries()) {
       headers.set(key, value);
     }
 
     const body = encodeBody(options.body);
-    if (body !== undefined && !(body instanceof FormData) && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
+    if (body !== undefined && !(body instanceof FormData) && !headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
     }
 
     const response = await this.fetcher(buildUrl(this.baseUrl, path, query), {
       ...options,
-      method: options.method ?? "GET",
-      credentials: "include",
+      method: options.method ?? 'GET',
+      credentials: 'include',
       headers,
       body,
     });
@@ -161,7 +166,7 @@ export class ApiClient {
       throw error;
     }
 
-    if (isRecord(payload) && "data" in payload && "error" in payload) {
+    if (isRecord(payload) && 'data' in payload && 'error' in payload) {
       const envelope = payload as ApiEnvelope<T>;
       if (envelope.error) {
         throw new ApiError(envelope.error, response.status);
@@ -184,7 +189,8 @@ export class ApiClient {
               return await this.request('/auth/refresh', { method: 'POST' }, undefined, false);
             } catch (retryError) {
               lastError = retryError;
-              if (!(retryError instanceof ApiError) || ![401, 409].includes(retryError.status)) throw retryError;
+              if (!(retryError instanceof ApiError) || ![401, 409].includes(retryError.status))
+                throw retryError;
             }
           }
           throw lastError;
@@ -196,24 +202,24 @@ export class ApiClient {
     return this.refreshPromise;
   }
 
-  get<T>(path: string, query?: Query, options?: Omit<ApiRequestOptions, "method" | "body">) {
-    return this.request<T>(path, { ...options, method: "GET" }, query);
+  get<T>(path: string, query?: Query, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+    return this.request<T>(path, { ...options, method: 'GET' }, query);
   }
 
-  post<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) {
-    return this.request<T>(path, { ...options, method: "POST", body });
+  post<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+    return this.request<T>(path, { ...options, method: 'POST', body });
   }
 
-  patch<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) {
-    return this.request<T>(path, { ...options, method: "PATCH", body });
+  patch<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+    return this.request<T>(path, { ...options, method: 'PATCH', body });
   }
 
-  put<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, "method" | "body">) {
-    return this.request<T>(path, { ...options, method: "PUT", body });
+  put<T>(path: string, body?: unknown, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+    return this.request<T>(path, { ...options, method: 'PUT', body });
   }
 
-  delete<T>(path: string, options?: Omit<ApiRequestOptions, "method" | "body">) {
-    return this.request<T>(path, { ...options, method: "DELETE" });
+  delete<T>(path: string, options?: Omit<ApiRequestOptions, 'method' | 'body'>) {
+    return this.request<T>(path, { ...options, method: 'DELETE' });
   }
 }
 
@@ -221,39 +227,36 @@ function delay(milliseconds: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 }
 
-export type AuthProvider = "google" | "facebook";
-export type OtpChannel = "SMS" | "ZALO" | "EMAIL";
+export type AuthProvider = 'google' | 'facebook';
+export type OtpChannel = 'SMS' | 'ZALO' | 'EMAIL';
 export type OtpPurpose =
-  | "REGISTER"
-  | "VERIFY_PHONE"
-  | "RESET_PASSWORD"
-  | "CHANGE_PHONE"
-  | "CHANGE_EMAIL"
-  | "LINK_SOCIAL"
-  | "MANAGE_SENSITIVE_PROFILE";
-export type SensitiveChallengeMethod = "SECRET_CODE" | "SECURITY_ANSWER";
+  | 'REGISTER'
+  | 'VERIFY_PHONE'
+  | 'RESET_PASSWORD'
+  | 'CHANGE_PHONE'
+  | 'CHANGE_EMAIL'
+  | 'LINK_SOCIAL'
+  | 'MANAGE_SENSITIVE_PROFILE';
+export type SensitiveChallengeMethod = 'SECRET_CODE' | 'SECURITY_ANSWER';
 export type SecurityQuestionCode =
-  | "CHILDHOOD_NICKNAME"
-  | "FIRST_SCHOOL"
-  | "FIRST_PET"
-  | "FAVORITE_TEACHER"
-  | "MEMORABLE_PLACE";
-export type Gender = "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED";
-export type AccountStatus = "PENDING" | "ACTIVE" | "LOCKED" | "SUSPENDED";
-export type WalletTransactionType = "TOPUP" | "CREDIT" | "DEBIT" | "REFUND";
-export type WalletTransactionStatus = "PENDING" | "SUCCESS" | "FAILED" | "REVERSED";
+  'CHILDHOOD_NICKNAME' | 'FIRST_SCHOOL' | 'FIRST_PET' | 'FAVORITE_TEACHER' | 'MEMORABLE_PLACE';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'UNSPECIFIED';
+export type AccountStatus = 'PENDING' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED';
+export type WalletTransactionType = 'TOPUP' | 'CREDIT' | 'DEBIT' | 'REFUND';
+export type WalletTransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERSED';
 export type PaymentStatus =
-  | "CREATED"
-  | "PENDING"
-  | "SUCCESS"
-  | "FAILED"
-  | "EXPIRED"
-  | "CANCELLED"
-  | "REFUNDED";
-export type PaymentMethod = "MOMO" | "ZALOPAY" | "BANK_TRANSFER" | "CARD" | "VIETQR";
+  'CREATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED' | 'REFUNDED';
+export type PaymentMethod = 'MOMO' | 'ZALOPAY' | 'BANK_TRANSFER' | 'CARD' | 'VIETQR';
 /** @deprecated Accepted by older API deployments; new requests should use PaymentMethod. */
-export type LegacyPaymentMethod = "QR" | "REDIRECT";
-export type SupportTicketStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+export type LegacyPaymentMethod = 'QR' | 'REDIRECT';
+export type SupportTicketStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type AdminRole = 'SUPER_ADMIN';
+export type AdminAuditAction =
+  | 'PROFILE_UPDATED'
+  | 'STATUS_CHANGED'
+  | 'SESSIONS_REVOKED'
+  | 'PASSWORD_RESET'
+  | 'SENSITIVE_PROFILE_REVEALED';
 
 export interface AuthUser {
   id: string;
@@ -261,6 +264,7 @@ export interface AuthUser {
   email?: string | null;
   phone?: string | null;
   status?: AccountStatus;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {
@@ -339,11 +343,95 @@ export interface AccountMe extends AuthUser {
   emailVerifiedAt?: string | null;
   phoneVerifiedAt?: string | null;
   hasPassword: boolean;
+  mustChangePassword: boolean;
   profile: UserProfile;
   social: {
     google: boolean;
     facebook: boolean;
   };
+}
+
+export interface AdminUserSummary extends AuthUser {
+  email: string;
+  phone: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  emailVerifiedAt: string | null;
+  phoneVerifiedAt: string | null;
+  mustChangePassword: boolean;
+  createdAt: string;
+  updatedAt: string;
+  profile: UserProfile | null;
+  roles: AdminRole[];
+  wallet?: WalletSummary & { updatedAt?: string };
+}
+
+export interface AdminSensitiveSummary {
+  identity: { configured: boolean; last4: string | null };
+  security: { configured: boolean };
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorUserId: string;
+  actorUsername: string | null;
+  action: AdminAuditAction | string;
+  targetType: string;
+  targetId: string | null;
+  reason: string;
+  metadata: unknown;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AdminUserDetail extends AdminUserSummary {
+  socialIdentities: Array<{ provider: string; linkedAt: string; lastLoginAt: string | null }>;
+  sensitiveProfile: AdminSensitiveSummary;
+  recentTransactions: WalletTransaction[];
+  auditLogs: AdminAuditLog[];
+}
+
+export interface AdminDashboard {
+  users: {
+    total: number;
+    byStatus: Record<AccountStatus, number>;
+    registeredLast7Days: number;
+  };
+  recentUsers: AdminUserSummary[];
+  recentActivity: AdminAuditLog[];
+}
+
+export interface AdminProfileUpdateRequest {
+  expectedUpdatedAt: string;
+  username?: string;
+  email?: string;
+  phone?: string | null;
+  fullName?: string;
+  dateOfBirth?: string | null;
+  gender?: Gender;
+  city?: string | null;
+  address?: string | null;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  reason: string;
+}
+
+export interface AdminStatusUpdateRequest {
+  expectedUpdatedAt: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  reason: string;
+}
+
+export interface AdminResetPasswordRequest {
+  expectedUpdatedAt: string;
+  temporaryPassword: string;
+  temporaryPasswordConfirmation: string;
+  reason: string;
+}
+
+export interface AdminReasonRequest {
+  reason: string;
 }
 
 export interface UpdateAccountRequest extends Partial<UserProfile> {}
@@ -439,7 +527,7 @@ export interface SensitiveProfileUpdateRequest {
 }
 
 export interface WalletSummary {
-  currency: "ZENX" | string;
+  currency: 'ZENX' | string;
   balance: number | string;
 }
 
@@ -540,7 +628,7 @@ export interface SupportTicket {
   status: SupportTicketStatus;
   createdAt: string;
   updatedAt: string;
-  category: Pick<SupportCategory, "id" | "code" | "name">;
+  category: Pick<SupportCategory, 'id' | 'code' | 'name'>;
 }
 
 export interface CreateSupportTicketRequest {
@@ -549,11 +637,19 @@ export interface CreateSupportTicketRequest {
   description: string;
 }
 
-export type GameRecordType = "REAL" | "DEMO";
-export type GameLifecycleStatus = "CONCEPT" | "IN_DEVELOPMENT" | "INTERNAL_TEST" | "CLOSED_BETA" | "OPEN_BETA" | "LIVE" | "COMING_SOON" | "SUNSET";
-export type GameOperationalStatus = "AVAILABLE" | "MAINTENANCE" | "DEGRADED" | "UNAVAILABLE";
-export type GameArticleCategory = "DEVELOPMENT_UPDATE" | "ANNOUNCEMENT" | "EVENT" | "MAINTENANCE";
-export type GameMilestoneStatus = "COMPLETED" | "IN_PROGRESS" | "UPCOMING" | "PLANNED";
+export type GameRecordType = 'REAL' | 'DEMO';
+export type GameLifecycleStatus =
+  | 'CONCEPT'
+  | 'IN_DEVELOPMENT'
+  | 'INTERNAL_TEST'
+  | 'CLOSED_BETA'
+  | 'OPEN_BETA'
+  | 'LIVE'
+  | 'COMING_SOON'
+  | 'SUNSET';
+export type GameOperationalStatus = 'AVAILABLE' | 'MAINTENANCE' | 'DEGRADED' | 'UNAVAILABLE';
+export type GameArticleCategory = 'DEVELOPMENT_UPDATE' | 'ANNOUNCEMENT' | 'EVENT' | 'MAINTENANCE';
+export type GameMilestoneStatus = 'COMPLETED' | 'IN_PROGRESS' | 'UPCOMING' | 'PLANNED';
 
 export interface GameGenre {
   code: string;
@@ -576,7 +672,7 @@ export interface ThemeConfig {
 export interface FeatureConfig {
   sections: string[];
   routes?: Array<'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD'>;
-  downloads?: "COMING_SOON" | boolean;
+  downloads?: 'COMING_SOON' | boolean;
   demo?: boolean;
   [key: string]: unknown;
 }
@@ -671,7 +767,7 @@ export interface PortalEventSummary {
   startsAt: string;
   endsAt?: string | null;
   publishedAt?: string | null;
-  status: "ACTIVE" | "UPCOMING" | "ENDED";
+  status: 'ACTIVE' | 'UPCOMING' | 'ENDED';
   href: string;
   game?: {
     name: string;
@@ -686,7 +782,7 @@ export interface PortalEventDetail extends PortalEventSummary {
   seoDescription?: string | null;
 }
 
-export type PortalArticleSummary = Omit<GameArticleSummary, "game" | "href"> & {
+export type PortalArticleSummary = Omit<GameArticleSummary, 'game' | 'href'> & {
   href: string;
   game: {
     name: string;
@@ -725,53 +821,99 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
   return {
     raw: client,
     auth: {
-      register: (input: RegisterRequest) => client.post<RegisterResponse>("/auth/register", input),
-      login: (input: LoginRequest) => client.post<LoginResponse>("/auth/login", input),
-      refresh: () => client.post<RefreshResponse>("/auth/refresh"),
-      logout: () => client.post<void>("/auth/logout"),
+      register: (input: RegisterRequest) => client.post<RegisterResponse>('/auth/register', input),
+      login: (input: LoginRequest) => client.post<LoginResponse>('/auth/login', input),
+      refresh: () => client.post<RefreshResponse>('/auth/refresh'),
+      logout: () => client.post<void>('/auth/logout'),
       forgotPassword: (input: ForgotPasswordRequest) =>
-        client.post<void>("/auth/forgot-password", input),
+        client.post<void>('/auth/forgot-password', input),
       resetPassword: (input: ResetPasswordRequest) =>
-        client.post<void>("/auth/reset-password", input),
-      oauthUrl: (provider: AuthProvider, mode: "login" | "link" = "login", returnTo?: string) => {
+        client.post<void>('/auth/reset-password', input),
+      oauthUrl: (provider: AuthProvider, mode: 'login' | 'link' = 'login', returnTo?: string) => {
         const query = new URLSearchParams();
-        if (mode === "link") query.set("mode", "link");
-        if (returnTo) query.set("returnTo", returnTo);
+        if (mode === 'link') query.set('mode', 'link');
+        if (returnTo) query.set('returnTo', returnTo);
         const suffix = query.toString();
-        return `${clientBasePath(options.baseUrl)}/auth/${provider}${suffix ? `?${suffix}` : ""}`;
+        return `${clientBasePath(options.baseUrl)}/auth/${provider}${suffix ? `?${suffix}` : ''}`;
       },
+    },
+    admin: {
+      me: () => client.get<AdminUserSummary>('/admin/me'),
+      dashboard: () => client.get<AdminDashboard>('/admin/dashboard'),
+      users: (
+        query: { page?: number; pageSize?: number; search?: string; status?: AccountStatus } = {},
+      ) => client.get<Paginated<AdminUserSummary>>('/admin/users', query),
+      user: (userId: string) =>
+        client.get<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}`),
+      updateProfile: (userId: string, input: AdminProfileUpdateRequest) =>
+        client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/profile`, input),
+      updateStatus: (userId: string, input: AdminStatusUpdateRequest) =>
+        client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, input),
+      revokeSessions: (userId: string, input: AdminReasonRequest) =>
+        client.post<{ revoked: boolean }>(
+          `/admin/users/${encodeURIComponent(userId)}/revoke-sessions`,
+          input,
+        ),
+      resetPassword: (userId: string, input: AdminResetPasswordRequest) =>
+        client.post<{ reset: boolean }>(
+          `/admin/users/${encodeURIComponent(userId)}/reset-password`,
+          input,
+        ),
+      revealSensitiveProfile: (userId: string, input: AdminReasonRequest) =>
+        client.post<SensitiveProfileRevealResponse>(
+          `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/reveal`,
+          input,
+        ),
+      auditLogs: (
+        query: {
+          page?: number;
+          pageSize?: number;
+          actorUserId?: string;
+          action?: AdminAuditAction;
+          targetId?: string;
+          from?: string;
+          to?: string;
+        } = {},
+      ) => client.get<Paginated<AdminAuditLog>>('/admin/audit-logs', query),
     },
     otp: {
-      send: (input: OtpSendRequest) => client.post<OtpSendResponse>("/otp/send", input),
-      verify: (input: OtpVerifyRequest) => client.post<OtpVerifyResponse>("/otp/verify", input),
+      send: (input: OtpSendRequest) => client.post<OtpSendResponse>('/otp/send', input),
+      verify: (input: OtpVerifyRequest) => client.post<OtpVerifyResponse>('/otp/verify', input),
     },
     account: {
-      me: () => client.get<AccountMe>("/account/me"),
-      update: (input: UpdateAccountRequest) => client.patch<AccountMe>("/account/me", input),
-      completeProfile: (input: CompleteProfileRequest) => client.post<AccountMe>("/account/complete-profile", input),
+      me: () => client.get<AccountMe>('/account/me'),
+      update: (input: UpdateAccountRequest) => client.patch<AccountMe>('/account/me', input),
+      completeProfile: (input: CompleteProfileRequest) =>
+        client.post<AccountMe>('/account/complete-profile', input),
       uploadAvatar: (file: Blob | File) => {
         const body = new FormData();
-        body.append("file", file);
-        return client.post<{ avatarUrl: string }>("/account/avatar", body);
+        body.append('file', file);
+        return client.post<{ avatarUrl: string }>('/account/avatar', body);
       },
       changePassword: (input: ChangePasswordRequest) =>
-        client.post<void>("/account/change-password", input),
-      changeEmail: (input: ChangeEmailRequest) =>
-        client.post<void>("/account/change-email", input),
-      changePhone: (input: ChangePhoneRequest) =>
-        client.post<void>("/account/change-phone", input),
+        client.post<void>('/account/change-password', input),
+      changeEmail: (input: ChangeEmailRequest) => client.post<void>('/account/change-email', input),
+      changePhone: (input: ChangePhoneRequest) => client.post<void>('/account/change-phone', input),
       sensitiveProfile: {
-        summary: () => client.get<SensitiveProfileSummary>("/account/sensitive-profile"),
-        questions: () => client.get<SecurityQuestionOption[]>("/account/sensitive-profile/questions"),
-        sendOtp: () => client.post<SensitiveProfileOtpSendResponse>("/account/sensitive-profile/otp"),
+        summary: () => client.get<SensitiveProfileSummary>('/account/sensitive-profile'),
+        questions: () =>
+          client.get<SecurityQuestionOption[]>('/account/sensitive-profile/questions'),
+        sendOtp: () =>
+          client.post<SensitiveProfileOtpSendResponse>('/account/sensitive-profile/otp'),
         verifyOtp: (input: SensitiveProfileOtpVerifyRequest) =>
-          client.post<SensitiveProfileAccessResponse>("/account/sensitive-profile/otp/verify", input),
+          client.post<SensitiveProfileAccessResponse>(
+            '/account/sensitive-profile/otp/verify',
+            input,
+          ),
         challenge: (input: SensitiveProfileChallengeRequest) =>
-          client.post<SensitiveProfileAccessResponse>("/account/sensitive-profile/challenge", input),
+          client.post<SensitiveProfileAccessResponse>(
+            '/account/sensitive-profile/challenge',
+            input,
+          ),
         reveal: (input: SensitiveProfileRevealRequest) =>
-          client.post<SensitiveProfileRevealResponse>("/account/sensitive-profile/reveal", input),
+          client.post<SensitiveProfileRevealResponse>('/account/sensitive-profile/reveal', input),
         update: (input: SensitiveProfileUpdateRequest) =>
-          client.patch<SensitiveProfileSummary>("/account/sensitive-profile", input),
+          client.patch<SensitiveProfileSummary>('/account/sensitive-profile', input),
       },
     },
     social: {
@@ -780,91 +922,103 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       unlink: (provider: AuthProvider) => client.delete<void>(`/account/social/${provider}`),
     },
     wallet: {
-      summary: () => client.get<WalletSummary>("/wallet"),
-      transactions: (query: {
-        page?: number;
-        pageSize?: number;
-        type?: WalletTransactionType | "ALL";
-        status?: WalletTransactionStatus | "ALL";
-        from?: string;
-        to?: string;
-        search?: string;
-      } = {}) =>
-        client.get<Paginated<WalletTransaction>>("/wallet/transactions", {
+      summary: () => client.get<WalletSummary>('/wallet'),
+      transactions: (
+        query: {
+          page?: number;
+          pageSize?: number;
+          type?: WalletTransactionType | 'ALL';
+          status?: WalletTransactionStatus | 'ALL';
+          from?: string;
+          to?: string;
+          search?: string;
+        } = {},
+      ) =>
+        client.get<Paginated<WalletTransaction>>('/wallet/transactions', {
           ...query,
-          type: query.type === "ALL" ? undefined : query.type,
-          status: query.status === "ALL" ? undefined : query.status,
+          type: query.type === 'ALL' ? undefined : query.type,
+          status: query.status === 'ALL' ? undefined : query.status,
           from: optionalQuery(query.from),
           to: optionalQuery(query.to),
           search: optionalQuery(query.search),
         }),
       transaction: (transactionNo: string) =>
         client.get<WalletTransaction>(`/wallet/transactions/${encodeURIComponent(transactionNo)}`),
-      export: (query: {
-        type?: WalletTransactionType | "ALL";
-        status?: WalletTransactionStatus | "ALL";
-        from?: string;
-        to?: string;
-        search?: string;
-      } = {}) => client.get<string>("/wallet/transactions/export", {
-        ...query,
-        type: query.type === "ALL" ? undefined : query.type,
-        status: query.status === "ALL" ? undefined : query.status,
-        from: optionalQuery(query.from),
-        to: optionalQuery(query.to),
-        search: optionalQuery(query.search),
-      }),
-      exportTransactions: async (query: {
-        pageSize?: number;
-        type?: WalletTransactionType | "ALL";
-        status?: WalletTransactionStatus | "ALL";
-        from?: string;
-        to?: string;
-        search?: string;
-      } = {}) => {
+      export: (
+        query: {
+          type?: WalletTransactionType | 'ALL';
+          status?: WalletTransactionStatus | 'ALL';
+          from?: string;
+          to?: string;
+          search?: string;
+        } = {},
+      ) =>
+        client.get<string>('/wallet/transactions/export', {
+          ...query,
+          type: query.type === 'ALL' ? undefined : query.type,
+          status: query.status === 'ALL' ? undefined : query.status,
+          from: optionalQuery(query.from),
+          to: optionalQuery(query.to),
+          search: optionalQuery(query.search),
+        }),
+      exportTransactions: async (
+        query: {
+          pageSize?: number;
+          type?: WalletTransactionType | 'ALL';
+          status?: WalletTransactionStatus | 'ALL';
+          from?: string;
+          to?: string;
+          search?: string;
+        } = {},
+      ) => {
         const filters = { ...query };
         delete filters.pageSize;
-        const csv = await client.get<string>("/wallet/transactions/export", {
+        const csv = await client.get<string>('/wallet/transactions/export', {
           ...filters,
-          type: filters.type === "ALL" ? undefined : filters.type,
-          status: filters.status === "ALL" ? undefined : filters.status,
+          type: filters.type === 'ALL' ? undefined : filters.type,
+          status: filters.status === 'ALL' ? undefined : filters.status,
           from: optionalQuery(filters.from),
           to: optionalQuery(filters.to),
           search: optionalQuery(filters.search),
         });
-        return new Blob([csv], { type: "text/csv;charset=utf-8" });
+        return new Blob([csv], { type: 'text/csv;charset=utf-8' });
       },
     },
     coinPackages: {
-      list: () => client.get<CoinPackage[]>("/coin-packages"),
+      list: () => client.get<CoinPackage[]>('/coin-packages'),
     },
     payments: {
-      config: () => client.get<PaymentConfig>("/payment-config"),
+      config: () => client.get<PaymentConfig>('/payment-config'),
       create: (input: CreatePaymentRequest) =>
-        client.post<CreatePaymentResponse>("/payments", input),
-      get: (paymentNo: string) =>
-        client.get<Payment>(`/payments/${encodeURIComponent(paymentNo)}`),
+        client.post<CreatePaymentResponse>('/payments', input),
+      get: (paymentNo: string) => client.get<Payment>(`/payments/${encodeURIComponent(paymentNo)}`),
       mockComplete: (paymentNo: string) =>
         client.post<Payment>(`/payments/${encodeURIComponent(paymentNo)}/mock-complete`),
-      list: () => client.get<Payment[]>("/payments"),
+      list: () => client.get<Payment[]>('/payments'),
     },
     support: {
-      faqs: () => client.get<SupportFaqResponse>("/support/faqs"),
+      faqs: () => client.get<SupportFaqResponse>('/support/faqs'),
       createTicket: (input: CreateSupportTicketRequest) =>
-        client.post<SupportTicket>("/support/tickets", input),
+        client.post<SupportTicket>('/support/tickets', input),
       tickets: (query: { page?: number; pageSize?: number; status?: SupportTicketStatus } = {}) =>
-        client.get<Paginated<SupportTicket>>("/support/tickets", query),
+        client.get<Paginated<SupportTicket>>('/support/tickets', query),
       ticket: (ticketNo: string) =>
         client.get<SupportTicket>(`/support/tickets/${encodeURIComponent(ticketNo)}`),
     },
     games: {
       list: (query: { genre?: string; platform?: string; status?: GameLifecycleStatus } = {}) =>
-        client.get<GameListResponse>("/games", query),
+        client.get<GameListResponse>('/games', query),
       bySlug: (slug: string) => client.get<GameDetail>(`/games/${encodeURIComponent(slug)}`),
-      bySubdomain: (subdomain: string) => client.get<GameDetail>(`/games/by-subdomain/${encodeURIComponent(subdomain)}`),
-      articles: (slug: string) => client.get<{ items: GameArticleSummary[] }>(`/games/${encodeURIComponent(slug)}/articles`),
-      article: (slug: string, articleSlug: string) => client.get<GameArticleDetail>(`/games/${encodeURIComponent(slug)}/articles/${encodeURIComponent(articleSlug)}`),
-      roadmap: (slug: string) => client.get<{ items: GameMilestone[] }>(`/games/${encodeURIComponent(slug)}/roadmap`),
+      bySubdomain: (subdomain: string) =>
+        client.get<GameDetail>(`/games/by-subdomain/${encodeURIComponent(subdomain)}`),
+      articles: (slug: string) =>
+        client.get<{ items: GameArticleSummary[] }>(`/games/${encodeURIComponent(slug)}/articles`),
+      article: (slug: string, articleSlug: string) =>
+        client.get<GameArticleDetail>(
+          `/games/${encodeURIComponent(slug)}/articles/${encodeURIComponent(articleSlug)}`,
+        ),
+      roadmap: (slug: string) =>
+        client.get<{ items: GameMilestone[] }>(`/games/${encodeURIComponent(slug)}/roadmap`),
     },
     portal: {
       home: () => client.get<PortalHomeResponse>('/portal/home'),
@@ -872,13 +1026,14 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.get<PortalNewsResponse>('/portal/news', query),
       events: (query?: { game?: string; status?: string; page?: number; pageSize?: number }) =>
         client.get<PortalEventsResponse>('/portal/events', query),
-      event: (slug: string) => client.get<PortalEventDetail>(`/portal/events/${encodeURIComponent(slug)}`),
+      event: (slug: string) =>
+        client.get<PortalEventDetail>(`/portal/events/${encodeURIComponent(slug)}`),
     },
   };
 }
 
-function clientBasePath(baseUrl = "/api/v1") {
-  return baseUrl.replace(/\/$/, "");
+function clientBasePath(baseUrl = '/api/v1') {
+  return baseUrl.replace(/\/$/, '');
 }
 
 function optionalQuery(value?: string) {

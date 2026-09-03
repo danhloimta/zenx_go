@@ -4,15 +4,20 @@ import { resolve } from 'node:path';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 
-const apiRoot = existsSync(resolve(process.cwd(), '.env.test.example')) ? process.cwd() : resolve(process.cwd(), 'apps/api');
+const apiRoot = existsSync(resolve(process.cwd(), '.env.test.example'))
+  ? process.cwd()
+  : resolve(process.cwd(), 'apps/api');
 const testEnv = dotenv.config({ path: resolve(apiRoot, '.env.test'), override: true });
-if (testEnv.error || !testEnv.parsed || !testEnv.parsed.DATABASE_URL) dotenv.config({ path: resolve(apiRoot, '.env.test.example'), override: true });
+if (testEnv.error || !testEnv.parsed || !testEnv.parsed.DATABASE_URL)
+  dotenv.config({ path: resolve(apiRoot, '.env.test.example'), override: true });
 
 const databaseUrl = process.env.DATABASE_URL ?? '';
 const databaseName = databaseUrl.match(/(?:^|;)database=([^;]+)/i)?.[1] ?? '';
 
 if (!databaseName.toLowerCase().endsWith('_test')) {
-  throw new Error('Refusing test database operation: DATABASE_URL must target a database ending in _test.');
+  throw new Error(
+    'Refusing test database operation: DATABASE_URL must target a database ending in _test.',
+  );
 }
 
 const env = { ...process.env, NODE_ENV: 'test', DATABASE_URL: databaseUrl };
@@ -37,6 +42,8 @@ async function reset() {
     'social_identities',
     'sensitive_profiles',
     'user_profiles',
+    'admin_audit_logs',
+    'user_roles',
     'users',
   ]) {
     await prisma.$executeRawUnsafe(`DELETE FROM [dbo].[${table}]`);
