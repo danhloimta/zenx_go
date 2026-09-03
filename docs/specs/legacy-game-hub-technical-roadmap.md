@@ -1,5 +1,11 @@
 # Kiến trúc kỹ thuật và roadmap mở rộng
 
+> Trạng thái: `LEGACY` — roadmap/proposal; không dùng để gắn status cho source hiện tại.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Nguyên tắc kiến trúc
 
 - Tiếp tục dùng monorepo Next.js + NestJS + Prisma + SQL Server hiện tại.

@@ -1,5 +1,11 @@
 # ZENX GO Game Hub — Mục lục kế hoạch
 
+> Trạng thái: `LEGACY` — mục lục kế hoạch Game Hub; trạng thái source hiện tại xem `05-game-hub-content.md`.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## Trạng thái tài liệu
 
 - Trạng thái: đề xuất để triển khai MVP.
@@ -10,10 +16,10 @@
 
 ## Bộ tài liệu
 
-1. [Kế hoạch sản phẩm và chiến lược domain](./01-product-domain-plan.md)
-2. [Scope MVP UI/UX](./02-mvp-ui-ux-scope.md)
-3. [Dữ liệu seed và chiến lược nội dung](./03-seed-content-plan.md)
-4. [Kiến trúc kỹ thuật và roadmap mở rộng](./04-technical-roadmap.md)
+1. [Kế hoạch sản phẩm và chiến lược domain](./legacy-game-hub-product-domain-plan.md)
+2. [Scope MVP UI/UX](./legacy-game-hub-mvp-ui-ux-scope.md)
+3. [Dữ liệu seed và chiến lược nội dung](./legacy-game-hub-seed-content-plan.md)
+4. [Kiến trúc kỹ thuật và roadmap mở rộng](./legacy-game-hub-technical-roadmap.md)
 
 ## Quyết định chính
 

@@ -1,5 +1,11 @@
 # Kế hoạch sản phẩm và chiến lược domain
 
+> Trạng thái: `LEGACY` — product/domain plan; canonical implementation hiện tại nằm trong `01-system-overview.md` và `05-game-hub-content.md`.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Bối cảnh hiện tại
 
 `https://zenxgo.io.vn` hiện là cổng tài khoản và ví ZENX Coin, cung cấp:

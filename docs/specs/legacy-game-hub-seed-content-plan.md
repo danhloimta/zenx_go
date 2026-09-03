@@ -1,5 +1,11 @@
 # Dữ liệu seed và chiến lược nội dung
 
+> Trạng thái: `LEGACY` — seed/content plan; dữ liệu thực tế xem seed implementation và `05-game-hub-content.md`.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Mục tiêu seed
 
 Seed data phục vụ ba mục tiêu:

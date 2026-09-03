@@ -1,5 +1,11 @@
 # ZENX GO — Data Model & API Contract (Draft)
 
+> Trạng thái: `LEGACY` — draft contract; API/data catalog hiện tại nằm trong `07-api-data-catalog.md`.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Mục tiêu
 
 Tài liệu này mô tả data model và REST API sơ bộ cho ZENX GO Phase 1.

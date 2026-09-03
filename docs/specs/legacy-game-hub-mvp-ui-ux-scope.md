@@ -1,5 +1,11 @@
 # Scope MVP UI/UX
 
+> Trạng thái: `LEGACY` — UI/UX proposal; screen catalog hiện tại nằm trong `06-screen-catalog.md`.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Nguyên tắc ưu tiên
 
 MVP phân bổ effort dự kiến:

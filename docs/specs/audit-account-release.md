@@ -1,5 +1,11 @@
 # ZENX GO Account Screens — Release Gate Audit
 
+> Trạng thái: `AUDIT-HISTORICAL` — evidence của đợt audit cũ; không thay thế canonical screen/status catalog.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 Date: 2026-08-25
 
 ## Scope

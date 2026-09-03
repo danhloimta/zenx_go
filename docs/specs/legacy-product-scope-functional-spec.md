@@ -1,5 +1,11 @@
 # ZENX GO — Product Scope & Functional Specification
 
+> Trạng thái: `LEGACY` — baseline product spec; canonical source hiện tại nằm trong `docs/specs/` không dùng file này để khẳng định implementation.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Tổng quan
 
 ZENX GO Phase 1 là cổng tài khoản và ví dành cho người chơi.

@@ -4,7 +4,7 @@ ZENX GO Phase 1 is a TypeScript account portal and ZENX Coin wallet.
 
 ## Product planning
 
-The UI-first Game Hub MVP and multi-game subdomain expansion plan is documented in [docs/game-hub/README.md](docs/game-hub/README.md).
+The current product, function, screen, API, and traceability documentation is indexed in [docs/specs/README.md](docs/specs/README.md).
 
 ## Local setup
 

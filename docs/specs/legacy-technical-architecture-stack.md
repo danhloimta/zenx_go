@@ -1,5 +1,11 @@
 # ZENX GO — Technical Architecture & Technology Stack
 
+> Trạng thái: `LEGACY` — architecture proposal/baseline; xem `01-system-overview.md` để biết source hiện tại.
+>
+> Last verified: 2026-09-03 (vị trí file và link đã được chuẩn hóa)
+>
+> Verified commit: `201525a`
+
 ## 1. Kiến trúc đề xuất
 
 ZENX GO Phase 1 sử dụng TypeScript end-to-end.
