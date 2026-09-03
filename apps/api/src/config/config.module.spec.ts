@@ -17,4 +17,18 @@ describe('AppConfigModule validation', () => {
     expect(result.value.FACEBOOK_CLIENT_ID).toBeUndefined();
     expect(result.value.FACEBOOK_CLIENT_SECRET).toBeUndefined();
   });
+
+  it('requires a base64 key that decodes to 32 bytes for sensitive profile encryption', () => {
+    const invalid = appConfigValidationSchema.validate({
+      NODE_ENV: 'test',
+      SENSITIVE_PROFILE_ENCRYPTION_KEY: Buffer.alloc(31).toString('base64'),
+    });
+    expect(invalid.error).toBeDefined();
+
+    const valid = appConfigValidationSchema.validate({
+      NODE_ENV: 'test',
+      SENSITIVE_PROFILE_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
+    });
+    expect(valid.error).toBeUndefined();
+  });
 });

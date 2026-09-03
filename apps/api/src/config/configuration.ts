@@ -32,6 +32,7 @@ export default () => ({
   rateLimitTtlMs: Number(process.env.RATE_LIMIT_TTL_MS ?? 60_000),
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 30),
   oauthStateSecret: process.env.OAUTH_STATE_SECRET || process.env.JWT_REFRESH_SECRET || 'development-refresh-secret-change-me-32',
+  sensitiveProfileEncryptionKey: process.env.SENSITIVE_PROFILE_ENCRYPTION_KEY ?? Buffer.alloc(32).toString('base64'),
   oauth: {
     google: {
       clientId: process.env.NODE_ENV === 'test' && process.env.ALLOW_TEST_OAUTH !== 'true' ? undefined : process.env.GOOGLE_CLIENT_ID,

@@ -35,6 +35,7 @@ async function reset() {
     'refresh_sessions',
     'wallets',
     'social_identities',
+    'sensitive_profiles',
     'user_profiles',
     'users',
   ]) {

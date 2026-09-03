@@ -647,6 +647,19 @@ Flow nên yêu cầu verify email mới.
 
 Flow nên yêu cầu OTP phone mới.
 
+## Sensitive profile
+
+Thông tin định danh và bí mật không nằm trong `user_profiles` và không được trả bởi `GET /account/me`.
+
+- `GET /account/sensitive-profile` trả trạng thái thiết lập, 4 số cuối CCCD và mã câu hỏi (không trả hash hoặc dữ liệu rõ).
+- `POST /account/sensitive-profile/otp` gửi OTP tới phone đã xác thực, fallback email đã xác thực.
+- `POST /account/sensitive-profile/otp/verify` nhận `{ "channel": "SMS", "code": "123456" }` và trả access token nhạy cảm có hạn 5 phút.
+- `POST /account/sensitive-profile/challenge` nhận `SECRET_CODE` hoặc `SECURITY_ANSWER` để cấp access token nhạy cảm.
+- `POST /account/sensitive-profile/reveal` nhận access token và chỉ trả CCCD, ngày cấp, nơi cấp đầy đủ.
+- `PATCH /account/sensitive-profile` nhận access token và cập nhật/xóa `identity` hoặc `security`.
+
+CCCD (12 chữ số, duy nhất) được mã hóa AES-256-GCM và kiểm tra duy nhất bằng HMAC; mã bí mật và câu trả lời được hash Argon2. Cấu hình mã hóa production bắt buộc có `SENSITIVE_PROFILE_ENCRYPTION_KEY` là base64 của khóa 32 byte.
+
 ---
 
 # 9. Social Link API

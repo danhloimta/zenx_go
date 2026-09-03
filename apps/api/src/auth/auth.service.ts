@@ -83,12 +83,13 @@ export class AuthService {
 
   async verifyAccessToken(token?: string): Promise<{ sub: string; username: string }> {
     if (!token) throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
-    let payload: { sub: string; username: string };
+    let payload: { sub: string; username: string; type?: string };
     try {
-      payload = await this.jwt.verifyAsync<{ sub: string; username: string }>(token);
+      payload = await this.jwt.verifyAsync<{ sub: string; username: string; type?: string }>(token);
     } catch {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
     }
+    if (payload.type !== 'access') throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { status: true } });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     if (user.status === AccountStatus.LOCKED) throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);

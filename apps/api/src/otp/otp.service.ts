@@ -49,6 +49,9 @@ export class OtpService {
 
   async send(input: { channel: OtpChannel; purpose: OtpPurpose | string; destination: string; userId?: string }) {
     const purpose = input.purpose as OtpPurpose;
+    if (purpose === OtpPurpose.MANAGE_SENSITIVE_PROFILE && !input.userId) {
+      throw new DomainError(ErrorCode.INVALID_SENSITIVE_PROFILE, 'Sensitive profile OTP must be bound to an account', 400);
+    }
     const destinationNormalized = input.channel === OtpChannel.EMAIL ? normalizeEmail(input.destination) : normalizePhone(input.destination);
     const latest = await this.prisma.otpRequest.findFirst({ where: { destinationNormalized, purpose, createdAt: { gte: new Date(Date.now() - OTP_RESEND_SECONDS * 1000) }, status: OtpStatus.PENDING }, orderBy: { createdAt: 'desc' } });
     if (latest) throw new DomainError(ErrorCode.OTP_RATE_LIMITED, 'Please wait before requesting another code', 429);
@@ -64,10 +67,24 @@ export class OtpService {
     return { expiresIn: OTP_TTL_SECONDS, resendAfter: OTP_RESEND_SECONDS, requestId: request.id };
   }
 
-  async verify(input: { channel: OtpChannel; purpose: OtpPurpose | string; destination: string; code: string }) {
+  async verify(input: { channel: OtpChannel; purpose: OtpPurpose | string; destination?: string; code: string; userId?: string }) {
     const purpose = input.purpose as OtpPurpose;
-    const destinationNormalized = input.channel === OtpChannel.EMAIL ? normalizeEmail(input.destination) : normalizePhone(input.destination);
-    const request = await this.prisma.otpRequest.findFirst({ where: { destinationNormalized, purpose, status: OtpStatus.PENDING }, orderBy: { createdAt: 'desc' } });
+    if (purpose === OtpPurpose.MANAGE_SENSITIVE_PROFILE && !input.userId) {
+      throw new DomainError(ErrorCode.INVALID_SENSITIVE_PROFILE, 'Sensitive profile OTP must be bound to an account', 400);
+    }
+    const destinationNormalized = input.destination
+      ? input.channel === OtpChannel.EMAIL ? normalizeEmail(input.destination) : normalizePhone(input.destination)
+      : undefined;
+    const request = await this.prisma.otpRequest.findFirst({
+      where: {
+        ...(destinationNormalized ? { destinationNormalized } : {}),
+        ...(input.userId ? { userId: input.userId } : {}),
+        channel: input.channel,
+        purpose,
+        status: OtpStatus.PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
     if (!request || request.expiresAt <= new Date()) throw new DomainError(ErrorCode.OTP_EXPIRED, 'OTP has expired', 400);
     if (request.attemptCount >= OTP_MAX_ATTEMPTS) throw new DomainError(ErrorCode.OTP_RATE_LIMITED, 'Too many attempts', 429);
     if (!(await argon2.verify(request.codeHash, input.code))) {
@@ -80,10 +97,24 @@ export class OtpService {
     return { verificationToken: rawToken, expiresIn: 600 };
   }
 
-  async consumeVerificationToken(token: string, purpose: OtpPurpose | string, destination?: string) {
-    const candidates = await this.prisma.otpVerification.findMany({ where: { purpose: purpose as OtpPurpose, consumedAt: null, expiresAt: { gt: new Date() } }, include: { otpRequest: { select: { destinationNormalized: true } } }, orderBy: { createdAt: 'desc' }, take: 20 });
+  async consumeVerificationToken(token: string, purpose: OtpPurpose | string, destination?: string, userId?: string, channel?: OtpChannel) {
+    if (purpose === OtpPurpose.MANAGE_SENSITIVE_PROFILE && !userId) {
+      throw new DomainError(ErrorCode.INVALID_SENSITIVE_PROFILE, 'Sensitive profile OTP must be bound to an account', 400);
+    }
+    const candidates = await this.prisma.otpVerification.findMany({
+      where: { purpose: purpose as OtpPurpose, consumedAt: null, expiresAt: { gt: new Date() } },
+      include: { otpRequest: { select: { destinationNormalized: true, userId: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
     for (const candidate of candidates) {
-      if (destination && candidate.otpRequest.destinationNormalized !== (purpose === 'RESET_PASSWORD' || purpose === 'CHANGE_EMAIL' ? normalizeEmail(destination) : normalizePhone(destination))) continue;
+      if (userId && candidate.otpRequest.userId !== userId) continue;
+      if (destination) {
+        const normalizedDestination = channel === OtpChannel.EMAIL || purpose === 'RESET_PASSWORD' || purpose === 'CHANGE_EMAIL'
+          ? normalizeEmail(destination)
+          : normalizePhone(destination);
+        if (candidate.otpRequest.destinationNormalized !== normalizedDestination) continue;
+      }
       if (await argon2.verify(candidate.tokenHash, token)) {
         const consumed = await this.prisma.otpVerification.updateMany({ where: { id: candidate.id, consumedAt: null }, data: { consumedAt: new Date() } });
         if (consumed.count === 1) return candidate;

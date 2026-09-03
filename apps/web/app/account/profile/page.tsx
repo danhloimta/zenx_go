@@ -39,6 +39,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GoogleIcon, FacebookIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { ApiError } from '@zenx-go/api-client';
+import { SensitiveProfileCard } from '@/components/account/sensitive-profile-card';
 
 const schema = z.object({
   fullName: z.string().trim().min(2, 'Vui lòng nhập họ tên ít nhất 2 ký tự.'),
@@ -378,6 +379,8 @@ function ProfileContent({
               </div>
             </form>
           </div>
+
+          <SensitiveProfileCard />
         </div>
 
         {/* Right Column: Liên kết tài khoản & Bảo mật */}

@@ -29,6 +29,7 @@ model User {
   refreshSessions    RefreshSession[]
   otpRequests        OtpRequest[]
   supportTickets     SupportTicket[]
+  sensitiveProfile   SensitiveProfile?
 
   @@index([status])
   @@map("users")
@@ -210,6 +211,40 @@ model UserProfile {
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
+}
+
+model SensitiveProfile {
+  id                    String    @id @default(uuid()) @db.UniqueIdentifier
+  userId                String    @unique @map("user_id") @db.UniqueIdentifier
+  citizenIdCiphertext   String?   @map("citizen_id_ciphertext") @db.NVarChar(2048)
+  citizenIdIv           String?   @map("citizen_id_iv") @db.VarChar(32)
+  citizenIdAuthTag      String?   @map("citizen_id_auth_tag") @db.VarChar(32)
+  citizenIdLookupHash   String?   @map("citizen_id_lookup_hash") @db.Char(64)
+  citizenIdLast4        String?   @map("citizen_id_last4") @db.Char(4)
+  secretCodeHash        String?   @map("secret_code_hash") @db.NVarChar(255)
+  securityQuestionCode  String?   @map("security_question_code") @db.VarChar(40)
+  securityAnswerHash    String?   @map("security_answer_hash") @db.NVarChar(255)
+  securityVersion       Int       @default(0) @map("security_version")
+  failedChallengeCount  Int       @default(0) @map("failed_challenge_count")
+  challengeLockedUntil  DateTime? @map("challenge_locked_until")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sensitive_profiles")
+}
+
+model SecurityQuestion {
+  id        String   @id @default(uuid()) @db.UniqueIdentifier
+  code      String   @unique @db.VarChar(40)
+  label     String   @db.NVarChar(255)
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive, sortOrder])
+  @@map("security_questions")
 }
 
 model SocialIdentity {

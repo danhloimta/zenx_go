@@ -229,7 +229,15 @@ export type OtpPurpose =
   | "RESET_PASSWORD"
   | "CHANGE_PHONE"
   | "CHANGE_EMAIL"
-  | "LINK_SOCIAL";
+  | "LINK_SOCIAL"
+  | "MANAGE_SENSITIVE_PROFILE";
+export type SensitiveChallengeMethod = "SECRET_CODE" | "SECURITY_ANSWER";
+export type SecurityQuestionCode =
+  | "CHILDHOOD_NICKNAME"
+  | "FIRST_SCHOOL"
+  | "FIRST_PET"
+  | "FAVORITE_TEACHER"
+  | "MEMORABLE_PLACE";
 export type Gender = "MALE" | "FEMALE" | "OTHER" | "UNSPECIFIED";
 export type AccountStatus = "PENDING" | "ACTIVE" | "LOCKED" | "SUSPENDED";
 export type WalletTransactionType = "TOPUP" | "CREDIT" | "DEBIT" | "REFUND";
@@ -361,6 +369,73 @@ export interface ChangeEmailRequest {
 export interface ChangePhoneRequest {
   newPhone: string;
   verificationToken: string;
+}
+
+export interface SensitiveProfileSummary {
+  identity: {
+    configured: boolean;
+    last4: string | null;
+  };
+  security: {
+    configured: boolean;
+    questionCode: SecurityQuestionCode | null;
+  };
+}
+
+export interface SecurityQuestionOption {
+  code: SecurityQuestionCode;
+  label: string;
+}
+
+export interface SensitiveProfileIdentity {
+  citizenId: string;
+  issuedAt: string;
+  issuedPlace: string;
+}
+
+export interface SensitiveProfileOtpSendResponse {
+  channel: OtpChannel;
+  destination: string;
+  expiresIn: number;
+  resendAfter: number;
+}
+
+export interface SensitiveProfileOtpVerifyRequest {
+  channel: OtpChannel;
+  code: string;
+}
+
+export interface SensitiveProfileAccessResponse {
+  accessToken: string;
+  expiresIn: number;
+}
+
+export interface SensitiveProfileChallengeRequest {
+  method: SensitiveChallengeMethod;
+  value: string;
+}
+
+export interface SensitiveProfileRevealRequest {
+  accessToken: string;
+}
+
+export interface SensitiveProfileRevealResponse {
+  identity: SensitiveProfileIdentity | null;
+}
+
+export interface SensitiveProfileIdentityRequest extends SensitiveProfileIdentity {}
+
+export interface SensitiveProfileSecurityRequest {
+  secretCode: string;
+  secretCodeConfirmation: string;
+  questionCode: SecurityQuestionCode;
+  answer: string;
+}
+
+export interface SensitiveProfileUpdateRequest {
+  accessToken: string;
+  identity?: SensitiveProfileIdentityRequest | null;
+  security?: SensitiveProfileSecurityRequest | null;
 }
 
 export interface WalletSummary {
@@ -685,6 +760,19 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.post<void>("/account/change-email", input),
       changePhone: (input: ChangePhoneRequest) =>
         client.post<void>("/account/change-phone", input),
+      sensitiveProfile: {
+        summary: () => client.get<SensitiveProfileSummary>("/account/sensitive-profile"),
+        questions: () => client.get<SecurityQuestionOption[]>("/account/sensitive-profile/questions"),
+        sendOtp: () => client.post<SensitiveProfileOtpSendResponse>("/account/sensitive-profile/otp"),
+        verifyOtp: (input: SensitiveProfileOtpVerifyRequest) =>
+          client.post<SensitiveProfileAccessResponse>("/account/sensitive-profile/otp/verify", input),
+        challenge: (input: SensitiveProfileChallengeRequest) =>
+          client.post<SensitiveProfileAccessResponse>("/account/sensitive-profile/challenge", input),
+        reveal: (input: SensitiveProfileRevealRequest) =>
+          client.post<SensitiveProfileRevealResponse>("/account/sensitive-profile/reveal", input),
+        update: (input: SensitiveProfileUpdateRequest) =>
+          client.patch<SensitiveProfileSummary>("/account/sensitive-profile", input),
+      },
     },
     social: {
       oauthUrl: (provider: AuthProvider) =>

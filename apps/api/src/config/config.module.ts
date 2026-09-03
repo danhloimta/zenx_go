@@ -34,6 +34,10 @@ export const appConfigValidationSchema = Joi.object({
   RATE_LIMIT_TTL_MS: Joi.number().integer().positive().default(60_000),
   RATE_LIMIT_MAX: Joi.number().integer().positive().default(30),
   OAUTH_STATE_SECRET: Joi.string().trim().min(32).empty('').default('development-refresh-secret-change-me-32').when('NODE_ENV', { is: 'production', then: Joi.required() }),
+  SENSITIVE_PROFILE_ENCRYPTION_KEY: Joi.string().base64().custom((value, helpers) => {
+    if (Buffer.from(value, 'base64').length !== 32) return helpers.error('any.invalid');
+    return value;
+  }).default(Buffer.alloc(32).toString('base64')).when('NODE_ENV', { is: 'production', then: Joi.required() }),
   GOOGLE_CLIENT_ID: optionalOAuthString(),
   GOOGLE_CLIENT_SECRET: optionalOAuthString(),
   GOOGLE_REDIRECT_URI: optionalOAuthUri(),

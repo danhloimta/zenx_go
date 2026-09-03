@@ -6,6 +6,7 @@ test('account screens complete the release-gate journey without placeholder stat
   const username = `acct${suffix.slice(-8)}`;
   const email = `acct-${suffix}@example.com`;
   const phone = `+849${suffix.slice(-8)}`;
+  const citizenId = `079${suffix.slice(-9)}`;
 
   await page.goto('/auth/register');
   await page.getByLabel('Tên đăng nhập').fill(username);
@@ -29,6 +30,27 @@ test('account screens complete the release-gate journey without placeholder stat
   await expect(page.getByText('Chưa liên kết', { exact: true })).toHaveCount(2);
   await expect(page.getByText('Nguyễn Văn A', { exact: true })).toHaveCount(0);
   await expect(page.getByText('playerone@gmail.com', { exact: true })).toHaveCount(0);
+
+  await expect(page.getByRole('heading', { name: 'Định danh & bảo mật' })).toBeVisible();
+  await page.getByRole('button', { name: 'Thiết lập', exact: true }).click();
+  await expect(page.getByText('Xác minh bằng OTP', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Mã đã được gửi tới/)).toBeVisible();
+  await page.getByPlaceholder('Nhập mã OTP 6 chữ số').fill('123456');
+  await page.getByRole('button', { name: 'Xác nhận OTP', exact: true }).click();
+  await page.getByLabel('Số CCCD').fill(citizenId);
+  await page.getByLabel('Ngày cấp').fill('2024-05-20');
+  await page.getByLabel('Nơi cấp').fill('Cục Cảnh sát quản lý hành chính');
+  await page.getByLabel('Mã bí mật (6 số)').fill('123456');
+  await page.getByLabel('Nhập lại mã bí mật').fill('123456');
+  await page.getByLabel('Câu trả lời').fill('Trường Ánh Dương');
+  await page.getByRole('button', { name: 'Lưu thông tin', exact: true }).click();
+  await expect(page.getByText(`********${citizenId.slice(-4)}`, { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Xem CCCD đầy đủ', exact: true }).click();
+  await page.getByPlaceholder('Nhập mã 6 chữ số').fill('123456');
+  await page.getByRole('button', { name: 'Xác minh', exact: true }).click();
+  await expect(page.getByText(citizenId, { exact: true })).toBeVisible();
+
   await page.getByRole('button', { name: 'Xác thực', exact: true }).click();
   await page.getByRole('button', { name: 'Gửi mã xác thực', exact: true }).click();
   await page.getByLabel('Mã xác thực email').fill('123456');

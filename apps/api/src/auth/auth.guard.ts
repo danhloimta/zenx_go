@@ -14,12 +14,13 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = request.cookies?.[ACCESS_COOKIE] as string | undefined;
     if (!token) throw new UnauthorizedException('Authentication required');
-    let user: { sub: string; username: string };
+    let user: { sub: string; username: string; type?: string };
     try {
-      user = await this.jwt.verifyAsync<{ sub: string; username: string }>(token);
+      user = await this.jwt.verifyAsync<{ sub: string; username: string; type?: string }>(token);
     } catch {
       throw new UnauthorizedException('Authentication required');
     }
+    if (user.type !== 'access') throw new UnauthorizedException('Authentication required');
     const account = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { status: true } });
     if (!account) throw new UnauthorizedException('Authentication required');
     if (account.status === 'LOCKED') throw new ForbiddenException('Account is locked');

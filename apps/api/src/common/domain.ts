@@ -6,8 +6,18 @@ export const SocialProvider = { GOOGLE: 'GOOGLE', FACEBOOK: 'FACEBOOK' } as cons
 export type SocialProvider = (typeof SocialProvider)[keyof typeof SocialProvider];
 export const OtpChannel = { SMS: 'SMS', ZALO: 'ZALO', EMAIL: 'EMAIL' } as const;
 export type OtpChannel = (typeof OtpChannel)[keyof typeof OtpChannel];
-export const OtpPurpose = { REGISTER: 'REGISTER', VERIFY_PHONE: 'VERIFY_PHONE', RESET_PASSWORD: 'RESET_PASSWORD', CHANGE_PHONE: 'CHANGE_PHONE', CHANGE_EMAIL: 'CHANGE_EMAIL', LINK_SOCIAL: 'LINK_SOCIAL' } as const;
+export const OtpPurpose = { REGISTER: 'REGISTER', VERIFY_PHONE: 'VERIFY_PHONE', RESET_PASSWORD: 'RESET_PASSWORD', CHANGE_PHONE: 'CHANGE_PHONE', CHANGE_EMAIL: 'CHANGE_EMAIL', LINK_SOCIAL: 'LINK_SOCIAL', MANAGE_SENSITIVE_PROFILE: 'MANAGE_SENSITIVE_PROFILE' } as const;
 export type OtpPurpose = (typeof OtpPurpose)[keyof typeof OtpPurpose];
+export const SecurityQuestionCode = {
+  CHILDHOOD_NICKNAME: 'CHILDHOOD_NICKNAME',
+  FIRST_SCHOOL: 'FIRST_SCHOOL',
+  FIRST_PET: 'FIRST_PET',
+  FAVORITE_TEACHER: 'FAVORITE_TEACHER',
+  MEMORABLE_PLACE: 'MEMORABLE_PLACE',
+} as const;
+export type SecurityQuestionCode = (typeof SecurityQuestionCode)[keyof typeof SecurityQuestionCode];
+export const SensitiveChallengeMethod = { SECRET_CODE: 'SECRET_CODE', SECURITY_ANSWER: 'SECURITY_ANSWER' } as const;
+export type SensitiveChallengeMethod = (typeof SensitiveChallengeMethod)[keyof typeof SensitiveChallengeMethod];
 export const OtpStatus = { PENDING: 'PENDING', USED: 'USED', EXPIRED: 'EXPIRED', LOCKED: 'LOCKED' } as const;
 export type OtpStatus = (typeof OtpStatus)[keyof typeof OtpStatus];
 export const WalletTransactionType = { TOPUP: 'TOPUP', CREDIT: 'CREDIT', DEBIT: 'DEBIT', REFUND: 'REFUND' } as const;
