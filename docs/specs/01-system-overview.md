@@ -69,3 +69,4 @@ Middleware bỏ qua `/api`, `_next` và asset; kiểm tra base domain, game subd
 - Local setup, `/docs` API explorer và quality gates: root `README.md`.
 - API integration dùng database có hậu tố `_test` và migration/seed hiện hành.
 - Browser E2E chạy root portal và game hosts trên isolated ports, kiểm tra desktop/mobile ở các suite tương ứng.
+- Cross-cutting unit evidence: `apps/api/src/common/domain-policy.service.spec.ts`, `apps/api/src/common/normalize.spec.ts`, `apps/api/src/common/origin.guard.spec.ts`, `apps/api/src/common/serialization.spec.ts` và `apps/api/src/common/web-domain.spec.ts`.
