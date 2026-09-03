@@ -5,7 +5,7 @@ export const AccountStatus = {
   SUSPENDED: 'SUSPENDED',
 } as const;
 export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
-export const AdminRole = { SUPER_ADMIN: 'SUPER_ADMIN' } as const;
+export const AdminRole = { SUPER_ADMIN: 'SUPER_ADMIN', SUPPORT: 'SUPPORT' } as const;
 export type AdminRole = (typeof AdminRole)[keyof typeof AdminRole];
 export const AdminAuditAction = {
   PROFILE_UPDATED: 'PROFILE_UPDATED',
@@ -13,6 +13,15 @@ export const AdminAuditAction = {
   SESSIONS_REVOKED: 'SESSIONS_REVOKED',
   PASSWORD_RESET: 'PASSWORD_RESET',
   SENSITIVE_PROFILE_REVEALED: 'SENSITIVE_PROFILE_REVEALED',
+  SUPPORT_TICKET_ASSIGNED: 'SUPPORT_TICKET_ASSIGNED',
+  SUPPORT_TICKET_STATUS_CHANGED: 'SUPPORT_TICKET_STATUS_CHANGED',
+  SUPPORT_TICKET_PRIORITY_CHANGED: 'SUPPORT_TICKET_PRIORITY_CHANGED',
+  SUPPORT_MESSAGE_SENT: 'SUPPORT_MESSAGE_SENT',
+  SUPPORT_INTERNAL_NOTE_ADDED: 'SUPPORT_INTERNAL_NOTE_ADDED',
+  SUPPORT_FAQ_CREATED: 'SUPPORT_FAQ_CREATED',
+  SUPPORT_FAQ_UPDATED: 'SUPPORT_FAQ_UPDATED',
+  SUPPORT_CATEGORY_CREATED: 'SUPPORT_CATEGORY_CREATED',
+  SUPPORT_CATEGORY_UPDATED: 'SUPPORT_CATEGORY_UPDATED',
 } as const;
 export type AdminAuditAction = (typeof AdminAuditAction)[keyof typeof AdminAuditAction];
 export const Gender = {
@@ -96,10 +105,25 @@ export const SupportStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const
 export const SupportTicketStatus = {
   NEW: 'NEW',
   IN_PROGRESS: 'IN_PROGRESS',
+  WAITING_USER: 'WAITING_USER',
   RESOLVED: 'RESOLVED',
   CLOSED: 'CLOSED',
 } as const;
 export type SupportTicketStatus = (typeof SupportTicketStatus)[keyof typeof SupportTicketStatus];
+export const SupportTicketPriority = {
+  LOW: 'LOW',
+  NORMAL: 'NORMAL',
+  HIGH: 'HIGH',
+  URGENT: 'URGENT',
+} as const;
+export type SupportTicketPriority =
+  (typeof SupportTicketPriority)[keyof typeof SupportTicketPriority];
+export const SupportMessageVisibility = { PUBLIC: 'PUBLIC', INTERNAL: 'INTERNAL' } as const;
+export type SupportMessageVisibility =
+  (typeof SupportMessageVisibility)[keyof typeof SupportMessageVisibility];
+export const SupportMessageAuthorType = { CUSTOMER: 'CUSTOMER', STAFF: 'STAFF' } as const;
+export type SupportMessageAuthorType =
+  (typeof SupportMessageAuthorType)[keyof typeof SupportMessageAuthorType];
 export const GameRecordType = { REAL: 'REAL', DEMO: 'DEMO' } as const;
 export type GameRecordType = (typeof GameRecordType)[keyof typeof GameRecordType];
 export const GameLifecycleStatus = {

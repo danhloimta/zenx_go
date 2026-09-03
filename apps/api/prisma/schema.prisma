@@ -8,32 +8,35 @@ datasource db {
 }
 
 model User {
-  id                 String              @id @default(uuid()) @db.UniqueIdentifier
-  username           String              @db.NVarChar(64)
-  usernameNormalized String              @unique @map("username_normalized") @db.NVarChar(64)
-  email              String              @db.NVarChar(320)
-  emailNormalized    String              @unique @map("email_normalized") @db.NVarChar(320)
-  phone              String?             @db.NVarChar(32)
-  phoneNormalized    String?             @unique @map("phone_normalized") @db.NVarChar(32)
-  passwordHash       String?             @map("password_hash") @db.NVarChar(255)
-  status             String              @default("PENDING") @db.VarChar(16)
-  authVersion        Int                 @default(0) @map("auth_version")
-  mustChangePassword Boolean             @default(false) @map("must_change_password")
-  phoneVerifiedAt    DateTime?           @map("phone_verified_at")
-  emailVerifiedAt    DateTime?           @map("email_verified_at")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  profile            UserProfile?
-  socialIdentities   SocialIdentity[]
-  wallet             Wallet?
-  payments           Payment[]
-  walletTransactions WalletTransaction[]
-  refreshSessions    RefreshSession[]
-  otpRequests        OtpRequest[]
-  supportTickets     SupportTicket[]
-  sensitiveProfile   SensitiveProfile?
-  roles              UserRole[]
-  adminAuditLogs     AdminAuditLog[]     @relation("AdminAuditActor")
+  id                     String                   @id @default(uuid()) @db.UniqueIdentifier
+  username               String                   @db.NVarChar(64)
+  usernameNormalized     String                   @unique @map("username_normalized") @db.NVarChar(64)
+  email                  String                   @db.NVarChar(320)
+  emailNormalized        String                   @unique @map("email_normalized") @db.NVarChar(320)
+  phone                  String?                  @db.NVarChar(32)
+  phoneNormalized        String?                  @unique @map("phone_normalized") @db.NVarChar(32)
+  passwordHash           String?                  @map("password_hash") @db.NVarChar(255)
+  status                 String                   @default("PENDING") @db.VarChar(16)
+  authVersion            Int                      @default(0) @map("auth_version")
+  mustChangePassword     Boolean                  @default(false) @map("must_change_password")
+  phoneVerifiedAt        DateTime?                @map("phone_verified_at")
+  emailVerifiedAt        DateTime?                @map("email_verified_at")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @updatedAt @map("updated_at")
+  profile                UserProfile?
+  socialIdentities       SocialIdentity[]
+  wallet                 Wallet?
+  payments               Payment[]
+  walletTransactions     WalletTransaction[]
+  refreshSessions        RefreshSession[]
+  otpRequests            OtpRequest[]
+  supportTickets         SupportTicket[]          @relation("SupportTicketOwner")
+  sensitiveProfile       SensitiveProfile?
+  roles                  UserRole[]
+  adminAuditLogs         AdminAuditLog[]          @relation("AdminAuditActor")
+  assignedSupportTickets SupportTicket[]          @relation("SupportTicketAssignee")
+  supportMessages        SupportTicketMessage[]   @relation("SupportMessageAuthor")
+  supportReadStates      SupportTicketReadState[] @relation("SupportReadUser")
 
   @@index([status])
   @@map("users")
@@ -463,19 +466,60 @@ model SupportFaq {
 }
 
 model SupportTicket {
-  id          String          @id @default(uuid()) @db.UniqueIdentifier
-  ticketNo    String          @unique @map("ticket_no") @db.VarChar(40)
-  userId      String          @map("user_id") @db.UniqueIdentifier
-  categoryId  String          @map("category_id") @db.UniqueIdentifier
-  subject     String          @db.NVarChar(160)
-  description String          @db.NVarChar(4000)
-  status      String          @default("NEW") @db.VarChar(16)
-  createdAt   DateTime        @default(now()) @map("created_at")
-  updatedAt   DateTime        @updatedAt @map("updated_at")
-  user        User            @relation(fields: [userId], references: [id], onDelete: NoAction)
-  category    SupportCategory @relation(fields: [categoryId], references: [id], onDelete: NoAction)
+  id                    String                   @id @default(uuid()) @db.UniqueIdentifier
+  ticketNo              String                   @unique @map("ticket_no") @db.VarChar(40)
+  userId                String                   @map("user_id") @db.UniqueIdentifier
+  categoryId            String                   @map("category_id") @db.UniqueIdentifier
+  subject               String                   @db.NVarChar(160)
+  description           String                   @db.NVarChar(4000)
+  status                String                   @default("NEW") @db.VarChar(16)
+  priority              String                   @default("NORMAL") @db.VarChar(16)
+  assigneeUserId        String?                  @map("assignee_user_id") @db.UniqueIdentifier
+  lastActivityAt        DateTime                 @default(now()) @map("last_activity_at")
+  lastCustomerMessageAt DateTime?                @map("last_customer_message_at")
+  lastStaffReplyAt      DateTime?                @map("last_staff_reply_at")
+  resolvedAt            DateTime?                @map("resolved_at")
+  closedAt              DateTime?                @map("closed_at")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+  user                  User                     @relation("SupportTicketOwner", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignee              User?                    @relation("SupportTicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  category              SupportCategory          @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  messages              SupportTicketMessage[]
+  readStates            SupportTicketReadState[]
 
   @@index([userId, createdAt])
   @@index([userId, status, createdAt])
+  @@index([status, priority, lastActivityAt])
+  @@index([assigneeUserId, status, lastActivityAt])
+  @@index([lastActivityAt])
   @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id           String        @id @default(uuid()) @db.UniqueIdentifier
+  ticketId     String        @map("ticket_id") @db.UniqueIdentifier
+  authorUserId String        @map("author_user_id") @db.UniqueIdentifier
+  authorType   String        @map("author_type") @db.VarChar(16)
+  visibility   String        @db.VarChar(16)
+  body         String        @db.NVarChar(4000)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author       User          @relation("SupportMessageAuthor", fields: [authorUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([ticketId, createdAt])
+  @@index([authorUserId, createdAt])
+  @@map("support_ticket_messages")
+}
+
+model SupportTicketReadState {
+  ticketId   String        @map("ticket_id") @db.UniqueIdentifier
+  userId     String        @map("user_id") @db.UniqueIdentifier
+  lastReadAt DateTime      @map("last_read_at")
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User          @relation("SupportReadUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([ticketId, userId])
+  @@index([userId, lastReadAt])
+  @@map("support_ticket_read_states")
 }

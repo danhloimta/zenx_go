@@ -4,7 +4,7 @@
 >
 > Last verified: 2026-09-03
 >
-> Verified commit: `201525a`
+> Verified commit: `788f781`
 
 Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`. Route game ghi public URL trước, internal rewrite sau. `Public` nghĩa không yêu cầu session; `Auth` được AppShell/middleware bảo vệ hoặc redirect khi cần.
 
@@ -69,20 +69,31 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 | `SCR-GAME-PREVIEW`        | `/preview/games/[slug]`                                  | Public          | `INTERNAL`    | Noindex preview using `GameShell` and same game home.                | `apps/web/app/preview/games/[slug]/page.tsx`                             | `GET /games/:slug`                   | `portal-content.spec.ts`                           |
 | `SCR-PLATFORM-HOST-ERROR` | `/_host-error`                                           | Public/internal | `INTERNAL`    | Fallback for invalid host/context rewrite.                           | `apps/web/app/_host-error/page.tsx`                                      | None                                 | Host routing coverage                              |
 
-## State and navigation baseline
-
 ## Admin
 
-| ID                    | Route                         | Auth                  | Status        | Mục đích / hành động chính                                                                                  | Source                                             | API/data                                             | Test                         |
-| --------------------- | ----------------------------- | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------- | ---------------------------- |
-| `SCR-ADMIN-HOME`      | `/admin`                      | `SUPER_ADMIN`         | `IMPLEMENTED` | KPI user, user mới và hoạt động admin gần nhất.                                                              | `apps/web/app/admin/page.tsx`                      | `/admin/me`, `/admin/dashboard`                      | `admin.spec.ts`               |
-| `SCR-ADMIN-USERS`     | `/admin/users`                | `SUPER_ADMIN`         | `IMPLEMENTED` | Tìm kiếm, lọc status, phân trang và mở chi tiết user.                                                        | `apps/web/app/admin/users/page.tsx`                | `GET /admin/users`                                   | `admin.spec.ts`               |
-| `SCR-ADMIN-USER`      | `/admin/users/[userId]`       | `SUPER_ADMIN`         | `IMPLEMENTED` | Xem/sửa hồ sơ, status, session, mật khẩu tạm, CCCD reveal và wallet read-only.                              | `apps/web/app/admin/users/[userId]/page.tsx`       | `/admin/users/:userId/*`                            | `admin.spec.ts`               |
-| `SCR-ADMIN-AUDIT-LOG` | `/admin/audit-logs`           | `SUPER_ADMIN`         | `IMPLEMENTED` | Danh sách hoạt động quản trị, lọc theo action/target và mở liên kết user.                                  | `apps/web/app/admin/audit-logs/page.tsx`           | `GET /admin/audit-logs`                              | `admin.spec.ts`               |
+| ID                    | Route                   | Auth          | Status        | Mục đích / hành động chính                                                     | Source                                       | API/data                        | Test            |
+| --------------------- | ----------------------- | ------------- | ------------- | ------------------------------------------------------------------------------ | -------------------------------------------- | ------------------------------- | --------------- |
+| `SCR-ADMIN-HOME`      | `/admin`                | `SUPER_ADMIN` | `IMPLEMENTED` | KPI user, user mới và hoạt động admin gần nhất.                                | `apps/web/app/admin/page.tsx`                | `/admin/me`, `/admin/dashboard` | `admin.spec.ts` |
+| `SCR-ADMIN-USERS`     | `/admin/users`          | `SUPER_ADMIN` | `IMPLEMENTED` | Tìm kiếm, lọc status, phân trang và mở chi tiết user.                          | `apps/web/app/admin/users/page.tsx`          | `GET /admin/users`              | `admin.spec.ts` |
+| `SCR-ADMIN-USER`      | `/admin/users/[userId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Xem/sửa hồ sơ, status, session, mật khẩu tạm, CCCD reveal và wallet read-only. | `apps/web/app/admin/users/[userId]/page.tsx` | `/admin/users/:userId/*`        | `admin.spec.ts` |
+| `SCR-ADMIN-AUDIT-LOG` | `/admin/audit-logs`     | `SUPER_ADMIN` | `IMPLEMENTED` | Danh sách hoạt động quản trị, lọc theo action/target và mở liên kết user.      | `apps/web/app/admin/audit-logs/page.tsx`     | `GET /admin/audit-logs`         | `admin.spec.ts` |
+
+### Admin Support — Phase 2
+
+| ID                          | Route                               | Auth                    | Status        | Mục đích / hành động chính                                      | Source                                                   | API/data                             | Test                    |
+| --------------------------- | ----------------------------------- | ----------------------- | ------------- | --------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------ | ----------------------- |
+| `SCR-ADMIN-SUPPORT-HOME`    | `/admin/support`                    | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | KPI queue, unassigned, assigned-to-me, unread và status counts. | `apps/web/app/admin/support/page.tsx`                    | `/admin/support/dashboard`           | `support-admin.spec.ts` |
+| `SCR-ADMIN-SUPPORT-TICKETS` | `/admin/support/tickets`            | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | Search/filter queue theo status, priority, assignee, unread.    | `apps/web/app/admin/support/tickets/page.tsx`            | `/admin/support/tickets`             | `support-admin.spec.ts` |
+| `SCR-ADMIN-SUPPORT-TICKET`  | `/admin/support/tickets/[ticketNo]` | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | Claim/reassign, workflow, public reply và internal note.        | `apps/web/app/admin/support/tickets/[ticketNo]/page.tsx` | `/admin/support/tickets/:ticketNo/*` | `support-admin.spec.ts` |
+| `SCR-ADMIN-SUPPORT-FAQS`    | `/admin/support/faqs`               | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | CRUD category/FAQ, active state, sort order, Markdown preview.  | `apps/web/app/admin/support/faqs/page.tsx`               | `/admin/support/faqs`, categories    | `support-admin.spec.ts` |
 
 - Admin pages dùng `AdminShell` riêng, không dùng player `AppShell`.
 - User chưa đăng nhập được chuyển về login với `returnTo=/admin`; account không có role nhận 403.
 - User có mật khẩu tạm bị chuyển sang `/account/change-password` trước khi vào màn hình khác.
+- Support admin pages dùng role-aware `AdminShell`; SUPPORT không thấy menu user management/global audit.
+- User ticket detail có public conversation/reply; internal note không bao giờ render ở user surface.
+
+## State and navigation baseline
 
 - Account/auth/wallet/payment/support client screens expose loading skeletons, API error messages, empty states and mutation pending states where applicable.
 - Server content pages use API loader error/empty fallback; missing game/article/event/ticket routes resolve to not found or user-scoped error.

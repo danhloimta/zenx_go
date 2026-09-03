@@ -4,7 +4,7 @@
 >
 > Last verified: 2026-09-03
 >
-> Verified commit: `201525a`
+> Verified commit: `788f781`
 
 ## Feature inventory
 

@@ -9,9 +9,13 @@ async function main() {
   const [command, ...args] = process.argv.slice(2);
   const email = argument(args, '--email');
   const role = (argument(args, '--role') ?? AdminRole.SUPER_ADMIN).toUpperCase();
-  if (!['grant', 'revoke'].includes(command ?? '') || !email || role !== AdminRole.SUPER_ADMIN) {
+  if (
+    !['grant', 'revoke'].includes(command ?? '') ||
+    !email ||
+    !Object.values(AdminRole).includes(role as AdminRole)
+  ) {
     throw new Error(
-      'Usage: pnpm admin:role <grant|revoke> --email=<existing-user-email> [--role=SUPER_ADMIN]',
+      'Usage: pnpm admin:role <grant|revoke> --email=<existing-user-email> [--role=SUPER_ADMIN|SUPPORT]',
     );
   }
 
@@ -38,6 +42,7 @@ async function main() {
     where: { userId_role: { userId: user.id, role } },
   });
   if (
+    role === AdminRole.SUPER_ADMIN &&
     hasRole &&
     activeSuperAdmins <= 1 &&
     (await prisma.user.findUnique({ where: { id: user.id }, select: { status: true } }))?.status ===

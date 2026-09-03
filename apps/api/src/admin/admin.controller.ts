@@ -12,6 +12,8 @@ import {
   AdminUsersQueryDto,
 } from './admin.dto';
 import { AdminService } from './admin.service';
+import { RequireAdminRoles } from './admin-roles.decorator';
+import { AdminRole } from '../common/domain';
 
 @Controller('admin')
 @UseGuards(AuthGuard, AdminGuard)
@@ -19,6 +21,7 @@ export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
   @Get('me')
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN, AdminRole.SUPPORT)
   me(@Req() request: AdminRequest) {
     return this.admin.me(request.user.sub);
   }

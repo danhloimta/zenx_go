@@ -3,8 +3,18 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, LogOut, Menu, ShieldCheck, Users, X, ScrollText } from 'lucide-react';
+import {
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  Users,
+  X,
+  ScrollText,
+} from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
+import { useSupportAdminDashboard } from '@/hooks/use-support';
 import { ApiError } from '@zenx-go/api-client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,9 +24,10 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-const items = [
+const allItems = [
   { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Người dùng', icon: Users },
+  { href: '/admin/support', label: 'Hỗ trợ', icon: LifeBuoy },
   { href: '/admin/audit-logs', label: 'Nhật ký hoạt động', icon: ScrollText },
 ];
 
@@ -25,6 +36,11 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const admin = useAdminMe();
+  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
+  const items = isSuperAdmin ? allItems : allItems.filter((item) => item.href === '/admin/support');
+  const supportDashboard = useSupportAdminDashboard(
+    Boolean(admin.data && (isSuperAdmin || admin.data.roles.includes('SUPPORT'))),
+  );
   const queryClient = useQueryClient();
   const logout = useMutation({
     mutationFn: api.auth.logout,
@@ -43,6 +59,10 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
       router.replace(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
   }, [admin.error, pathname, router]);
+
+  useEffect(() => {
+    if (admin.data && !isSuperAdmin && pathname === '/admin') router.replace('/admin/support');
+  }, [admin.data, isSuperAdmin, pathname, router]);
 
   if (admin.isLoading) {
     return (
@@ -139,6 +159,11 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
               >
                 <Icon className="size-5" />
                 <span>{item.label}</span>
+                {item.href === '/admin/support' && supportDashboard.data?.tickets.unread ? (
+                  <span className="ml-auto rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                    {supportDashboard.data.tickets.unread}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -181,7 +206,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
             </div>
           </div>
           <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-[#00873E] sm:flex">
-            <ShieldCheck className="size-4" /> SUPER_ADMIN
+            <ShieldCheck className="size-4" /> {admin.data.roles.join(' · ')}
           </div>
         </header>
         <main className="mx-auto max-w-[1440px] p-5 sm:p-8">{children}</main>

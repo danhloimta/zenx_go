@@ -1,8 +1,10 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../database/prisma.service';
 import { AuthenticatedRequest } from '../auth/auth.guard';
 import { AdminRole } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
+import { REQUIRED_ADMIN_ROLES } from './admin-roles.decorator';
 
 export type AdminRequest = AuthenticatedRequest & {
   admin: { roles: string[] };
@@ -10,7 +12,10 @@ export type AdminRequest = AuthenticatedRequest & {
 
 @Injectable()
 export class AdminGuard implements CanActivate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<AdminRequest>();
@@ -19,7 +24,11 @@ export class AdminGuard implements CanActivate {
       select: { role: true },
     });
     const roleCodes = roles.map(({ role }) => role);
-    if (!roleCodes.includes(AdminRole.SUPER_ADMIN)) {
+    const requiredRoles = this.reflector.getAllAndOverride<AdminRole[]>(REQUIRED_ADMIN_ROLES, [
+      context.getHandler(),
+      context.getClass(),
+    ]) ?? [AdminRole.SUPER_ADMIN];
+    if (!requiredRoles.some((role) => roleCodes.includes(role))) {
       throw new DomainError(
         ErrorCode.ADMIN_ACCESS_REQUIRED,
         'Administrator access is required',

@@ -32,6 +32,8 @@ async function reset() {
   await prisma.$connect();
   // Delete children before parents; coin_packages intentionally remains as a fixture table.
   for (const table of [
+    'support_ticket_read_states',
+    'support_ticket_messages',
     'support_tickets',
     'wallet_transactions',
     'payments',

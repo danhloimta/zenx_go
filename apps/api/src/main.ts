@@ -31,7 +31,12 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidUnknownValues: true }));
   app.useGlobalFilters(new ApiErrorFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
-  const swagger = new DocumentBuilder().setTitle('ZENX GO API').setDescription('ZENX GO Phase 1').setVersion('1.0').addCookieAuth('zenx_access').build();
+  const swagger = new DocumentBuilder()
+    .setTitle('ZENX GO API')
+    .setDescription('ZENX GO Phase 1 account administration and Phase 2 support operations')
+    .setVersion('1.0')
+    .addCookieAuth('zenx_access')
+    .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
   const host = config.get<string>('nodeEnv') === 'production' ? '127.0.0.1' : '0.0.0.0';
   await app.listen(config.getOrThrow<number>('port'), host);

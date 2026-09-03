@@ -26,6 +26,7 @@ import { PageFooter } from '@/components/page-footer';
 import { LogoutButton } from '@/components/logout-button';
 import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
+import { useSupportUnreadCount } from '@/hooks/use-support';
 import { cn, formatAmount, mediaUrl } from '@/lib/utils';
 import { portalUrl } from '@/lib/domain';
 import { ApiError } from '@zenx-go/api-client';
@@ -73,6 +74,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const account = useAccount();
   const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
+  const supportUnread = useSupportUnreadCount(Boolean(user && !user.mustChangePassword));
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -195,6 +197,11 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                         strokeWidth={active ? 2.2 : 1.8}
                       />
                       <span>{item.label}</span>
+                      {item.href === '/account/support' && supportUnread.data?.count ? (
+                        <span className="ml-auto rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                          {supportUnread.data.count}
+                        </span>
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -295,7 +302,11 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                 title="Thông báo hệ thống"
               >
                 <Bell className="size-5" />
-                <span className="absolute top-2 right-2 size-2 rounded-full bg-[#00873E] ring-2 ring-white" />
+                {supportUnread.data?.count ? (
+                  <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-red-600 px-1 text-center text-[9px] font-black leading-4 text-white ring-2 ring-white">
+                    {supportUnread.data.count > 99 ? '99+' : supportUnread.data.count}
+                  </span>
+                ) : null}
               </button>
 
               {notifDropdownOpen && (
@@ -306,15 +317,31 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                     </p>
                     <span className="text-[10px] font-semibold text-slate-400">Mới nhất</span>
                   </div>
-                  <div className="py-6 text-center">
-                    <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-                      <Bell className="size-5" />
+                  {supportUnread.data?.count ? (
+                    <Link
+                      href="/account/support"
+                      className="block rounded-xl bg-emerald-50 p-4 text-left transition hover:bg-emerald-100"
+                    >
+                      <p className="text-xs font-bold text-emerald-900">
+                        {supportUnread.data.count} yêu cầu có phản hồi mới
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-700">
+                        Mở danh sách yêu cầu của bạn để xem chi tiết.
+                      </p>
+                    </Link>
+                  ) : (
+                    <div className="py-6 text-center">
+                      <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-400">
+                        <Bell className="size-5" />
+                      </div>
+                      <p className="mt-2.5 text-xs font-bold text-slate-800">
+                        Chưa có thông báo mới
+                      </p>
+                      <p className="mt-1 text-[11px] text-slate-400 max-w-[200px] mx-auto">
+                        Các cập nhật số dư, bảo mật và giao dịch sẽ hiển thị ở đây.
+                      </p>
                     </div>
-                    <p className="mt-2.5 text-xs font-bold text-slate-800">Chưa có thông báo mới</p>
-                    <p className="mt-1 text-[11px] text-slate-400 max-w-[200px] mx-auto">
-                      Các cập nhật số dư, bảo mật và giao dịch sẽ hiển thị ở đây.
-                    </p>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

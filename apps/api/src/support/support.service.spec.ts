@@ -11,11 +11,29 @@ describe('SupportService', () => {
       findMany: jest.fn(),
       count: jest.fn(),
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    supportTicketMessage: {
+      create: jest.fn(),
+    },
+    supportTicketReadState: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn(),
     },
     $transaction: jest.fn(),
   };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.supportTicketReadState.findMany.mockResolvedValue([]);
+    prisma.supportTicketReadState.findUnique.mockResolvedValue(null);
+    prisma.supportTicketMessage.create.mockResolvedValue({});
+    prisma.$transaction.mockImplementation(async (operation: unknown) => {
+      if (typeof operation === 'function') return operation(prisma);
+      return undefined;
+    });
+  });
 
   it('returns only the active FAQ categories and questions in database order', async () => {
     prisma.supportCategory.findMany.mockResolvedValue([
@@ -23,31 +41,41 @@ describe('SupportService', () => {
         id: 'category-1',
         code: 'ACCOUNT',
         name: 'Tài khoản',
-        faqs: [{ id: 'faq-1', categoryId: 'category-1', question: 'Câu hỏi?', answer: 'Câu trả lời.' }],
+        faqs: [
+          { id: 'faq-1', categoryId: 'category-1', question: 'Câu hỏi?', answer: 'Câu trả lời.' },
+        ],
       },
     ]);
     const service = new SupportService(prisma as never);
 
     await expect(service.getFaqs()).resolves.toEqual({
-      categories: [{
-        id: 'category-1',
-        code: 'ACCOUNT',
-        name: 'Tài khoản',
-        faqs: [{ id: 'faq-1', categoryId: 'category-1', question: 'Câu hỏi?', answer: 'Câu trả lời.' }],
-      }],
+      categories: [
+        {
+          id: 'category-1',
+          code: 'ACCOUNT',
+          name: 'Tài khoản',
+          faqs: [
+            { id: 'faq-1', categoryId: 'category-1', question: 'Câu hỏi?', answer: 'Câu trả lời.' },
+          ],
+        },
+      ],
     });
-    expect(prisma.supportCategory.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { status: 'ACTIVE' } }));
+    expect(prisma.supportCategory.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'ACTIVE' } }),
+    );
   });
 
   it('rejects an inactive or unknown category before creating a ticket', async () => {
     prisma.supportCategory.findFirst.mockResolvedValue(null);
     const service = new SupportService(prisma as never);
 
-    await expect(service.createTicket('user-1', {
-      categoryId: 'category-unknown',
-      subject: 'Không thể nạp Coin',
-      description: 'Tôi đã thanh toán nhưng số dư chưa được cập nhật.',
-    })).rejects.toMatchObject({ code: 'SUPPORT_CATEGORY_NOT_FOUND', status: 400 });
+    await expect(
+      service.createTicket('user-1', {
+        categoryId: 'category-unknown',
+        subject: 'Không thể nạp Coin',
+        description: 'Tôi đã thanh toán nhưng số dư chưa được cập nhật.',
+      }),
+    ).rejects.toMatchObject({ code: 'SUPPORT_CATEGORY_NOT_FOUND', status: 400 });
     expect(prisma.supportTicket.create).not.toHaveBeenCalled();
   });
 
@@ -73,11 +101,26 @@ describe('SupportService', () => {
       description: 'Tôi đã thanh toán nhưng số dư chưa được cập nhật.',
     });
 
-    expect(result).toMatchObject({ ticketNo: 'ZSUP-20260826-AB12CD34', status: 'NEW', category: { code: 'TOPUP' } });
+    expect(result).toMatchObject({
+      ticketNo: 'ZSUP-20260826-AB12CD34',
+      status: 'NEW',
+      category: { code: 'TOPUP' },
+    });
     expect(result).not.toHaveProperty('id');
     expect(result).not.toHaveProperty('userId');
     expect(result).not.toHaveProperty('categoryId');
-    expect(prisma.supportTicket.create.mock.calls[0]?.[0]?.data).toEqual(expect.objectContaining({ userId: 'user-1', status: 'NEW' }));
+    expect(prisma.supportTicket.create.mock.calls[0]?.[0]?.data).toEqual(
+      expect.objectContaining({ userId: 'user-1', status: 'NEW' }),
+    );
+    expect(prisma.supportTicketMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        ticketId: 'ticket-id',
+        authorUserId: 'user-1',
+        authorType: 'CUSTOMER',
+        visibility: 'PUBLIC',
+        body: 'Tôi đã thanh toán nhưng số dư chưa được cập nhật.',
+      }),
+    });
   });
 
   it('scopes ticket lists and details to the authenticated user', async () => {
@@ -98,10 +141,16 @@ describe('SupportService', () => {
     const service = new SupportService(prisma as never);
 
     await expect(service.getTickets('user-1', { page: 1, pageSize: 10 })).resolves.toMatchObject({
-      items: [{ ticketNo: ticket.ticketNo }], page: 1, pageSize: 10, total: 1, totalPages: 1,
+      items: [{ ticketNo: ticket.ticketNo }],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
     });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    await expect(service.getTicket('user-1', ticket.ticketNo)).resolves.toMatchObject({ ticketNo: ticket.ticketNo });
+    await expect(service.getTicket('user-1', ticket.ticketNo)).resolves.toMatchObject({
+      ticketNo: ticket.ticketNo,
+    });
     const where = prisma.supportTicket.findFirst.mock.calls[0]?.[0]?.where;
     expect(where).toEqual({ userId: 'user-1', ticketNo: ticket.ticketNo });
   });
@@ -111,7 +160,8 @@ describe('SupportService', () => {
     const service = new SupportService(prisma as never);
 
     await expect(service.getTicket('user-2', 'ZSUP-20260826-AB12CD34')).rejects.toMatchObject({
-      code: 'SUPPORT_TICKET_NOT_FOUND', status: 404,
+      code: 'SUPPORT_TICKET_NOT_FOUND',
+      status: 404,
     });
   });
 });

@@ -249,14 +249,26 @@ export type PaymentStatus =
 export type PaymentMethod = 'MOMO' | 'ZALOPAY' | 'BANK_TRANSFER' | 'CARD' | 'VIETQR';
 /** @deprecated Accepted by older API deployments; new requests should use PaymentMethod. */
 export type LegacyPaymentMethod = 'QR' | 'REDIRECT';
-export type SupportTicketStatus = 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-export type AdminRole = 'SUPER_ADMIN';
+export type SupportTicketStatus = 'NEW' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED';
+export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type SupportMessageVisibility = 'PUBLIC' | 'INTERNAL';
+export type SupportMessageAuthorType = 'CUSTOMER' | 'STAFF';
+export type AdminRole = 'SUPER_ADMIN' | 'SUPPORT';
 export type AdminAuditAction =
   | 'PROFILE_UPDATED'
   | 'STATUS_CHANGED'
   | 'SESSIONS_REVOKED'
   | 'PASSWORD_RESET'
-  | 'SENSITIVE_PROFILE_REVEALED';
+  | 'SENSITIVE_PROFILE_REVEALED'
+  | 'SUPPORT_TICKET_ASSIGNED'
+  | 'SUPPORT_TICKET_STATUS_CHANGED'
+  | 'SUPPORT_TICKET_PRIORITY_CHANGED'
+  | 'SUPPORT_MESSAGE_SENT'
+  | 'SUPPORT_INTERNAL_NOTE_ADDED'
+  | 'SUPPORT_FAQ_CREATED'
+  | 'SUPPORT_FAQ_UPDATED'
+  | 'SUPPORT_CATEGORY_CREATED'
+  | 'SUPPORT_CATEGORY_UPDATED';
 
 export interface AuthUser {
   id: string;
@@ -617,6 +629,15 @@ export interface SupportCategory {
   faqs: SupportFaq[];
 }
 
+export interface SupportTicketMessage {
+  id: string;
+  authorType: SupportMessageAuthorType | string;
+  visibility?: SupportMessageVisibility | string;
+  body: string;
+  createdAt: string;
+  author?: { username: string; fullName: string | null } | null;
+}
+
 export interface SupportFaqResponse {
   categories: SupportCategory[];
 }
@@ -626,9 +647,143 @@ export interface SupportTicket {
   subject: string;
   description: string;
   status: SupportTicketStatus;
+  priority?: SupportTicketPriority | string;
+  lastActivityAt?: string;
+  lastCustomerMessageAt?: string | null;
+  lastStaffReplyAt?: string | null;
+  resolvedAt?: string | null;
+  closedAt?: string | null;
+  unread?: boolean;
   createdAt: string;
   updatedAt: string;
   category: Pick<SupportCategory, 'id' | 'code' | 'name'>;
+}
+
+export interface SupportTicketMessagesResponse extends Paginated<SupportTicketMessage> {}
+
+export interface CreateSupportMessageRequest {
+  body: string;
+}
+
+export interface SupportUnreadCountResponse {
+  count: number;
+}
+
+export interface SupportAdminAgent {
+  id: string;
+  username: string;
+  fullName: string | null;
+  status: AccountStatus | string;
+  roles: AdminRole[];
+}
+
+export interface SupportAdminTicket extends SupportTicket {
+  id: string;
+  userId: string;
+  categoryId: string;
+  assigneeUserId: string | null;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    phone: string | null;
+    status: AccountStatus | string;
+    profile: { fullName: string; avatarUrl: string | null } | null;
+  };
+  assignee: SupportAdminAgent | null;
+  messages?: SupportTicketMessage[];
+  messagesPage?: number;
+  messagesPageSize?: number;
+  messagesTotal?: number;
+  messagesTotalPages?: number;
+}
+
+export interface SupportAdminDashboard {
+  tickets: {
+    byStatus: Record<SupportTicketStatus, number>;
+    byPriority: Record<SupportTicketPriority, number>;
+    unassigned: number;
+    assignedToMe: number;
+    unread: number;
+  };
+}
+
+export interface SupportAdminTicketUpdateRequest {
+  expectedUpdatedAt: string;
+  status?: SupportTicketStatus;
+  priority?: SupportTicketPriority;
+  assigneeUserId?: string | null;
+  reason: string;
+}
+
+export interface SupportAdminClaimRequest {
+  expectedUpdatedAt: string;
+  reason: string;
+}
+
+export interface SupportAdminMessageRequest extends CreateSupportMessageRequest {
+  visibility: SupportMessageVisibility;
+  expectedUpdatedAt: string;
+}
+
+export interface SupportAdminFaq {
+  id: string;
+  categoryId: string;
+  question: string;
+  answer: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportAdminCategory {
+  id: string;
+  code: string;
+  name: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  faqs: SupportAdminFaq[];
+}
+
+export interface SupportAdminFaqResponse {
+  categories: SupportAdminCategory[];
+}
+
+export interface SupportAdminCategoryCreateRequest {
+  code: string;
+  name: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface SupportAdminCategoryUpdateRequest {
+  expectedUpdatedAt: string;
+  name?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface SupportAdminFaqCreateRequest {
+  categoryId: string;
+  question: string;
+  answer: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface SupportAdminFaqUpdateRequest {
+  expectedUpdatedAt: string;
+  question?: string;
+  answer?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  sortOrder?: number;
+  reason: string;
 }
 
 export interface CreateSupportTicketRequest {
@@ -875,6 +1030,62 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           to?: string;
         } = {},
       ) => client.get<Paginated<AdminAuditLog>>('/admin/audit-logs', query),
+      support: {
+        dashboard: () => client.get<SupportAdminDashboard>('/admin/support/dashboard'),
+        agents: () => client.get<SupportAdminAgent[]>('/admin/support/agents'),
+        tickets: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            status?: SupportTicketStatus;
+            priority?: SupportTicketPriority;
+            assignee?: 'ME' | 'UNASSIGNED';
+            categoryId?: string;
+            unreadOnly?: boolean;
+          } = {},
+        ) => client.get<Paginated<SupportAdminTicket>>('/admin/support/tickets', query),
+        ticket: (ticketNo: string) =>
+          client.get<SupportAdminTicket>(`/admin/support/tickets/${encodeURIComponent(ticketNo)}`),
+        messages: (ticketNo: string, query: { page?: number; pageSize?: number } = {}) =>
+          client.get<SupportTicketMessagesResponse>(
+            `/admin/support/tickets/${encodeURIComponent(ticketNo)}/messages`,
+            query,
+          ),
+        claim: (ticketNo: string, input: SupportAdminClaimRequest) =>
+          client.post<SupportAdminTicket>(
+            `/admin/support/tickets/${encodeURIComponent(ticketNo)}/claim`,
+            input,
+          ),
+        updateTicket: (ticketNo: string, input: SupportAdminTicketUpdateRequest) =>
+          client.patch<SupportAdminTicket>(
+            `/admin/support/tickets/${encodeURIComponent(ticketNo)}`,
+            input,
+          ),
+        sendMessage: (ticketNo: string, input: SupportAdminMessageRequest) =>
+          client.post<SupportTicketMessage>(
+            `/admin/support/tickets/${encodeURIComponent(ticketNo)}/messages`,
+            input,
+          ),
+        markRead: (ticketNo: string) =>
+          client.post<{ read: boolean }>(
+            `/admin/support/tickets/${encodeURIComponent(ticketNo)}/read`,
+          ),
+        faqs: (
+          query: { categoryId?: string; status?: 'ACTIVE' | 'INACTIVE'; search?: string } = {},
+        ) => client.get<SupportAdminFaqResponse>('/admin/support/faqs', query),
+        createCategory: (input: SupportAdminCategoryCreateRequest) =>
+          client.post<SupportAdminCategory>('/admin/support/categories', input),
+        updateCategory: (categoryId: string, input: SupportAdminCategoryUpdateRequest) =>
+          client.patch<SupportAdminCategory>(
+            `/admin/support/categories/${encodeURIComponent(categoryId)}`,
+            input,
+          ),
+        createFaq: (input: SupportAdminFaqCreateRequest) =>
+          client.post<SupportAdminFaq>('/admin/support/faqs', input),
+        updateFaq: (faqId: string, input: SupportAdminFaqUpdateRequest) =>
+          client.patch<SupportAdminFaq>(`/admin/support/faqs/${encodeURIComponent(faqId)}`, input),
+      },
     },
     otp: {
       send: (input: OtpSendRequest) => client.post<OtpSendResponse>('/otp/send', input),
@@ -1004,6 +1215,19 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.get<Paginated<SupportTicket>>('/support/tickets', query),
       ticket: (ticketNo: string) =>
         client.get<SupportTicket>(`/support/tickets/${encodeURIComponent(ticketNo)}`),
+      messages: (ticketNo: string, query: { page?: number; pageSize?: number } = {}) =>
+        client.get<SupportTicketMessagesResponse>(
+          `/support/tickets/${encodeURIComponent(ticketNo)}/messages`,
+          query,
+        ),
+      createMessage: (ticketNo: string, input: CreateSupportMessageRequest) =>
+        client.post<SupportTicketMessage>(
+          `/support/tickets/${encodeURIComponent(ticketNo)}/messages`,
+          input,
+        ),
+      markRead: (ticketNo: string) =>
+        client.post<{ read: boolean }>(`/support/tickets/${encodeURIComponent(ticketNo)}/read`),
+      unreadCount: () => client.get<SupportUnreadCountResponse>('/support/unread-count'),
     },
     games: {
       list: (query: { genre?: string; platform?: string; status?: GameLifecycleStatus } = {}) =>

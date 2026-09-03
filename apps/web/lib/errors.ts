@@ -38,6 +38,16 @@ const messages: Record<string, string> = {
   ADMIN_STATUS_TRANSITION_INVALID: 'Trạng thái tài khoản này không thể được thay đổi từ admin.',
   SUPPORT_CATEGORY_NOT_FOUND: 'Danh mục hỗ trợ không tồn tại hoặc đã tạm dừng.',
   SUPPORT_TICKET_NOT_FOUND: 'Không tìm thấy yêu cầu hỗ trợ.',
+  SUPPORT_TICKET_NOT_ASSIGNED: 'Hãy nhận ticket trước khi phản hồi.',
+  SUPPORT_TICKET_ASSIGNED_TO_ANOTHER: 'Ticket đang được một agent khác xử lý.',
+  SUPPORT_TICKET_CLOSED: 'Ticket đã đóng và không thể tiếp tục phản hồi.',
+  SUPPORT_TICKET_REOPEN_EXPIRED: 'Ticket đã quá thời hạn mở lại. Vui lòng tạo yêu cầu mới.',
+  SUPPORT_TICKET_STATUS_INVALID: 'Trạng thái ticket không thể chuyển theo workflow này.',
+  SUPPORT_AGENT_NOT_FOUND: 'Không tìm thấy agent hỗ trợ phù hợp.',
+  SUPPORT_INVALID_MARKDOWN: 'Nội dung FAQ có định dạng Markdown không được hỗ trợ.',
+  SUPPORT_CATEGORY_CODE_EXISTS: 'Mã danh mục FAQ đã tồn tại.',
+  SUPPORT_FAQ_DUPLICATE: 'Câu hỏi FAQ đã tồn tại trong danh mục.',
+  SUPPORT_FAQ_NOT_FOUND: 'Không tìm thấy FAQ.',
 };
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {

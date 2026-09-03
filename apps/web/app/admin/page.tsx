@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import {
   ArrowRight,
   Ban,
@@ -30,7 +32,13 @@ const statusMeta: Record<string, { label: string; className: string; icon: typeo
 
 export default function AdminDashboardPage() {
   const admin = useAdminMe();
-  const dashboard = useAdminDashboard(Boolean(admin.data));
+  const router = useRouter();
+  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
+  const dashboard = useAdminDashboard(Boolean(admin.data && isSuperAdmin));
+  useEffect(() => {
+    if (admin.data && !isSuperAdmin) router.replace('/admin/support');
+  }, [admin.data, isSuperAdmin, router]);
+  if (admin.data && !isSuperAdmin) return null;
   if (dashboard.isLoading) return <DashboardSkeleton />;
   if (dashboard.isError || !dashboard.data)
     return (

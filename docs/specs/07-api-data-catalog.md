@@ -4,7 +4,7 @@
 >
 > Last verified: 2026-09-03
 >
-> Verified commit: `201525a`
+> Verified commit: `788f781`
 
 ## Global contract
 
@@ -85,12 +85,33 @@
 
 ## Support API
 
-| ID                          | Method/path                      | Auth   | Status        | Input/output boundary                                      | Source/test                                         |
-| --------------------------- | -------------------------------- | ------ | ------------- | ---------------------------------------------------------- | --------------------------------------------------- |
-| `API-SUPPORT-FAQS`          | `GET /support/faqs`              | Public | `IMPLEMENTED` | Active categories/FAQs theo sort order.                    | `apps/api/src/support`; support integration/E2E     |
-| `API-SUPPORT-TICKET-CREATE` | `POST /support/tickets`          | Access | `IMPLEMENTED` | Category ID + subject + description; tạo `NEW` ticket.     | support controller/service; support integration/E2E |
-| `API-SUPPORT-TICKETS`       | `GET /support/tickets`           | Access | `IMPLEMENTED` | User-scoped list page/pageSize/filter.                     | support service; support integration/E2E            |
-| `API-SUPPORT-TICKET-DETAIL` | `GET /support/tickets/:ticketNo` | Access | `IMPLEMENTED` | User-scoped detail; other user's ticket appears not found. | support service; support integration/E2E            |
+| ID                           | Method/path                                | Auth   | Status        | Input/output boundary                                      | Source/test                                         |
+| ---------------------------- | ------------------------------------------ | ------ | ------------- | ---------------------------------------------------------- | --------------------------------------------------- |
+| `API-SUPPORT-FAQS`           | `GET /support/faqs`                        | Public | `IMPLEMENTED` | Active categories/FAQs theo sort order.                    | `apps/api/src/support`; support integration/E2E     |
+| `API-SUPPORT-TICKET-CREATE`  | `POST /support/tickets`                    | Access | `IMPLEMENTED` | Category ID + subject + description; tạo `NEW` ticket.     | support controller/service; support integration/E2E |
+| `API-SUPPORT-TICKETS`        | `GET /support/tickets`                     | Access | `IMPLEMENTED` | User-scoped list page/pageSize/filter.                     | support service; support integration/E2E            |
+| `API-SUPPORT-TICKET-DETAIL`  | `GET /support/tickets/:ticketNo`           | Access | `IMPLEMENTED` | User-scoped detail; other user's ticket appears not found. | support service; support integration/E2E            |
+| `API-SUPPORT-MESSAGES`       | `GET /support/tickets/:ticketNo/messages`  | Access | `IMPLEMENTED` | Public message thread, newest-first pagination.            | support service; support-admin integration/E2E      |
+| `API-SUPPORT-MESSAGE-CREATE` | `POST /support/tickets/:ticketNo/messages` | Access | `IMPLEMENTED` | User public reply with closed/reopen rules.                | support service; support-admin integration/E2E      |
+| `API-SUPPORT-TICKET-READ`    | `POST /support/tickets/:ticketNo/read`     | Access | `IMPLEMENTED` | Upsert user read cursor.                                   | support service; support-admin integration/E2E      |
+| `API-SUPPORT-UNREAD-COUNT`   | `GET /support/unread-count`                | Access | `IMPLEMENTED` | Staff-reply unread count for current user.                 | support service; support-admin integration/E2E      |
+
+## Admin Support API (Phase 2)
+
+| ID                             | Method/path                                      | Auth                | Status        | Purpose                                          |
+| ------------------------------ | ------------------------------------------------ | ------------------- | ------------- | ------------------------------------------------ |
+| `API-ADMIN-SUPPORT-DASHBOARD`  | `GET /admin/support/dashboard`                   | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Queue KPIs, status/priority counts và unread.    |
+| `API-ADMIN-SUPPORT-AGENTS`     | `GET /admin/support/agents`                      | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Active agents được phép assign.                  |
+| `API-ADMIN-SUPPORT-TICKETS`    | `GET /admin/support/tickets`                     | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Search/filter/page queue và unread-only.         |
+| `API-ADMIN-SUPPORT-TICKET`     | `GET /admin/support/tickets/:ticketNo`           | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Limited user detail, workflow và thread preview. |
+| `API-ADMIN-SUPPORT-MESSAGES`   | `GET /admin/support/tickets/:ticketNo/messages`  | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Public/internal message pagination.              |
+| `API-ADMIN-SUPPORT-CLAIM`      | `POST /admin/support/tickets/:ticketNo/claim`    | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Claim unassigned ticket.                         |
+| `API-ADMIN-SUPPORT-UPDATE`     | `PATCH /admin/support/tickets/:ticketNo`         | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Assignment, priority/status transition.          |
+| `API-ADMIN-SUPPORT-MESSAGE`    | `POST /admin/support/tickets/:ticketNo/messages` | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Public reply hoặc internal note.                 |
+| `API-ADMIN-SUPPORT-READ`       | `POST /admin/support/tickets/:ticketNo/read`     | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Upsert staff read cursor.                        |
+| `API-ADMIN-SUPPORT-FAQS`       | `GET /admin/support/faqs`                        | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Đọc category/FAQ kể cả inactive.                 |
+| `API-ADMIN-SUPPORT-CATEGORIES` | `POST/PATCH /admin/support/categories`           | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Category CRUD không hard-delete.                 |
+| `API-ADMIN-SUPPORT-FAQ`        | `POST/PATCH /admin/support/faqs`                 | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | FAQ CRUD và limited Markdown validation.         |
 
 ## Game and portal API
 
@@ -109,18 +130,18 @@
 
 ## Admin API (Phase 1)
 
-| ID                              | Method/path                                             | Auth                         | Status        | Input/output boundary                                                                                 | Source/test                                      |
-| ------------------------------- | ------------------------------------------------------- | ---------------------------- | ------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `API-ADMIN-ME`                  | `GET /admin/me`                                         | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Admin summary, role và profile.                                                                        | `apps/api/src/admin`; admin integration          |
-| `API-ADMIN-DASHBOARD`           | `GET /admin/dashboard`                                  | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | User totals/status counts, registrations 7 ngày, recent users/activity.                               | admin service; admin integration                 |
-| `API-ADMIN-USERS`               | `GET /admin/users`                                      | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Search/filter/page user summaries, không password/hash/sensitive payload.                              | admin service; admin integration                 |
-| `API-ADMIN-USER`                | `GET /admin/users/:userId`                              | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Account/profile/roles/social, wallet read-only, recent ledger và related audit.                         | admin service; admin integration                 |
-| `API-ADMIN-USER-PROFILE`        | `PATCH /admin/users/:userId/profile`                    | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Full basic/contact profile, verified flags, reason và `expectedUpdatedAt`.                             | admin service; admin integration                 |
-| `API-ADMIN-USER-STATUS`         | `PATCH /admin/users/:userId/status`                     | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Chuyển `ACTIVE`/`SUSPENDED`, revoke token/session, reason và optimistic concurrency.                    | admin service; admin integration                 |
-| `API-ADMIN-REVOKE-SESSIONS`     | `POST /admin/users/:userId/revoke-sessions`             | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Tăng `authVersion`, revoke refresh sessions, reason.                                                    | admin service; admin integration                 |
-| `API-ADMIN-RESET-PASSWORD`      | `POST /admin/users/:userId/reset-password`              | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Hash mật khẩu tạm, bắt đổi lần login tiếp theo, revoke sessions, reason.                               | admin service; admin integration                 |
-| `API-ADMIN-SENSITIVE-REVEAL`    | `POST /admin/users/:userId/sensitive-profile/reveal`   | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Reason bắt buộc; trả CCCD plaintext sau audit; không secret/ciphertext.                                | admin service; admin integration                 |
-| `API-ADMIN-AUDIT-LOGS`          | `GET /admin/audit-logs`                                | Access + `SUPER_ADMIN`       | `IMPLEMENTED` | Page/filter actor/action/target/date, metadata đã redact.                                               | admin service; admin integration                 |
+| ID                           | Method/path                                          | Auth                   | Status        | Input/output boundary                                                                | Source/test                             |
+| ---------------------------- | ---------------------------------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------ | --------------------------------------- |
+| `API-ADMIN-ME`               | `GET /admin/me`                                      | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Admin summary, role và profile.                                                      | `apps/api/src/admin`; admin integration |
+| `API-ADMIN-DASHBOARD`        | `GET /admin/dashboard`                               | Access + `SUPER_ADMIN` | `IMPLEMENTED` | User totals/status counts, registrations 7 ngày, recent users/activity.              | admin service; admin integration        |
+| `API-ADMIN-USERS`            | `GET /admin/users`                                   | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Search/filter/page user summaries, không password/hash/sensitive payload.            | admin service; admin integration        |
+| `API-ADMIN-USER`             | `GET /admin/users/:userId`                           | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Account/profile/roles/social, wallet read-only, recent ledger và related audit.      | admin service; admin integration        |
+| `API-ADMIN-USER-PROFILE`     | `PATCH /admin/users/:userId/profile`                 | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Full basic/contact profile, verified flags, reason và `expectedUpdatedAt`.           | admin service; admin integration        |
+| `API-ADMIN-USER-STATUS`      | `PATCH /admin/users/:userId/status`                  | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Chuyển `ACTIVE`/`SUSPENDED`, revoke token/session, reason và optimistic concurrency. | admin service; admin integration        |
+| `API-ADMIN-REVOKE-SESSIONS`  | `POST /admin/users/:userId/revoke-sessions`          | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Tăng `authVersion`, revoke refresh sessions, reason.                                 | admin service; admin integration        |
+| `API-ADMIN-RESET-PASSWORD`   | `POST /admin/users/:userId/reset-password`           | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Hash mật khẩu tạm, bắt đổi lần login tiếp theo, revoke sessions, reason.             | admin service; admin integration        |
+| `API-ADMIN-SENSITIVE-REVEAL` | `POST /admin/users/:userId/sensitive-profile/reveal` | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Reason bắt buộc; trả CCCD plaintext sau audit; không secret/ciphertext.              | admin service; admin integration        |
+| `API-ADMIN-AUDIT-LOGS`       | `GET /admin/audit-logs`                              | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Page/filter actor/action/target/date, metadata đã redact.                            | admin service; admin integration        |
 
 ## Platform API
 
@@ -140,25 +161,27 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 
 ## Data model boundary
 
-| Model/table                                                       | Dữ liệu chính                                                                | Public exposure                                         |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `User` / `users`                                                  | Identity login, email/phone, status, verification timestamps, authVersion, forced-password flag, password hash. | Public account fields đã lọc; không passwordHash.       |
-| `UserRole` / `user_roles`                                         | User-to-role assignments; Phase 1 dùng `SUPER_ADMIN`.                     | Chỉ admin authorization; không public.                  |
-| `AdminAuditLog` / `admin_audit_logs`                               | Append-only admin action, actor/target, reason, safe metadata, request context. | Chỉ `SUPER_ADMIN` qua audit API.                        |
-| `UserProfile` / `user_profiles`                                   | Basic profile, avatar, DOB/gender/city/address, terms/privacy.               | `AccountMe.profile`; không sensitive identity.          |
-| `SensitiveProfile` / `sensitive_profiles`                         | AES-GCM CCCD payload/metadata, Argon2 code/answer hashes, version/lockout.   | Summary masked hoặc reveal sau sensitive token.         |
-| `SecurityQuestion` / `security_questions`                         | Code, Vietnamese label, sort order, active flag.                             | Active options qua account questions endpoint.          |
-| `OtpRequest` / `otp_requests`                                     | Destination, purpose/channel, code hash, attempts/expiry/status.             | Không public trực tiếp.                                 |
-| `OtpVerification` / `otp_verifications`                           | One-time token hash, purpose, expiry/consumedAt.                             | Chỉ raw token một lần ở verify response.                |
-| `SocialIdentity` / `social_identities`                            | Provider identity/link/login timestamps.                                     | Chỉ boolean provider flags ở account response.          |
-| `RefreshSession` / `refresh_sessions`                             | Refresh token hash, expiry, revocation và rotation link.                     | Không public trực tiếp; chỉ cookie rotation.            |
-| `Wallet` / `wallets`                                              | User currency/balance.                                                       | Summary currency/balance/update time.                   |
-| `WalletTransaction` / `wallet_transactions`                       | Ledger amount, before/after, type/status/reference/idempotency.              | Public safe transaction; storage IDs loại bỏ.           |
-| `CoinPackage` / `coin_packages`                                   | Active package price/coin/sort.                                              | Public active list.                                     |
-| `Payment` / `payments`                                            | Payment lifecycle/provider payload/callback metadata.                        | Public payment fields; payload secrets/storage IDs lọc. |
-| `SupportCategory`, `SupportFaq`, `SupportTicket`                  | FAQ catalog và user ticket lifecycle.                                        | FAQ public; ticket user-scoped.                         |
-| `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping.        | Public summaries/details theo `isPublic`.               |
-| `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | Published content, roadmap, events, announcement windows.                    | Public khi status/time/isPublic rules pass.             |
+| Model/table                                                       | Dữ liệu chính                                                                                                   | Public exposure                                                            |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `User` / `users`                                                  | Identity login, email/phone, status, verification timestamps, authVersion, forced-password flag, password hash. | Public account fields đã lọc; không passwordHash.                          |
+| `UserRole` / `user_roles`                                         | User-to-role assignments; Phase 1 `SUPER_ADMIN`, Phase 2 thêm `SUPPORT`.                                        | Chỉ admin authorization; không public.                                     |
+| `AdminAuditLog` / `admin_audit_logs`                              | Append-only admin action, actor/target, reason, safe metadata, request context.                                 | Chỉ `SUPER_ADMIN` qua audit API.                                           |
+| `UserProfile` / `user_profiles`                                   | Basic profile, avatar, DOB/gender/city/address, terms/privacy.                                                  | `AccountMe.profile`; không sensitive identity.                             |
+| `SensitiveProfile` / `sensitive_profiles`                         | AES-GCM CCCD payload/metadata, Argon2 code/answer hashes, version/lockout.                                      | Summary masked hoặc reveal sau sensitive token.                            |
+| `SecurityQuestion` / `security_questions`                         | Code, Vietnamese label, sort order, active flag.                                                                | Active options qua account questions endpoint.                             |
+| `OtpRequest` / `otp_requests`                                     | Destination, purpose/channel, code hash, attempts/expiry/status.                                                | Không public trực tiếp.                                                    |
+| `OtpVerification` / `otp_verifications`                           | One-time token hash, purpose, expiry/consumedAt.                                                                | Chỉ raw token một lần ở verify response.                                   |
+| `SocialIdentity` / `social_identities`                            | Provider identity/link/login timestamps.                                                                        | Chỉ boolean provider flags ở account response.                             |
+| `RefreshSession` / `refresh_sessions`                             | Refresh token hash, expiry, revocation và rotation link.                                                        | Không public trực tiếp; chỉ cookie rotation.                               |
+| `Wallet` / `wallets`                                              | User currency/balance.                                                                                          | Summary currency/balance/update time.                                      |
+| `WalletTransaction` / `wallet_transactions`                       | Ledger amount, before/after, type/status/reference/idempotency.                                                 | Public safe transaction; storage IDs loại bỏ.                              |
+| `CoinPackage` / `coin_packages`                                   | Active package price/coin/sort.                                                                                 | Public active list.                                                        |
+| `Payment` / `payments`                                            | Payment lifecycle/provider payload/callback metadata.                                                           | Public payment fields; payload secrets/storage IDs lọc.                    |
+| `SupportCategory`, `SupportFaq`, `SupportTicket`                  | FAQ catalog, priority/assignee/status lifecycle và activity timestamps.                                         | FAQ public; ticket user-scoped hoặc limited support view.                  |
+| `SupportTicketMessage` / `support_ticket_messages`                | Immutable customer/staff replies và internal notes, visibility/author type.                                     | User hoặc support theo visibility; body không đi vào admin audit metadata. |
+| `SupportTicketReadState` / `support_ticket_read_states`           | Per-viewer last-read cursor cho ticket.                                                                         | Không public trực tiếp; unread count tính theo viewer.                     |
+| `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping.                                           | Public summaries/details theo `isPublic`.                                  |
+| `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | Published content, roadmap, events, announcement windows.                                                       | Public khi status/time/isPublic rules pass.                                |
 
 ## Error/status conventions
 
@@ -169,10 +192,11 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 - Wallet/payment: `INSUFFICIENT_BALANCE`, `PAYMENT_NOT_FOUND`, `PAYMENT_FAILED`, `INVALID_PAYMENT_CALLBACK`, `PAYMENT_ALREADY_PROCESSED` và các filter/idempotency errors.
 - Content/support: `GAME_NOT_FOUND`, `GAME_ARTICLE_NOT_FOUND`, `PORTAL_EVENT_NOT_FOUND`, `SUPPORT_CATEGORY_NOT_FOUND`, `SUPPORT_TICKET_NOT_FOUND`.
 - Admin: `ADMIN_ACCESS_REQUIRED`, `ADMIN_SELF_ACTION_FORBIDDEN`, `LAST_SUPER_ADMIN_PROTECTED`, `PASSWORD_CHANGE_REQUIRED`, `STALE_ADMIN_UPDATE`, `ADMIN_CONTACT_VERIFICATION_REQUIRED`, `ADMIN_STATUS_TRANSITION_INVALID`.
+- Support: `SUPPORT_TICKET_NOT_ASSIGNED`, `SUPPORT_TICKET_ASSIGNED_TO_ANOTHER`, `SUPPORT_TICKET_CLOSED`, `SUPPORT_TICKET_REOPEN_EXPIRED`, `SUPPORT_TICKET_STATUS_INVALID`, `SUPPORT_AGENT_NOT_FOUND`, `SUPPORT_INVALID_MARKDOWN`, `SUPPORT_CATEGORY_CODE_EXISTS`, `SUPPORT_FAQ_DUPLICATE`, `SUPPORT_FAQ_NOT_FOUND`.
 
 ## Test evidence and gaps
 
 - API unit suites nằm cạnh service trong `apps/api/src/**/*.spec.ts`: config, OTP, payment provider, social, support, sensitive profile và common guards/normalization/serialization/domain policy/web-domain.
 - Integration inventory: `apps/api/test/integration/*.integration.spec.ts`.
 - Browser flows: `apps/web/e2e/*.spec.ts`.
-- Test gap: OAuth provider thật và payment provider ngoài mock/SePay chưa có source implementation. CMS và staff/support admin operations vẫn deferred; account-admin API/UI đã có integration/browser coverage.
+- Test gap: OAuth provider thật và payment provider ngoài mock/SePay chưa có source implementation. SLA/attachment/email notification và multi-agent unread race chưa nằm trong Phase 2.
