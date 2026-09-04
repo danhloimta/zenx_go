@@ -268,7 +268,14 @@ export type AdminAuditAction =
   | 'SUPPORT_FAQ_CREATED'
   | 'SUPPORT_FAQ_UPDATED'
   | 'SUPPORT_CATEGORY_CREATED'
-  | 'SUPPORT_CATEGORY_UPDATED';
+  | 'SUPPORT_CATEGORY_UPDATED'
+  | 'CONTENT_GAME_UPDATED'
+  | 'CONTENT_ARTICLE_CREATED'
+  | 'CONTENT_ARTICLE_UPDATED'
+  | 'CONTENT_EVENT_CREATED'
+  | 'CONTENT_EVENT_UPDATED'
+  | 'CONTENT_ANNOUNCEMENT_CREATED'
+  | 'CONTENT_ANNOUNCEMENT_UPDATED';
 
 export interface AuthUser {
   id: string;
@@ -805,6 +812,7 @@ export type GameLifecycleStatus =
 export type GameOperationalStatus = 'AVAILABLE' | 'MAINTENANCE' | 'DEGRADED' | 'UNAVAILABLE';
 export type GameArticleCategory = 'DEVELOPMENT_UPDATE' | 'ANNOUNCEMENT' | 'EVENT' | 'MAINTENANCE';
 export type GameMilestoneStatus = 'COMPLETED' | 'IN_PROGRESS' | 'UPCOMING' | 'PLANNED';
+export type ContentPublishStatus = 'DRAFT' | 'PUBLISHED';
 
 export interface GameGenre {
   code: string;
@@ -970,6 +978,174 @@ export interface PortalHomeResponse {
   activeEvents: PortalEventSummary[];
 }
 
+export interface AdminContentDashboard {
+  games: { total: number; public: number; private: number };
+  articles: { draft: number; published: number };
+  events: { active: number; upcoming: number };
+  announcements: { draft: number; published: number };
+}
+
+export interface AdminContentGame extends GameSummary {
+  id: string;
+  longDescription?: string | null;
+  themeConfig: string;
+  featureConfig: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminContentGameRef {
+  id: string;
+  code: string;
+  name: string;
+  slug: string;
+}
+
+export interface AdminContentArticle extends Omit<GameArticleSummary, 'game'> {
+  id: string;
+  gameId: string;
+  content?: string;
+  status: ContentPublishStatus;
+  createdAt: string;
+  updatedAt: string;
+  game: AdminContentGameRef | null;
+}
+
+export interface AdminContentEvent extends Omit<PortalEventSummary, 'game' | 'status' | 'href'> {
+  id: string;
+  gameId: string | null;
+  content?: string;
+  status: ContentPublishStatus;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  game: AdminContentGameRef | null;
+}
+
+export interface AdminContentAnnouncement {
+  id: string;
+  code: string;
+  title: string;
+  message: string;
+  ctaLabel?: string | null;
+  ctaPath?: string | null;
+  status: ContentPublishStatus;
+  startsAt: string;
+  endsAt?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminContentGameUpdateRequest {
+  expectedUpdatedAt: string;
+  name?: string;
+  tagline?: string;
+  shortDescription?: string;
+  longDescription?: string | null;
+  lifecycleStatus?: GameLifecycleStatus;
+  operationalStatus?: GameOperationalStatus;
+  releaseYear?: number | null;
+  logoUrl?: string | null;
+  iconUrl?: string | null;
+  coverUrl?: string | null;
+  heroDesktopUrl?: string | null;
+  heroMobileUrl?: string | null;
+  primaryCtaLabel?: string | null;
+  primaryCtaPath?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaPath?: string | null;
+  featured?: boolean;
+  isPublic?: boolean;
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface AdminContentArticleCreateRequest {
+  gameId: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  coverImageUrl?: string | null;
+  category: GameArticleCategory;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status?: ContentPublishStatus;
+  reason: string;
+}
+
+export interface AdminContentArticleUpdateRequest {
+  expectedUpdatedAt: string;
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  coverImageUrl?: string | null;
+  category?: GameArticleCategory;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status?: ContentPublishStatus;
+  reason: string;
+}
+
+export interface AdminContentEventCreateRequest {
+  gameId?: string | null;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  coverImageUrl?: string | null;
+  startsAt: string;
+  endsAt?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status?: ContentPublishStatus;
+  reason: string;
+}
+
+export interface AdminContentEventUpdateRequest {
+  expectedUpdatedAt: string;
+  gameId?: string | null;
+  title?: string;
+  excerpt?: string;
+  content?: string;
+  coverImageUrl?: string | null;
+  startsAt?: string;
+  endsAt?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status?: ContentPublishStatus;
+  reason: string;
+}
+
+export interface AdminContentAnnouncementCreateRequest {
+  code: string;
+  title: string;
+  message: string;
+  ctaLabel?: string | null;
+  ctaPath?: string | null;
+  status?: ContentPublishStatus;
+  startsAt: string;
+  endsAt?: string | null;
+  sortOrder?: number;
+  reason: string;
+}
+
+export interface AdminContentAnnouncementUpdateRequest {
+  expectedUpdatedAt: string;
+  title?: string;
+  message?: string;
+  ctaLabel?: string | null;
+  ctaPath?: string | null;
+  status?: ContentPublishStatus;
+  startsAt?: string;
+  endsAt?: string | null;
+  sortOrder?: number;
+  reason: string;
+}
+
 export function createZenxApiClient(options: ApiClientOptions = {}) {
   const client = new ApiClient(options);
 
@@ -1085,6 +1261,76 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           client.post<SupportAdminFaq>('/admin/support/faqs', input),
         updateFaq: (faqId: string, input: SupportAdminFaqUpdateRequest) =>
           client.patch<SupportAdminFaq>(`/admin/support/faqs/${encodeURIComponent(faqId)}`, input),
+      },
+      content: {
+        dashboard: () => client.get<AdminContentDashboard>('/admin/content/dashboard'),
+        games: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            lifecycleStatus?: GameLifecycleStatus;
+            operationalStatus?: GameOperationalStatus;
+            isPublic?: boolean;
+          } = {},
+        ) => client.get<Paginated<AdminContentGame>>('/admin/content/games', query),
+        game: (gameId: string) =>
+          client.get<AdminContentGame>(`/admin/content/games/${encodeURIComponent(gameId)}`),
+        updateGame: (gameId: string, input: AdminContentGameUpdateRequest) =>
+          client.patch<AdminContentGame>(
+            `/admin/content/games/${encodeURIComponent(gameId)}`,
+            input,
+          ),
+        articles: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            gameId?: string;
+            category?: GameArticleCategory;
+            status?: ContentPublishStatus;
+          } = {},
+        ) => client.get<Paginated<AdminContentArticle>>('/admin/content/articles', query),
+        article: (articleId: string) =>
+          client.get<AdminContentArticle>(`/admin/content/articles/${encodeURIComponent(articleId)}`),
+        createArticle: (input: AdminContentArticleCreateRequest) =>
+          client.post<AdminContentArticle>('/admin/content/articles', input),
+        updateArticle: (articleId: string, input: AdminContentArticleUpdateRequest) =>
+          client.patch<AdminContentArticle>(
+            `/admin/content/articles/${encodeURIComponent(articleId)}`,
+            input,
+          ),
+        events: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            gameId?: string;
+            status?: ContentPublishStatus;
+          } = {},
+        ) => client.get<Paginated<AdminContentEvent>>('/admin/content/events', query),
+        event: (eventId: string) =>
+          client.get<AdminContentEvent>(`/admin/content/events/${encodeURIComponent(eventId)}`),
+        createEvent: (input: AdminContentEventCreateRequest) =>
+          client.post<AdminContentEvent>('/admin/content/events', input),
+        updateEvent: (eventId: string, input: AdminContentEventUpdateRequest) =>
+          client.patch<AdminContentEvent>(
+            `/admin/content/events/${encodeURIComponent(eventId)}`,
+            input,
+          ),
+        announcements: (
+          query: { page?: number; pageSize?: number; search?: string; status?: ContentPublishStatus } = {},
+        ) => client.get<Paginated<AdminContentAnnouncement>>('/admin/content/announcements', query),
+        createAnnouncement: (input: AdminContentAnnouncementCreateRequest) =>
+          client.post<AdminContentAnnouncement>('/admin/content/announcements', input),
+        updateAnnouncement: (
+          announcementId: string,
+          input: AdminContentAnnouncementUpdateRequest,
+        ) =>
+          client.patch<AdminContentAnnouncement>(
+            `/admin/content/announcements/${encodeURIComponent(announcementId)}`,
+            input,
+          ),
       },
     },
     otp: {

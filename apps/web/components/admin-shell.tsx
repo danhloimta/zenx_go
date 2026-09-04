@@ -12,6 +12,7 @@ import {
   Users,
   X,
   ScrollText,
+  FileText,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -28,6 +29,7 @@ const allItems = [
   { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/admin/users', label: 'Người dùng', icon: Users },
   { href: '/admin/support', label: 'Hỗ trợ', icon: LifeBuoy },
+  { href: '/admin/content', label: 'Nội dung', icon: FileText },
   { href: '/admin/audit-logs', label: 'Nhật ký hoạt động', icon: ScrollText },
 ];
 
@@ -62,6 +64,12 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
 
   useEffect(() => {
     if (admin.data && !isSuperAdmin && pathname === '/admin') router.replace('/admin/support');
+  }, [admin.data, isSuperAdmin, pathname, router]);
+
+  useEffect(() => {
+    if (admin.data && !isSuperAdmin && pathname.startsWith('/admin/content')) {
+      router.replace('/admin/support');
+    }
   }, [admin.data, isSuperAdmin, pathname, router]);
 
   if (admin.isLoading) {

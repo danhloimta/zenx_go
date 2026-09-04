@@ -10,11 +10,21 @@ const GAME_INCLUDE = {
   platforms: true,
 };
 
-const GAME_DETAIL_INCLUDE = {
-  ...GAME_INCLUDE,
-  articles: { where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null } }, orderBy: [{ publishedAt: 'desc' as Prisma.SortOrder }, { createdAt: 'desc' as Prisma.SortOrder }] },
-  milestones: { orderBy: [{ sortOrder: 'asc' as Prisma.SortOrder }, { title: 'asc' as Prisma.SortOrder }] },
-};
+function gameDetailInclude(now: Date) {
+  return {
+    ...GAME_INCLUDE,
+    articles: {
+      where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: now } },
+      orderBy: [
+        { publishedAt: 'desc' as Prisma.SortOrder },
+        { createdAt: 'desc' as Prisma.SortOrder },
+      ],
+    },
+    milestones: {
+      orderBy: [{ sortOrder: 'asc' as Prisma.SortOrder }, { title: 'asc' as Prisma.SortOrder }],
+    },
+  };
+}
 
 @Injectable()
 export class GameService {
@@ -32,13 +42,19 @@ export class GameService {
   }
 
   async bySlug(slug: string) {
-    const game = await this.prisma.game.findFirst({ where: { slug: slug.trim().toLowerCase(), isPublic: true }, include: GAME_DETAIL_INCLUDE });
+    const game = await this.prisma.game.findFirst({
+      where: { slug: slug.trim().toLowerCase(), isPublic: true },
+      include: gameDetailInclude(new Date()),
+    });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
     return this.publicGameDetail(game);
   }
 
   async bySubdomain(subdomain: string) {
-    const game = await this.prisma.game.findFirst({ where: { subdomain: subdomain.trim().toLowerCase(), isPublic: true }, include: GAME_DETAIL_INCLUDE });
+    const game = await this.prisma.game.findFirst({
+      where: { subdomain: subdomain.trim().toLowerCase(), isPublic: true },
+      include: gameDetailInclude(new Date()),
+    });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
     return this.publicGameDetail(game);
   }
@@ -46,13 +62,13 @@ export class GameService {
   async articles(slug: string) {
     const game = await this.prisma.game.findFirst({ where: { slug: slug.trim().toLowerCase(), isPublic: true }, select: { id: true } });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
-    const articles = await this.prisma.gameArticle.findMany({ where: { gameId: game.id, status: GameArticleStatus.PUBLISHED, publishedAt: { not: null } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] });
+    const articles = await this.prisma.gameArticle.findMany({ where: { gameId: game.id, status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] });
     return { items: articles.map((article) => this.publicArticleSummary(article)) };
   }
 
   async article(slug: string, articleSlug: string) {
     const article = await this.prisma.gameArticle.findFirst({
-      where: { game: { slug: slug.trim().toLowerCase(), isPublic: true }, slug: articleSlug.trim().toLowerCase(), status: GameArticleStatus.PUBLISHED, publishedAt: { not: null } },
+      where: { game: { slug: slug.trim().toLowerCase(), isPublic: true }, slug: articleSlug.trim().toLowerCase(), status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } },
     });
     if (!article) throw new DomainError(ErrorCode.GAME_ARTICLE_NOT_FOUND, 'Game article not found', 404);
     const related = await this.prisma.gameArticle.findMany({ where: { gameId: article.gameId, id: { not: article.id }, status: GameArticleStatus.PUBLISHED, publishedAt: { not: null } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }], take: 3 });

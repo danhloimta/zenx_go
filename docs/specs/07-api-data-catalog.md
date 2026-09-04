@@ -113,6 +113,21 @@
 | `API-ADMIN-SUPPORT-CATEGORIES` | `POST/PATCH /admin/support/categories`           | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | Category CRUD không hard-delete.                 |
 | `API-ADMIN-SUPPORT-FAQ`        | `POST/PATCH /admin/support/faqs`                 | SUPPORT/SUPER_ADMIN | `IMPLEMENTED` | FAQ CRUD và limited Markdown validation.         |
 
+## Admin Content API (Phase 3)
+
+| ID | Method/path | Auth | Status | Purpose |
+| --- | --- | --- | --- | --- |
+| `API-ADMIN-CONTENT-DASHBOARD` | `GET /admin/content/dashboard` | SUPER_ADMIN | `IMPLEMENTED` | Game/article/event/announcement KPI. |
+| `API-ADMIN-CONTENT-GAMES` | `GET /admin/content/games` | SUPER_ADMIN | `IMPLEMENTED` | Search/filter/paginated game list. |
+| `API-ADMIN-CONTENT-GAME` | `GET /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Game detail including read-only identifiers/config. |
+| `API-ADMIN-CONTENT-GAME-UPDATE` | `PATCH /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Update allowed basic game fields, reason and expectedUpdatedAt. |
+| `API-ADMIN-CONTENT-ARTICLES` | `GET /admin/content/articles`, `GET /admin/content/articles/:id` | SUPER_ADMIN | `IMPLEMENTED` | Article list/detail including draft. |
+| `API-ADMIN-CONTENT-ARTICLE-MUTATION` | `POST /admin/content/articles`, `PATCH /admin/content/articles/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update Markdown article and publish state. |
+| `API-ADMIN-CONTENT-EVENTS` | `GET /admin/content/events`, `GET /admin/content/events/:id` | SUPER_ADMIN | `IMPLEMENTED` | Event list/detail including draft. |
+| `API-ADMIN-CONTENT-EVENT-MUTATION` | `POST /admin/content/events`, `PATCH /admin/content/events/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update event, date range and publish state. |
+| `API-ADMIN-CONTENT-ANNOUNCEMENTS` | `GET /admin/content/announcements` | SUPER_ADMIN | `IMPLEMENTED` | Announcement list including draft. |
+| `API-ADMIN-CONTENT-ANNOUNCEMENT-MUTATION` | `POST /admin/content/announcements`, `PATCH /admin/content/announcements/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update announcement and time window. |
+
 ## Game and portal API
 
 | ID                      | Method/path                              | Auth   | Status        | Input/output boundary                                        | Source/test                               |
@@ -181,7 +196,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 | `SupportTicketMessage` / `support_ticket_messages`                | Immutable customer/staff replies và internal notes, visibility/author type.                                     | User hoặc support theo visibility; body không đi vào admin audit metadata. |
 | `SupportTicketReadState` / `support_ticket_read_states`           | Per-viewer last-read cursor cho ticket.                                                                         | Không public trực tiếp; unread count tính theo viewer.                     |
 | `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping.                                           | Public summaries/details theo `isPublic`.                                  |
-| `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | Published content, roadmap, events, announcement windows.                                                       | Public khi status/time/isPublic rules pass.                                |
+| `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | CMS-managed game/portal content, draft/publish state, roadmap, events, announcement windows.                    | Public khi status/time/isPublic rules pass; CMS chỉ SUPER_ADMIN.           |
 
 ## Error/status conventions
 
@@ -192,6 +207,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 - Wallet/payment: `INSUFFICIENT_BALANCE`, `PAYMENT_NOT_FOUND`, `PAYMENT_FAILED`, `INVALID_PAYMENT_CALLBACK`, `PAYMENT_ALREADY_PROCESSED` và các filter/idempotency errors.
 - Content/support: `GAME_NOT_FOUND`, `GAME_ARTICLE_NOT_FOUND`, `PORTAL_EVENT_NOT_FOUND`, `SUPPORT_CATEGORY_NOT_FOUND`, `SUPPORT_TICKET_NOT_FOUND`.
 - Admin: `ADMIN_ACCESS_REQUIRED`, `ADMIN_SELF_ACTION_FORBIDDEN`, `LAST_SUPER_ADMIN_PROTECTED`, `PASSWORD_CHANGE_REQUIRED`, `STALE_ADMIN_UPDATE`, `ADMIN_CONTACT_VERIFICATION_REQUIRED`, `ADMIN_STATUS_TRANSITION_INVALID`.
+- Content: `CONTENT_NOT_FOUND`, `CONTENT_SLUG_EXISTS`, `CONTENT_INVALID_URL`, `CONTENT_INVALID_STATE`, `STALE_ADMIN_UPDATE`.
 - Support: `SUPPORT_TICKET_NOT_ASSIGNED`, `SUPPORT_TICKET_ASSIGNED_TO_ANOTHER`, `SUPPORT_TICKET_CLOSED`, `SUPPORT_TICKET_REOPEN_EXPIRED`, `SUPPORT_TICKET_STATUS_INVALID`, `SUPPORT_AGENT_NOT_FOUND`, `SUPPORT_INVALID_MARKDOWN`, `SUPPORT_CATEGORY_CODE_EXISTS`, `SUPPORT_FAQ_DUPLICATE`, `SUPPORT_FAQ_NOT_FOUND`.
 
 ## Test evidence and gaps

@@ -33,7 +33,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
   const swagger = new DocumentBuilder()
     .setTitle('ZENX GO API')
-    .setDescription('ZENX GO Phase 1 account administration and Phase 2 support operations')
+    .setDescription(
+      'ZENX GO Phase 1 account administration, Phase 2 support operations and Phase 3 content CMS',
+    )
     .setVersion('1.0')
     .addCookieAuth('zenx_access')
     .build();

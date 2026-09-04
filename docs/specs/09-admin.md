@@ -1,4 +1,4 @@
-# Admin — Phase 1 & Phase 2
+# Admin — Phase 1, Phase 2 & Phase 3
 
 > Loại tài liệu: canonical domain specification
 >
@@ -6,13 +6,13 @@
 >
 > Verified commit: `788f781`
 >
-> Phạm vi: Admin account operations (Phase 1) và Support operations (Phase 2)
+> Phạm vi: Account operations (Phase 1), Support operations (Phase 2) và Content CMS (Phase 3)
 
 ## Mục đích
 
 Tài liệu này là source of truth cho khu vực quản trị Phase 1/2 của ZENX GO. Nó mô tả hành vi đang có trong source, ranh giới bảo mật, contract API, màn hình, cách bootstrap và các known gaps cần xử lý trước production.
 
-Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành support. CMS game/content, payment operations và điều chỉnh số dư Coin chưa nằm trong phạm vi.
+Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành support; Phase 3 bổ sung CMS game/content cơ bản. Payment operations và điều chỉnh số dư Coin chưa nằm trong phạm vi.
 
 ## Trạng thái hiện tại
 
@@ -29,16 +29,17 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Audit log đầy đủ trên UI          | `PARTIAL`         | UI hiện chưa expose hết filter actor/date và metadata.                                     |
 | Multi-role permission UI          | `NOT IMPLEMENTED` | Chưa có màn hình cấp/gỡ role.                                                              |
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
+| Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game cơ bản, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 
 ## Access model
 
 ### Role
 
-Phase 1/2 có các role được hỗ trợ:
+Phase 1/2/3 có các role được hỗ trợ:
 
 | Role          | Ý nghĩa                                                                                 | Cách cấp                    |
 | ------------- | --------------------------------------------------------------------------------------- | --------------------------- |
-| `SUPER_ADMIN` | Toàn quyền trên các endpoint admin Phase 1/2.                                           | CLI idempotent, chưa có UI. |
+| `SUPER_ADMIN` | Toàn quyền trên các endpoint admin Phase 1/2/3.                                           | CLI idempotent, chưa có UI. |
 | `SUPPORT`     | Chỉ support queue, conversation và FAQ; không user-management/CCCD/wallet/global audit. | CLI idempotent, chưa có UI. |
 
 Role được đọc trực tiếp từ database bởi `AdminGuard` cho mỗi request. Không lưu role trong access JWT để tránh quyền cũ tồn tại sau khi bị gỡ.
@@ -72,6 +73,7 @@ Khi admin đặt mật khẩu tạm:
 | `SCR-ADMIN-USERS`     | `/admin/users`          | Search, filter status, pagination.                                       | `GET /admin/users`                            |
 | `SCR-ADMIN-USER`      | `/admin/users/[userId]` | Hồ sơ, status, session, password, CCCD summary/reveal, wallet read-only. | `GET /admin/users/:userId`, các mutation user |
 | `SCR-ADMIN-AUDIT-LOG` | `/admin/audit-logs`     | Xem activity log và link về user.                                        | `GET /admin/audit-logs`                       |
+| `SCR-ADMIN-CONTENT`   | `/admin/content/*`      | CMS game, article, event và announcement; chỉ `SUPER_ADMIN`.            | `GET/PATCH /admin/content/*`                 |
 
 `AdminShell` là layout riêng, không dùng player `AppShell`. Mọi screen có loading/error/empty state và mutation pending state cơ bản.
 
@@ -152,6 +154,8 @@ Base path: `/api/v1`.
 
 All JSON responses follow `{ data, error }`. Browser mutations remain protected by `OriginGuard`.
 
+Admin content API, UI và các giới hạn CMS được canonical hóa trong [Game Hub & Content](./05-game-hub-content.md). `SUPER_ADMIN` dùng chung session/RBAC với Phase 1; `SUPPORT` không được truy cập content routes.
+
 ## Support operations — Phase 2
 
 `SUPPORT` và `SUPER_ADMIN` dùng chung các route dưới đây. `SUPPORT` chỉ nhận limited user summary trong ticket; không truy cập user-management, CCCD, wallet, password hoặc global audit.
@@ -191,7 +195,7 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 
 Supported actions:
 
-`PROFILE_UPDATED`, `STATUS_CHANGED`, `SESSIONS_REVOKED`, `PASSWORD_RESET`, `SENSITIVE_PROFILE_REVEALED`, `SUPPORT_TICKET_ASSIGNED`, `SUPPORT_TICKET_STATUS_CHANGED`, `SUPPORT_TICKET_PRIORITY_CHANGED`, `SUPPORT_MESSAGE_SENT`, `SUPPORT_INTERNAL_NOTE_ADDED`, `SUPPORT_FAQ_CREATED`, `SUPPORT_FAQ_UPDATED`, `SUPPORT_CATEGORY_CREATED`, `SUPPORT_CATEGORY_UPDATED`.
+`PROFILE_UPDATED`, `STATUS_CHANGED`, `SESSIONS_REVOKED`, `PASSWORD_RESET`, `SENSITIVE_PROFILE_REVEALED`, `SUPPORT_TICKET_ASSIGNED`, `SUPPORT_TICKET_STATUS_CHANGED`, `SUPPORT_TICKET_PRIORITY_CHANGED`, `SUPPORT_MESSAGE_SENT`, `SUPPORT_INTERNAL_NOTE_ADDED`, `SUPPORT_FAQ_CREATED`, `SUPPORT_FAQ_UPDATED`, `SUPPORT_CATEGORY_CREATED`, `SUPPORT_CATEGORY_UPDATED`, `CONTENT_GAME_UPDATED`, `CONTENT_ARTICLE_CREATED`, `CONTENT_ARTICLE_UPDATED`, `CONTENT_EVENT_CREATED`, `CONTENT_EVENT_UPDATED`, `CONTENT_ANNOUNCEMENT_CREATED`, `CONTENT_ANNOUNCEMENT_UPDATED`.
 
 The application exposes no update/delete endpoint for audit records. No retention/archive policy is configured yet.
 
@@ -203,6 +207,10 @@ Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `2026
 - `SupportTicketMessage` lưu text bất biến với `CUSTOMER/STAFF` và `PUBLIC/INTERNAL`.
 - `SupportTicketReadState` lưu `lastReadAt` theo cặp ticket/user, để unread của customer và từng agent độc lập.
 - Migration `202609030005_support_opening_messages` backfill description hiện tại thành opening public message; ticket mới cũng tạo opening message trong cùng transaction.
+
+### Content data model
+
+Phase 3 dùng các bảng hiện tại `Game`, `GameArticle`, `GameEvent` và `PortalAnnouncement`; không thêm migration. CMS chỉ ghi các trường được phép, giữ code/slug/subdomain và theme/feature config ở chế độ read-only theo từng resource. Draft không được trả bởi public API.
 
 ## Bootstrap and operations
 
@@ -244,14 +252,18 @@ Operational checklist:
 | `ADMIN_CONTACT_VERIFICATION_REQUIRED` | New email/phone lacks explicit verified choice.             |
 | `ADMIN_NO_CHANGES`                    | Profile request contains no changes.                        |
 | `ADMIN_STATUS_TRANSITION_INVALID`     | Status is not editable by Phase 1 admin flow.               |
+| `CONTENT_NOT_FOUND`                    | Game/article/event/announcement không tồn tại.               |
+| `CONTENT_SLUG_EXISTS`                  | Slug hoặc announcement code đã tồn tại.                     |
+| `CONTENT_INVALID_URL`                  | Asset hoặc CTA URL không nằm trong allowlist.                |
+| `CONTENT_INVALID_STATE`                | Status/date/Markdown state không hợp lệ.                    |
 
 ## Test evidence
 
 | Layer       | Coverage                                                                                                                                                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `admin.audit.service.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, `apps/api/src/support/limited-markdown.spec.ts`.                                                                 |
-| Integration | `apps/api/test/integration/admin.integration.spec.ts` và `support-admin.integration.spec.ts`: access boundaries, queue/workflow, claim race, conversation/unread, FAQ Markdown và audit metadata. |
-| Browser     | `apps/web/e2e/admin.spec.ts` và `support-admin.spec.ts`: admin/support login, queue, claim, reply/internal note, FAQ, user/admin screens trên desktop/mobile. |
+| Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `admin.audit.service.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, content Markdown/URL validation specs. |
+| Integration | `apps/api/test/integration/admin.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`: access boundaries, queue/workflow, CMS draft/publish, visibility, conflict và audit metadata. |
+| Browser     | `apps/web/e2e/admin.spec.ts`, `support-admin.spec.ts`, `content-admin.spec.ts`: admin/support và CMS flows trên desktop/mobile. |
 | Regression  | Existing auth/account/support/payment/game integration and browser suites.                                                                                                                                         |
 
 ## Known gaps before production
@@ -268,11 +280,11 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 
 ## Out of scope
 
-- CMS game/genre/article/event/theme/feature flags.
+- CMS nâng cao: role editor/game-admin, media library, WYSIWYG, scheduled publish, revision/approval, theme/feature builder, genre/platform/roadmap editor và tạo/xóa game.
 - Payment reconciliation, refund hoặc cộng/trừ Coin.
 - Role management UI và permission matrix nhiều role.
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.
 - User create/delete và chỉnh sửa sensitive profile.
 
-Các phần trên sẽ được tách thành phase riêng để tránh mở rộng phạm vi Phase 1.
+Các phần trên sẽ được tách thành phase riêng để tránh mở rộng phạm vi CMS cơ bản.

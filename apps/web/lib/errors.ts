@@ -48,6 +48,10 @@ const messages: Record<string, string> = {
   SUPPORT_CATEGORY_CODE_EXISTS: 'Mã danh mục FAQ đã tồn tại.',
   SUPPORT_FAQ_DUPLICATE: 'Câu hỏi FAQ đã tồn tại trong danh mục.',
   SUPPORT_FAQ_NOT_FOUND: 'Không tìm thấy FAQ.',
+  CONTENT_NOT_FOUND: 'Không tìm thấy nội dung.',
+  CONTENT_SLUG_EXISTS: 'Slug hoặc mã nội dung đã tồn tại.',
+  CONTENT_INVALID_URL: 'URL nội dung không hợp lệ.',
+  CONTENT_INVALID_STATE: 'Trạng thái hoặc dữ liệu nội dung không hợp lệ.',
 };
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {

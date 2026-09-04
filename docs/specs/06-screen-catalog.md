@@ -87,6 +87,19 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 | `SCR-ADMIN-SUPPORT-TICKET`  | `/admin/support/tickets/[ticketNo]` | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | Claim/reassign, workflow, public reply và internal note.        | `apps/web/app/admin/support/tickets/[ticketNo]/page.tsx` | `/admin/support/tickets/:ticketNo/*` | `support-admin.spec.ts` |
 | `SCR-ADMIN-SUPPORT-FAQS`    | `/admin/support/faqs`               | `SUPPORT`/`SUPER_ADMIN` | `IMPLEMENTED` | CRUD category/FAQ, active state, sort order, Markdown preview.  | `apps/web/app/admin/support/faqs/page.tsx`               | `/admin/support/faqs`, categories    | `support-admin.spec.ts` |
 
+### Admin Content — Phase 3
+
+| ID | Route | Auth | Status | Mục đích / hành động chính | Source | API/data | Test |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `SCR-ADMIN-CONTENT-HOME` | `/admin/content` | `SUPER_ADMIN` | `IMPLEMENTED` | KPI game/article/event/announcement và link quản lý. | `apps/web/app/admin/content/page.tsx` | `/admin/content/dashboard` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-GAMES` | `/admin/content/games` | `SUPER_ADMIN` | `IMPLEMENTED` | Search/filter/pagination game và public state. | `apps/web/app/admin/content/games/page.tsx` | `/admin/content/games` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-GAME` | `/admin/content/games/[gameId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Sửa thông tin game cơ bản; định danh/config read-only. | `apps/web/app/admin/content/games/[gameId]/page.tsx` | `/admin/content/games/:id` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-ARTICLES` | `/admin/content/articles` | `SUPER_ADMIN` | `IMPLEMENTED` | Filter article theo game/category/status. | `apps/web/app/admin/content/articles/page.tsx` | `/admin/content/articles` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-ARTICLE` | `/admin/content/articles/new`, `/admin/content/articles/[articleId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Markdown editor, safe preview, draft/publish. | `apps/web/components/admin-content/article-editor.tsx` | `/admin/content/articles/*` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-EVENTS` | `/admin/content/events` | `SUPER_ADMIN` | `IMPLEMENTED` | Filter event theo game/status và ngày. | `apps/web/app/admin/content/events/page.tsx` | `/admin/content/events` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-EVENT` | `/admin/content/events/new`, `/admin/content/events/[eventId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Event game/portal, date range, Markdown và publish. | `apps/web/components/admin-content/event-editor.tsx` | `/admin/content/events/*` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-ANNOUNCEMENTS` | `/admin/content/announcements` | `SUPER_ADMIN` | `IMPLEMENTED` | Tạo/sửa announcement, status và time window. | `apps/web/app/admin/content/announcements/page.tsx` | `/admin/content/announcements` | `content-admin.spec.ts` |
+
 - Admin pages dùng `AdminShell` riêng, không dùng player `AppShell`.
 - User chưa đăng nhập được chuyển về login với `returnTo=/admin`; account không có role nhận 403.
 - User có mật khẩu tạm bị chuyển sang `/account/change-password` trước khi vào màn hình khác.

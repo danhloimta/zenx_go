@@ -22,6 +22,13 @@ export const AdminAuditAction = {
   SUPPORT_FAQ_UPDATED: 'SUPPORT_FAQ_UPDATED',
   SUPPORT_CATEGORY_CREATED: 'SUPPORT_CATEGORY_CREATED',
   SUPPORT_CATEGORY_UPDATED: 'SUPPORT_CATEGORY_UPDATED',
+  CONTENT_GAME_UPDATED: 'CONTENT_GAME_UPDATED',
+  CONTENT_ARTICLE_CREATED: 'CONTENT_ARTICLE_CREATED',
+  CONTENT_ARTICLE_UPDATED: 'CONTENT_ARTICLE_UPDATED',
+  CONTENT_EVENT_CREATED: 'CONTENT_EVENT_CREATED',
+  CONTENT_EVENT_UPDATED: 'CONTENT_EVENT_UPDATED',
+  CONTENT_ANNOUNCEMENT_CREATED: 'CONTENT_ANNOUNCEMENT_CREATED',
+  CONTENT_ANNOUNCEMENT_UPDATED: 'CONTENT_ANNOUNCEMENT_UPDATED',
 } as const;
 export type AdminAuditAction = (typeof AdminAuditAction)[keyof typeof AdminAuditAction];
 export const Gender = {
@@ -147,6 +154,9 @@ export type GameOperationalStatus =
   (typeof GameOperationalStatus)[keyof typeof GameOperationalStatus];
 export const GameArticleStatus = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' } as const;
 export type GameArticleStatus = (typeof GameArticleStatus)[keyof typeof GameArticleStatus];
+export const ContentPublishStatus = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' } as const;
+export type ContentPublishStatus =
+  (typeof ContentPublishStatus)[keyof typeof ContentPublishStatus];
 export const GameArticleCategory = {
   DEVELOPMENT_UPDATE: 'DEVELOPMENT_UPDATE',
   ANNOUNCEMENT: 'ANNOUNCEMENT',
