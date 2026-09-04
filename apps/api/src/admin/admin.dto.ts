@@ -1,4 +1,4 @@
-import { AccountStatus, AdminAuditAction, Gender } from '../common/domain';
+import { AccountStatus, Gender } from '../common/domain';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
@@ -9,7 +9,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
   MaxLength,
   Min,
@@ -38,16 +37,6 @@ export class AdminUsersQueryDto {
   @MaxLength(100)
   search?: string;
   @IsOptional() @IsEnum(AccountStatus) status?: AccountStatus;
-}
-
-export class AdminAuditLogsQueryDto {
-  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
-  @IsOptional() @Type(() => Number) @IsInt() @IsIn([20, 50, 100]) pageSize = 20;
-  @IsOptional() @IsUUID() actorUserId?: string;
-  @IsOptional() @IsEnum(AdminAuditAction) action?: AdminAuditAction;
-  @IsOptional() @IsUUID() targetId?: string;
-  @IsOptional() @Transform(({ value }) => trimOrUndefined(value)) @IsDateString() from?: string;
-  @IsOptional() @Transform(({ value }) => trimOrUndefined(value)) @IsDateString() to?: string;
 }
 
 export class AdminExpectedUpdateDto {
@@ -82,21 +71,11 @@ export class AdminProfileUpdateDto extends AdminExpectedUpdateDto {
     string | null;
   @IsOptional() @IsBoolean() emailVerified?: boolean;
   @IsOptional() @IsBoolean() phoneVerified?: boolean;
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @MinLength(5)
-  @MaxLength(500)
-  reason!: string;
 }
 
 export class AdminStatusUpdateDto extends AdminExpectedUpdateDto {
   @IsIn([AccountStatus.ACTIVE, AccountStatus.SUSPENDED]) status!:
     typeof AccountStatus.ACTIVE | typeof AccountStatus.SUSPENDED;
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @MinLength(5)
-  @MaxLength(500)
-  reason!: string;
 }
 
 export class AdminResetPasswordDto extends AdminExpectedUpdateDto {
@@ -112,19 +91,4 @@ export class AdminResetPasswordDto extends AdminExpectedUpdateDto {
   @MinLength(8)
   @MaxLength(128)
   temporaryPasswordConfirmation!: string;
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @MinLength(5)
-  @MaxLength(500)
-  reason!: string;
 }
-
-export class AdminReasonDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
-  @IsString()
-  @MinLength(5)
-  @MaxLength(500)
-  reason!: string;
-}
-
-export class AdminSensitiveRevealDto extends AdminReasonDto {}

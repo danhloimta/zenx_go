@@ -254,28 +254,6 @@ export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type SupportMessageVisibility = 'PUBLIC' | 'INTERNAL';
 export type SupportMessageAuthorType = 'CUSTOMER' | 'STAFF';
 export type AdminRole = 'SUPER_ADMIN' | 'SUPPORT';
-export type AdminAuditAction =
-  | 'PROFILE_UPDATED'
-  | 'STATUS_CHANGED'
-  | 'SESSIONS_REVOKED'
-  | 'PASSWORD_RESET'
-  | 'SENSITIVE_PROFILE_REVEALED'
-  | 'SUPPORT_TICKET_ASSIGNED'
-  | 'SUPPORT_TICKET_STATUS_CHANGED'
-  | 'SUPPORT_TICKET_PRIORITY_CHANGED'
-  | 'SUPPORT_MESSAGE_SENT'
-  | 'SUPPORT_INTERNAL_NOTE_ADDED'
-  | 'SUPPORT_FAQ_CREATED'
-  | 'SUPPORT_FAQ_UPDATED'
-  | 'SUPPORT_CATEGORY_CREATED'
-  | 'SUPPORT_CATEGORY_UPDATED'
-  | 'CONTENT_GAME_UPDATED'
-  | 'CONTENT_ARTICLE_CREATED'
-  | 'CONTENT_ARTICLE_UPDATED'
-  | 'CONTENT_EVENT_CREATED'
-  | 'CONTENT_EVENT_UPDATED'
-  | 'CONTENT_ANNOUNCEMENT_CREATED'
-  | 'CONTENT_ANNOUNCEMENT_UPDATED';
 
 export interface AuthUser {
   id: string;
@@ -390,25 +368,10 @@ export interface AdminSensitiveSummary {
   security: { configured: boolean };
 }
 
-export interface AdminAuditLog {
-  id: string;
-  actorUserId: string;
-  actorUsername: string | null;
-  action: AdminAuditAction | string;
-  targetType: string;
-  targetId: string | null;
-  reason: string;
-  metadata: unknown;
-  ipAddress: string | null;
-  userAgent: string | null;
-  createdAt: string;
-}
-
 export interface AdminUserDetail extends AdminUserSummary {
   socialIdentities: Array<{ provider: string; linkedAt: string; lastLoginAt: string | null }>;
   sensitiveProfile: AdminSensitiveSummary;
   recentTransactions: WalletTransaction[];
-  auditLogs: AdminAuditLog[];
 }
 
 export interface AdminDashboard {
@@ -418,7 +381,6 @@ export interface AdminDashboard {
     registeredLast7Days: number;
   };
   recentUsers: AdminUserSummary[];
-  recentActivity: AdminAuditLog[];
 }
 
 export interface AdminProfileUpdateRequest {
@@ -433,24 +395,17 @@ export interface AdminProfileUpdateRequest {
   address?: string | null;
   emailVerified?: boolean;
   phoneVerified?: boolean;
-  reason: string;
 }
 
 export interface AdminStatusUpdateRequest {
   expectedUpdatedAt: string;
   status: 'ACTIVE' | 'SUSPENDED';
-  reason: string;
 }
 
 export interface AdminResetPasswordRequest {
   expectedUpdatedAt: string;
   temporaryPassword: string;
   temporaryPasswordConfirmation: string;
-  reason: string;
-}
-
-export interface AdminReasonRequest {
-  reason: string;
 }
 
 export interface UpdateAccountRequest extends Partial<UserProfile> {}
@@ -720,12 +675,10 @@ export interface SupportAdminTicketUpdateRequest {
   status?: SupportTicketStatus;
   priority?: SupportTicketPriority;
   assigneeUserId?: string | null;
-  reason: string;
 }
 
 export interface SupportAdminClaimRequest {
   expectedUpdatedAt: string;
-  reason: string;
 }
 
 export interface SupportAdminMessageRequest extends CreateSupportMessageRequest {
@@ -764,7 +717,6 @@ export interface SupportAdminCategoryCreateRequest {
   name: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 }
 
 export interface SupportAdminCategoryUpdateRequest {
@@ -772,7 +724,6 @@ export interface SupportAdminCategoryUpdateRequest {
   name?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 }
 
 export interface SupportAdminFaqCreateRequest {
@@ -781,7 +732,6 @@ export interface SupportAdminFaqCreateRequest {
   answer: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 }
 
 export interface SupportAdminFaqUpdateRequest {
@@ -790,7 +740,6 @@ export interface SupportAdminFaqUpdateRequest {
   answer?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 }
 
 export interface CreateSupportTicketRequest {
@@ -1060,7 +1009,6 @@ export interface AdminContentGameUpdateRequest {
   featured?: boolean;
   isPublic?: boolean;
   sortOrder?: number;
-  reason: string;
 }
 
 export interface AdminContentArticleCreateRequest {
@@ -1074,7 +1022,6 @@ export interface AdminContentArticleCreateRequest {
   seoTitle?: string | null;
   seoDescription?: string | null;
   status?: ContentPublishStatus;
-  reason: string;
 }
 
 export interface AdminContentArticleUpdateRequest {
@@ -1087,7 +1034,6 @@ export interface AdminContentArticleUpdateRequest {
   seoTitle?: string | null;
   seoDescription?: string | null;
   status?: ContentPublishStatus;
-  reason: string;
 }
 
 export interface AdminContentEventCreateRequest {
@@ -1102,7 +1048,6 @@ export interface AdminContentEventCreateRequest {
   seoTitle?: string | null;
   seoDescription?: string | null;
   status?: ContentPublishStatus;
-  reason: string;
 }
 
 export interface AdminContentEventUpdateRequest {
@@ -1117,7 +1062,6 @@ export interface AdminContentEventUpdateRequest {
   seoTitle?: string | null;
   seoDescription?: string | null;
   status?: ContentPublishStatus;
-  reason: string;
 }
 
 export interface AdminContentAnnouncementCreateRequest {
@@ -1130,7 +1074,6 @@ export interface AdminContentAnnouncementCreateRequest {
   startsAt: string;
   endsAt?: string | null;
   sortOrder?: number;
-  reason: string;
 }
 
 export interface AdminContentAnnouncementUpdateRequest {
@@ -1143,7 +1086,6 @@ export interface AdminContentAnnouncementUpdateRequest {
   startsAt?: string;
   endsAt?: string | null;
   sortOrder?: number;
-  reason: string;
 }
 
 export function createZenxApiClient(options: ApiClientOptions = {}) {
@@ -1180,32 +1122,19 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/profile`, input),
       updateStatus: (userId: string, input: AdminStatusUpdateRequest) =>
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, input),
-      revokeSessions: (userId: string, input: AdminReasonRequest) =>
+      revokeSessions: (userId: string) =>
         client.post<{ revoked: boolean }>(
           `/admin/users/${encodeURIComponent(userId)}/revoke-sessions`,
-          input,
         ),
       resetPassword: (userId: string, input: AdminResetPasswordRequest) =>
         client.post<{ reset: boolean }>(
           `/admin/users/${encodeURIComponent(userId)}/reset-password`,
           input,
         ),
-      revealSensitiveProfile: (userId: string, input: AdminReasonRequest) =>
+      revealSensitiveProfile: (userId: string) =>
         client.post<SensitiveProfileRevealResponse>(
           `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/reveal`,
-          input,
         ),
-      auditLogs: (
-        query: {
-          page?: number;
-          pageSize?: number;
-          actorUserId?: string;
-          action?: AdminAuditAction;
-          targetId?: string;
-          from?: string;
-          to?: string;
-        } = {},
-      ) => client.get<Paginated<AdminAuditLog>>('/admin/audit-logs', query),
       support: {
         dashboard: () => client.get<SupportAdminDashboard>('/admin/support/dashboard'),
         agents: () => client.get<SupportAdminAgent[]>('/admin/support/agents'),
@@ -1331,6 +1260,11 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
             `/admin/content/announcements/${encodeURIComponent(announcementId)}`,
             input,
           ),
+        uploadAsset: (file: Blob | File) => {
+          const body = new FormData();
+          body.append('file', file);
+          return client.post<{ url: string }>('/admin/content/upload', body);
+        },
       },
     },
     otp: {

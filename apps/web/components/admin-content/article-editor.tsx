@@ -40,7 +40,6 @@ type ArticleForm = {
   seoTitle: string;
   seoDescription: string;
   status: ContentPublishStatus;
-  reason: string;
 };
 
 export function ArticleEditor({ articleId }: { articleId?: string }) {
@@ -80,7 +79,6 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
       seoTitle: form.seoTitle || null,
       seoDescription: form.seoDescription || null,
       status: form.status,
-      reason: form.reason,
       expectedUpdatedAt: article!.updatedAt,
     }),
     onSuccess: () => {
@@ -97,7 +95,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
     return <div className="space-y-4"><BackLink /><Alert>{getErrorMessage(articleQuery.error, 'Không thể tải bài viết.')}</Alert></div>;
   }
   const set = <K extends keyof ArticleForm>(key: K, value: ArticleForm[K]) => setForm((current) => ({ ...current, [key]: value }));
-  const canSubmit = Boolean(form.gameId) && form.title.trim().length >= 3 && form.slug.trim().length >= 3 && form.excerpt.trim().length >= 3 && form.content.trim().length > 0 && form.reason.trim().length >= 5;
+  const canSubmit = Boolean(form.gameId) && form.title.trim().length >= 3 && form.slug.trim().length >= 3 && form.excerpt.trim().length >= 3 && form.content.trim().length > 0;
   return (
     <div className="space-y-6">
       <BackLink />
@@ -126,18 +124,18 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
           <h3 className="font-black text-slate-900">SEO (tuỳ chọn)</h3>
           <div className="mt-5 grid gap-5 md:grid-cols-2"><Field label="SEO title"><Input value={form.seoTitle} onChange={(event) => set('seoTitle', event.target.value)} maxLength={240} /></Field><Field label="SEO description"><Textarea value={form.seoDescription} onChange={(event) => set('seoDescription', event.target.value)} className="min-h-24" maxLength={500} /></Field></div>
         </section>
-        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7"><Field label="Lý do thay đổi"><Textarea value={form.reason} onChange={(event) => set('reason', event.target.value)} placeholder="Nhập lý do, tối thiểu 5 ký tự…" /></Field><div className="mt-5 flex justify-end"><Button type="submit" disabled={pending || !canSubmit}><Save className="size-4" /> {pending ? 'Đang lưu…' : editing ? 'Lưu bài viết' : 'Tạo bài viết'}</Button></div></section>
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7"><div className="flex justify-end"><Button type="submit" disabled={pending || !canSubmit}><Save className="size-4" /> {pending ? 'Đang lưu…' : editing ? 'Lưu bài viết' : 'Tạo bài viết'}</Button></div></section>
       </form>
     </div>
   );
 }
 
 function defaultForm(): ArticleForm {
-  return { gameId: '', title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', category: 'DEVELOPMENT_UPDATE', seoTitle: '', seoDescription: '', status: 'DRAFT', reason: '' };
+  return { gameId: '', title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', category: 'DEVELOPMENT_UPDATE', seoTitle: '', seoDescription: '', status: 'DRAFT' };
 }
 
 function toForm(article: AdminContentArticle): ArticleForm {
-  return { gameId: article.gameId, title: article.title, slug: article.slug, excerpt: article.excerpt, content: article.content ?? '', coverImageUrl: article.coverImageUrl ?? '', category: article.category as GameArticleCategory, seoTitle: article.seoTitle ?? '', seoDescription: article.seoDescription ?? '', status: article.status, reason: '' };
+  return { gameId: article.gameId, title: article.title, slug: article.slug, excerpt: article.excerpt, content: article.content ?? '', coverImageUrl: article.coverImageUrl ?? '', category: article.category as GameArticleCategory, seoTitle: article.seoTitle ?? '', seoDescription: article.seoDescription ?? '', status: article.status };
 }
 
 function BackLink() { return <Link href="/admin/content/articles" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"><ArrowLeft className="size-4" /> Quay lại bài viết</Link>; }

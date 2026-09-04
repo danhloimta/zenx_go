@@ -65,7 +65,6 @@ export class AdminSupportTicketsQueryDto {
 
 export class AdminSupportTicketClaimDto {
   @IsDateString() expectedUpdatedAt!: string;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminSupportTicketUpdateDto {
@@ -74,7 +73,6 @@ export class AdminSupportTicketUpdateDto {
   @IsOptional() @IsEnum(SupportTicketPriority) priority?: SupportTicketPriority;
   @IsOptional() @Transform(({ value }) => emptyToNull(value)) @IsUUID() assigneeUserId?:
     string | null;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminSupportFaqQueryDto {
@@ -95,7 +93,6 @@ export class AdminSupportCategoryCreateDto {
   @Transform(({ value }) => trim(value)) @IsString() @MinLength(2) @MaxLength(80) name!: string;
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status: 'ACTIVE' | 'INACTIVE' = 'ACTIVE';
   @IsOptional() @Type(() => Number) @IsInt() sortOrder = 0;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminSupportCategoryUpdateDto {
@@ -108,7 +105,6 @@ export class AdminSupportCategoryUpdateDto {
   name?: string;
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
   @IsOptional() @Type(() => Number) @IsInt() sortOrder?: number;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminSupportFaqCreateDto {
@@ -125,7 +121,6 @@ export class AdminSupportFaqCreateDto {
   answer!: string;
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status: 'ACTIVE' | 'INACTIVE' = 'ACTIVE';
   @IsOptional() @Type(() => Number) @IsInt() sortOrder = 0;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminSupportFaqUpdateDto {
@@ -139,5 +134,4 @@ export class AdminSupportFaqUpdateDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(4000) answer?: string;
   @IsOptional() @IsIn(['ACTIVE', 'INACTIVE']) status?: 'ACTIVE' | 'INACTIVE';
   @IsOptional() @Type(() => Number) @IsInt() sortOrder?: number;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }

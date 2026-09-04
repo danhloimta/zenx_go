@@ -77,7 +77,7 @@ describe('Support admin API (SQL Server)', () => {
     expect(userManagement.status).toBe(403);
     expect(userManagement.body.error.code).toBe('ADMIN_ACCESS_REQUIRED');
     const audit = await http().get('/admin/audit-logs').set('Cookie', supportCookies);
-    expect(audit.status).toBe(403);
+    expect(audit.status).toBe(404);
   });
 
   it('claims, reassigns, replies, hides internal notes, and tracks unread state', async () => {
@@ -89,7 +89,6 @@ describe('Support admin API (SQL Server)', () => {
       .set('Cookie', supportCookies)
       .send({
         expectedUpdatedAt: initial.body.data.updatedAt,
-        reason: 'Nhận ticket để xử lý',
       });
     expect(claimed.status).toBe(201);
     expect(claimed.body.data).toMatchObject({ assigneeUserId: supportId, status: 'IN_PROGRESS' });
@@ -99,7 +98,6 @@ describe('Support admin API (SQL Server)', () => {
       .set('Cookie', secondSupportCookies)
       .send({
         expectedUpdatedAt: initial.body.data.updatedAt,
-        reason: 'Thử nhận ticket đã có người',
       });
     expect(secondClaim.status).toBe(409);
     expect(['SUPPORT_TICKET_ASSIGNED_TO_ANOTHER', 'STALE_ADMIN_UPDATE']).toContain(
@@ -179,7 +177,6 @@ describe('Support admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: current.body.data.updatedAt,
         status: 'RESOLVED',
-        reason: 'Đã xử lý xong yêu cầu',
       });
     expect(resolved.status).toBe(200);
     const reopened = await http()
@@ -196,7 +193,6 @@ describe('Support admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: resolvedAgain.body.data.updatedAt,
         status: 'RESOLVED',
-        reason: 'Đóng xử lý lần hai',
       });
     expect(resolvedAgainUpdate.status).toBe(200);
     await prisma.supportTicket.update({
@@ -218,7 +214,6 @@ describe('Support admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: expiredState.body.data.updatedAt,
         status: 'CLOSED',
-        reason: 'Đóng ticket đã xử lý',
       });
     expect(stale.status).toBe(200);
     const closedReply = await http()
@@ -229,7 +224,7 @@ describe('Support admin API (SQL Server)', () => {
     expect(closedReply.body.error.code).toBe('SUPPORT_TICKET_CLOSED');
   });
 
-  it('manages FAQ with safe Markdown and preserves audit metadata boundaries', async () => {
+  it('manages FAQ with safe Markdown', async () => {
     const createdCategory = await http()
       .post('/admin/support/categories')
       .set('Cookie', supportCookies)
@@ -238,7 +233,6 @@ describe('Support admin API (SQL Server)', () => {
         name: 'Phase 2 Support',
         status: 'ACTIVE',
         sortOrder: 99,
-        reason: 'Tạo danh mục kiểm thử',
       });
     expect(createdCategory.status).toBe(201);
     const createdFaq = await http().post('/admin/support/faqs').set('Cookie', supportCookies).send({
@@ -247,7 +241,6 @@ describe('Support admin API (SQL Server)', () => {
       answer: 'Dùng **in đậm** và [liên kết](https://example.com).',
       status: 'ACTIVE',
       sortOrder: 1,
-      reason: 'Tạo FAQ kiểm thử',
     });
     expect(createdFaq.status).toBe(201);
     const invalid = await http().post('/admin/support/faqs').set('Cookie', supportCookies).send({
@@ -256,7 +249,6 @@ describe('Support admin API (SQL Server)', () => {
       answer: '<script>alert(1)</script>',
       status: 'ACTIVE',
       sortOrder: 2,
-      reason: 'Kiểm tra sanitizer',
     });
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe('SUPPORT_INVALID_MARKDOWN');
@@ -266,13 +258,8 @@ describe('Support admin API (SQL Server)', () => {
         (category: { id: string }) => category.id === createdCategory.body.data.id,
       ).faqs[0].answer,
     ).toContain('**in đậm**');
-    const logs = await http()
-      .get('/admin/audit-logs')
-      .query({ targetId: createdFaq.body.data.id })
-      .set('Cookie', supportCookies);
-    expect(logs.status).toBe(403);
     const adminLogs = await http().get('/admin/audit-logs').set('Cookie', supportCookies);
-    expect(adminLogs.status).toBe(403);
+    expect(adminLogs.status).toBe(404);
   });
 
   async function registerMember() {

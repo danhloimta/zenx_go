@@ -1,13 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AdminGuard, AdminRequest } from './admin.guard';
 import {
-  AdminAuditLogsQueryDto,
   AdminProfileUpdateDto,
-  AdminReasonDto,
   AdminResetPasswordDto,
-  AdminSensitiveRevealDto,
   AdminStatusUpdateDto,
   AdminUsersQueryDto,
 } from './admin.dto';
@@ -44,10 +40,9 @@ export class AdminController {
   @Patch('users/:userId/profile')
   updateProfile(
     @Param('userId') userId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminProfileUpdateDto,
   ) {
-    return this.admin.updateProfile(userId, dto, this.context(request));
+    return this.admin.updateProfile(userId, dto);
   }
 
   @Patch('users/:userId/status')
@@ -56,47 +51,26 @@ export class AdminController {
     @Req() request: AdminRequest,
     @Body() dto: AdminStatusUpdateDto,
   ) {
-    return this.admin.updateStatus(userId, dto, this.context(request));
+    return this.admin.updateStatus(userId, dto, request.user.sub);
   }
 
   @Post('users/:userId/revoke-sessions')
-  revokeSessions(
-    @Param('userId') userId: string,
-    @Req() request: AdminRequest,
-    @Body() dto: AdminReasonDto,
-  ) {
-    return this.admin.revokeSessions(userId, dto, this.context(request));
+  revokeSessions(@Param('userId') userId: string) {
+    return this.admin.revokeSessions(userId);
   }
 
   @Post('users/:userId/reset-password')
   resetPassword(
     @Param('userId') userId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminResetPasswordDto,
   ) {
-    return this.admin.resetPassword(userId, dto, this.context(request));
+    return this.admin.resetPassword(userId, dto);
   }
 
   @Post('users/:userId/sensitive-profile/reveal')
   revealSensitiveProfile(
     @Param('userId') userId: string,
-    @Req() request: AdminRequest,
-    @Body() dto: AdminSensitiveRevealDto,
   ) {
-    return this.admin.revealSensitiveProfile(userId, dto.reason, this.context(request));
-  }
-
-  @Get('audit-logs')
-  auditLogs(@Query() query: AdminAuditLogsQueryDto) {
-    return this.admin.listAuditLogs(query);
-  }
-
-  private context(request: Request) {
-    const userAgent = request.get('user-agent');
-    return {
-      actorUserId: (request as AdminRequest).user.sub,
-      ipAddress: request.ip,
-      ...(userAgent ? { userAgent } : {}),
-    };
+    return this.admin.revealSensitiveProfile(userId);
   }
 }

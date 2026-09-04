@@ -196,14 +196,12 @@ type CategoryCreate = {
   name: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 };
 type CategoryUpdate = {
   expectedUpdatedAt: string;
   name?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 };
 type FaqCreate = {
   categoryId: string;
@@ -211,7 +209,6 @@ type FaqCreate = {
   answer: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 };
 type FaqUpdate = {
   expectedUpdatedAt: string;
@@ -219,7 +216,6 @@ type FaqUpdate = {
   answer?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   sortOrder?: number;
-  reason: string;
 };
 
 function FaqCard({ faq, onEdit }: { faq: SupportAdminFaq; onEdit: () => void }) {
@@ -283,10 +279,8 @@ function EditorDialog({
   const [sortOrder, setSortOrder] = useState(
     String(kind === 'category' ? (editingCategory?.sortOrder ?? 0) : (faq?.sortOrder ?? 0)),
   );
-  const [reason, setReason] = useState('');
   const isEdit = Boolean(kind === 'category' ? editingCategory : faq);
   const submit = () => {
-    if (reason.trim().length < 5) return;
     if (kind === 'category') {
       if (name.trim().length < 2) return;
       if (editingCategory)
@@ -295,7 +289,6 @@ function EditorDialog({
           name: name.trim(),
           status,
           sortOrder: Number(sortOrder) || 0,
-          reason: reason.trim(),
         });
       else if (code.trim())
         onCreateCategory({
@@ -303,7 +296,6 @@ function EditorDialog({
           name: name.trim(),
           status,
           sortOrder: Number(sortOrder) || 0,
-          reason: reason.trim(),
         });
     } else if (category && question.trim() && answer.trim()) {
       if (faq)
@@ -313,7 +305,6 @@ function EditorDialog({
           answer,
           status,
           sortOrder: Number(sortOrder) || 0,
-          reason: reason.trim(),
         });
       else
         onCreateFaq({
@@ -322,7 +313,6 @@ function EditorDialog({
           answer,
           status,
           sortOrder: Number(sortOrder) || 0,
-          reason: reason.trim(),
         });
     }
   };
@@ -340,7 +330,7 @@ function EditorDialog({
                   ? 'Sửa FAQ'
                   : 'Tạo FAQ'}
             </h2>
-            <p className="mt-1 text-xs text-slate-500">Mọi thay đổi được ghi vào audit log.</p>
+            <p className="mt-1 text-xs text-slate-500">Cập nhật trực tiếp nội dung hỗ trợ.</p>
           </div>
           <button
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
@@ -430,13 +420,6 @@ function EditorDialog({
             ) : null}
           </div>
         </div>
-        <Field label="Lý do" className="mt-5">
-          <Textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Nhập lý do (tối thiểu 5 ký tự)…"
-          />
-        </Field>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             Hủy
@@ -445,7 +428,6 @@ function EditorDialog({
             onClick={submit}
             disabled={
               pending ||
-              reason.trim().length < 5 ||
               (kind === 'category'
                 ? name.trim().length < 2 || (!isEdit && !code.trim())
                 : !question.trim() || !answer.trim())

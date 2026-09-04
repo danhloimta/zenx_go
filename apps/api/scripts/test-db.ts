@@ -44,7 +44,6 @@ async function reset() {
     'social_identities',
     'sensitive_profiles',
     'user_profiles',
-    'admin_audit_logs',
     'user_roles',
     'users',
   ]) {

@@ -58,7 +58,7 @@ export class SupportAdminController {
     @Param('ticketNo') ticketNo: string,
     @Body() dto: AdminSupportTicketClaimDto,
   ) {
-    return this.support.claim(request.user.sub, ticketNo, dto, this.context(request));
+    return this.support.claim(request.user.sub, ticketNo, dto);
   }
 
   @Patch('tickets/:ticketNo')
@@ -67,7 +67,7 @@ export class SupportAdminController {
     @Param('ticketNo') ticketNo: string,
     @Body() dto: AdminSupportTicketUpdateDto,
   ) {
-    return this.support.updateTicket(request.user.sub, ticketNo, dto, this.context(request));
+    return this.support.updateTicket(request.user.sub, ticketNo, dto);
   }
 
   @Post('tickets/:ticketNo/messages')
@@ -76,7 +76,7 @@ export class SupportAdminController {
     @Param('ticketNo') ticketNo: string,
     @Body() dto: AdminCreateSupportMessageDto,
   ) {
-    return this.support.sendMessage(request.user.sub, ticketNo, dto, this.context(request));
+    return this.support.sendMessage(request.user.sub, ticketNo, dto);
   }
 
   @Post('tickets/:ticketNo/read')
@@ -90,39 +90,28 @@ export class SupportAdminController {
   }
 
   @Post('categories')
-  createCategory(@Req() request: AdminRequest, @Body() dto: AdminSupportCategoryCreateDto) {
-    return this.support.createCategory(dto, this.context(request));
+  createCategory(@Body() dto: AdminSupportCategoryCreateDto) {
+    return this.support.createCategory(dto);
   }
 
   @Patch('categories/:categoryId')
   updateCategory(
-    @Req() request: AdminRequest,
     @Param('categoryId') categoryId: string,
     @Body() dto: AdminSupportCategoryUpdateDto,
   ) {
-    return this.support.updateCategory(categoryId, dto, this.context(request));
+    return this.support.updateCategory(categoryId, dto);
   }
 
   @Post('faqs')
-  createFaq(@Req() request: AdminRequest, @Body() dto: AdminSupportFaqCreateDto) {
-    return this.support.createFaq(dto, this.context(request));
+  createFaq(@Body() dto: AdminSupportFaqCreateDto) {
+    return this.support.createFaq(dto);
   }
 
   @Patch('faqs/:faqId')
   updateFaq(
-    @Req() request: AdminRequest,
     @Param('faqId') faqId: string,
     @Body() dto: AdminSupportFaqUpdateDto,
   ) {
-    return this.support.updateFaq(faqId, dto, this.context(request));
-  }
-
-  private context(request: AdminRequest) {
-    const userAgent = request.get('user-agent');
-    return {
-      actorUserId: request.user.sub,
-      ipAddress: request.ip,
-      ...(userAgent ? { userAgent } : {}),
-    };
+    return this.support.updateFaq(faqId, dto);
   }
 }

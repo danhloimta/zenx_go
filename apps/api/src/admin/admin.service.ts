@@ -1,16 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { AccountStatus, AdminAuditAction, AdminRole } from '../common/domain';
+import { AccountStatus, AdminRole } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { normalizeEmail, normalizePhone, normalizeUsername } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
 import { SensitiveProfileCrypto } from '../account/sensitive-profile.service';
-import { AdminAuditContext, AdminAuditService } from './admin.audit.service';
 import {
-  AdminAuditLogsQueryDto,
   AdminProfileUpdateDto,
-  AdminReasonDto,
   AdminResetPasswordDto,
   AdminStatusUpdateDto,
   AdminUsersQueryDto,
@@ -31,13 +28,10 @@ const USER_LIST_INCLUDE = {
   roles: { select: { role: true } },
 } as const;
 
-export type AdminRequestContext = AdminAuditContext;
-
 @Injectable()
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AdminAuditService,
     private readonly sensitiveCrypto: SensitiveProfileCrypto,
   ) {}
 
@@ -61,7 +55,7 @@ export class AdminService {
 
   async dashboard() {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [total, statusCounts, newUsers, recentUsers, recentAudit] = await Promise.all([
+    const [total, statusCounts, newUsers, recentUsers] = await Promise.all([
       this.prisma.user.count(),
       Promise.all(
         Object.values(AccountStatus).map(
@@ -74,11 +68,6 @@ export class AdminService {
         take: 10,
         include: USER_LIST_INCLUDE,
       }),
-      this.prisma.adminAuditLog.findMany({
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 10,
-        include: { actor: { select: { username: true } } },
-      }),
     ]);
     return {
       users: {
@@ -87,7 +76,6 @@ export class AdminService {
         registeredLast7Days: newUsers,
       },
       recentUsers: recentUsers.map((user) => this.publicUser(user)),
-      recentActivity: recentAudit.map((entry) => this.publicAudit(entry)),
     };
   }
 
@@ -128,7 +116,7 @@ export class AdminService {
   }
 
   async getUser(userId: string) {
-    const [user, transactions, auditLogs] = await this.prisma.$transaction([
+    const [user, transactions] = await this.prisma.$transaction([
       this.prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -169,12 +157,6 @@ export class AdminService {
           },
         },
       }),
-      this.prisma.adminAuditLog.findMany({
-        where: { targetType: 'USER', targetId: userId },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 20,
-        include: { actor: { select: { username: true } } },
-      }),
     ]);
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     return {
@@ -201,11 +183,10 @@ export class AdminService {
             }
           : null,
       })),
-      auditLogs: auditLogs.map((entry) => this.publicAudit(entry)),
     };
   }
 
-  async updateProfile(userId: string, dto: AdminProfileUpdateDto, context: AdminRequestContext) {
+  async updateProfile(userId: string, dto: AdminProfileUpdateDto) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
@@ -329,39 +310,12 @@ export class AdminService {
           data: { revokedAt: new Date() },
         });
       }
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.PROFILE_UPDATED,
-          targetType: 'USER',
-          targetId: userId,
-          reason: dto.reason,
-          metadata: {
-            fields: [
-              ...profileFields,
-              ...(usernameChanged ? ['username'] : []),
-              ...(emailChanged ? ['email'] : []),
-              ...(phoneChanged ? ['phone'] : []),
-            ],
-            email: emailChanged ? maskEmail(nextEmail) : undefined,
-            phone:
-              phoneChanged && nextPhone
-                ? maskPhone(nextPhone)
-                : nextPhone === null
-                  ? null
-                  : undefined,
-            emailVerified: dto.emailVerified,
-            phoneVerified: dto.phoneVerified,
-          },
-        },
-        tx,
-      );
     });
     return this.getUser(userId);
   }
 
-  async updateStatus(userId: string, dto: AdminStatusUpdateDto, context: AdminRequestContext) {
-    if (userId === context.actorUserId)
+  async updateStatus(userId: string, dto: AdminStatusUpdateDto, actorUserId: string) {
+    if (userId === actorUserId)
       throw new DomainError(
         ErrorCode.ADMIN_SELF_ACTION_FORBIDDEN,
         'An administrator cannot suspend their own account',
@@ -410,22 +364,11 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.STATUS_CHANGED,
-          targetType: 'USER',
-          targetId: userId,
-          reason: dto.reason,
-          metadata: { from: current.status, to: dto.status },
-        },
-        tx,
-      );
     });
     return this.getUser(userId);
   }
 
-  async revokeSessions(userId: string, dto: AdminReasonDto, context: AdminRequestContext) {
+  async revokeSessions(userId: string) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
@@ -440,21 +383,11 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.SESSIONS_REVOKED,
-          targetType: 'USER',
-          targetId: userId,
-          reason: dto.reason,
-        },
-        tx,
-      );
     });
     return { revoked: true };
   }
 
-  async resetPassword(userId: string, dto: AdminResetPasswordDto, context: AdminRequestContext) {
+  async resetPassword(userId: string, dto: AdminResetPasswordDto) {
     if (dto.temporaryPassword !== dto.temporaryPasswordConfirmation) {
       throw new DomainError(
         ErrorCode.INVALID_CREDENTIALS,
@@ -489,22 +422,11 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.PASSWORD_RESET,
-          targetType: 'USER',
-          targetId: userId,
-          reason: dto.reason,
-          metadata: { temporary: true },
-        },
-        tx,
-      );
     });
     return { reset: true };
   }
 
-  async revealSensitiveProfile(userId: string, reason: string, context: AdminRequestContext) {
+  async revealSensitiveProfile(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     const profile = await this.prisma.sensitiveProfile.findUnique({
@@ -518,46 +440,7 @@ export class AdminService {
           authTag: profile.citizenIdAuthTag,
         })
       : null;
-    await this.audit.record({
-      ...context,
-      action: AdminAuditAction.SENSITIVE_PROFILE_REVEALED,
-      targetType: 'USER',
-      targetId: userId,
-      reason,
-      metadata: { identityConfigured: Boolean(identity) },
-    });
     return { identity };
-  }
-
-  async listAuditLogs(query: AdminAuditLogsQueryDto) {
-    const page = query.page ?? 1;
-    const pageSize = query.pageSize ?? 20;
-    const createdAt: Prisma.DateTimeFilter = {};
-    if (query.from) createdAt.gte = new Date(query.from);
-    if (query.to) createdAt.lte = new Date(query.to);
-    const where: Prisma.AdminAuditLogWhereInput = {
-      ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}),
-      ...(query.action ? { action: query.action } : {}),
-      ...(query.targetId ? { targetId: query.targetId } : {}),
-      ...(createdAt.gte || createdAt.lte ? { createdAt } : {}),
-    };
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.adminAuditLog.findMany({
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        include: { actor: { select: { username: true } } },
-      }),
-      this.prisma.adminAuditLog.count({ where }),
-    ]);
-    return {
-      items: items.map((item) => this.publicAudit(item)),
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-    };
   }
 
   private assertExpectedVersion(current: Date, expected: string) {
@@ -613,52 +496,6 @@ export class AdminService {
     };
   }
 
-  private publicAudit(entry: {
-    id: string;
-    actorUserId: string;
-    action: string;
-    targetType: string;
-    targetId: string | null;
-    reason: string;
-    metadata: string;
-    ipAddress: string | null;
-    userAgent: string | null;
-    createdAt: Date;
-    actor?: { username: string };
-  }) {
-    let metadata: unknown = {};
-    try {
-      metadata = JSON.parse(entry.metadata);
-    } catch {
-      metadata = {};
-    }
-    return {
-      id: entry.id,
-      actorUserId: entry.actorUserId,
-      actorUsername: entry.actor?.username ?? null,
-      action: entry.action,
-      targetType: entry.targetType,
-      targetId: entry.targetId,
-      reason: entry.reason,
-      metadata,
-      ipAddress: entry.ipAddress,
-      userAgent: entry.userAgent,
-      createdAt: entry.createdAt,
-    };
-  }
-}
-
-function maskEmail(value: string) {
-  const [local, domain] = value.split('@');
-  if (!domain) return '***';
-  return `${(local ?? '').slice(0, 1)}***@${domain}`;
-}
-
-function maskPhone(value: string) {
-  const normalized = normalizePhone(value);
-  return normalized.length <= 4
-    ? '****'
-    : `${'*'.repeat(Math.max(4, normalized.length - 4))}${normalized.slice(-4)}`;
 }
 
 function maskProviderTransactionId(value: string) {

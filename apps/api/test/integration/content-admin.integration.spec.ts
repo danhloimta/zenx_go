@@ -68,6 +68,7 @@ describe('Content admin API (SQL Server)', () => {
     expect(dashboard.status).toBe(200);
     expect(dashboard.body.data.games.total).toBeGreaterThanOrEqual(1);
 
+
     const list = await http().get('/admin/content/games?search=' + gameSlug).set('Cookie', adminCookies);
     expect(list.status).toBe(200);
     expect(list.body.data.items.some((item: { id: string }) => item.id === gameId)).toBe(true);
@@ -81,7 +82,6 @@ describe('Content admin API (SQL Server)', () => {
         expectedUpdatedAt: current.body.data.updatedAt,
         tagline: 'Tagline CMS integration test',
         isPublic: false,
-        reason: 'Kiểm tra cập nhật game CMS',
       });
     expect(updated.status).toBe(200);
     expect(updated.body.data.isPublic).toBe(false);
@@ -96,7 +96,6 @@ describe('Content admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: current.body.data.updatedAt,
         tagline: 'Không được ghi đè',
-        reason: 'Kiểm tra conflict dữ liệu cũ',
       });
     expect(stale.status).toBe(409);
     expect(stale.body.error.code).toBe('STALE_ADMIN_UPDATE');
@@ -114,7 +113,6 @@ describe('Content admin API (SQL Server)', () => {
         content: '# Nội dung\n\n**Bản nháp** của bài viết.',
         category: 'DEVELOPMENT_UPDATE',
         status: 'DRAFT',
-        reason: 'Tạo bài viết nháp kiểm thử',
       });
     expect(article.status).toBe(201);
     articleId = article.body.data.id;
@@ -127,7 +125,6 @@ describe('Content admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: article.body.data.updatedAt,
         status: 'PUBLISHED',
-        reason: 'Publish bài viết kiểm thử',
       });
     expect(published.status).toBe(200);
     expect(published.body.data.status).toBe('PUBLISHED');
@@ -146,7 +143,6 @@ describe('Content admin API (SQL Server)', () => {
         content: 'Nội dung sự kiện.',
         startsAt,
         status: 'DRAFT',
-        reason: 'Tạo sự kiện nháp kiểm thử',
       });
     expect(event.status).toBe(201);
     eventId = event.body.data.id;
@@ -156,13 +152,13 @@ describe('Content admin API (SQL Server)', () => {
     const publishedEvent = await http()
       .patch(`/admin/content/events/${eventId}`)
       .set('Cookie', adminCookies)
-      .send({ expectedUpdatedAt: event.body.data.updatedAt, status: 'PUBLISHED', reason: 'Publish event kiểm thử' });
+      .send({ expectedUpdatedAt: event.body.data.updatedAt, status: 'PUBLISHED' });
     expect(publishedEvent.status).toBe(200);
     const publicEvents = await http().get('/portal/events?status=UPCOMING');
     expect(publicEvents.body.data.items.some((item: { slug: string }) => item.slug === event.body.data.slug)).toBe(true);
   });
 
-  it('validates announcement date/url and audits content without body payloads', async () => {
+  it('validates announcement date/url', async () => {
     const invalid = await http()
       .post('/admin/content/announcements')
       .set('Cookie', adminCookies)
@@ -172,7 +168,6 @@ describe('Content admin API (SQL Server)', () => {
         message: 'Không hợp lệ',
         ctaPath: 'javascript:alert(1)',
         startsAt: new Date().toISOString(),
-        reason: 'Kiểm tra URL không an toàn',
       });
     expect(invalid.status).toBe(400);
     expect(invalid.body.error.code).toBe('CONTENT_INVALID_URL');
@@ -186,20 +181,29 @@ describe('Content admin API (SQL Server)', () => {
         message: 'Thông báo kiểm thử.',
         startsAt: new Date(Date.now() - 60_000).toISOString(),
         status: 'PUBLISHED',
-        reason: 'Tạo announcement kiểm thử',
       });
     expect(announcement.status).toBe(201);
     announcementId = announcement.body.data.id;
     const home = await http().get('/portal/home');
     expect(home.body.data.announcement?.code).toBe(`CONTENT_${suffix}`);
 
-    const logs = await http()
-      .get('/admin/audit-logs')
-      .query({ targetId: announcementId })
-      .set('Cookie', adminCookies);
-    expect(logs.status).toBe(200);
-    const metadata = JSON.stringify(logs.body.data.items[0]?.metadata ?? {});
-    expect(metadata).not.toContain('Thông báo kiểm thử');
+    const auditRoute = await http().get('/admin/audit-logs').set('Cookie', adminCookies);
+    expect(auditRoute.status).toBe(404);
+
+    // Test asset upload endpoint
+    const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
+    const uploadRes = await http()
+      .post('/admin/content/upload')
+      .set('Cookie', adminCookies)
+      .attach('file', pngBuffer, { filename: 'icon.png', contentType: 'image/png' });
+    expect(uploadRes.status).toBe(201);
+    expect(uploadRes.body.data.url).toMatch(/^\/uploads\/content\/.+\.png$/);
+
+    const deniedUpload = await http()
+      .post('/admin/content/upload')
+      .set('Cookie', supportCookies)
+      .attach('file', pngBuffer, { filename: 'icon.png', contentType: 'image/png' });
+    expect(deniedUpload.status).toBe(403);
   });
 
   async function createUser(username: string, email: string, role: 'SUPER_ADMIN' | 'SUPPORT') {

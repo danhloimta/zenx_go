@@ -79,7 +79,6 @@ export class AdminContentGameUpdateDto {
   @IsOptional() @IsBoolean() featured?: boolean;
   @IsOptional() @IsBoolean() isPublic?: boolean;
   @IsOptional() @Type(() => Number) @IsInt() sortOrder?: number;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentArticlesQueryDto extends AdminContentPageDto {
@@ -104,7 +103,6 @@ export class AdminContentArticleCreateDto {
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(240) seoTitle?: string | null;
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(500) seoDescription?: string | null;
   @IsOptional() @IsIn(CONTENT_STATUSES) status: ContentPublishStatus = ContentPublishStatus.DRAFT;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentArticleUpdateDto {
@@ -117,7 +115,6 @@ export class AdminContentArticleUpdateDto {
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(240) seoTitle?: string | null;
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(500) seoDescription?: string | null;
   @IsOptional() @IsIn(CONTENT_STATUSES) status?: ContentPublishStatus;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentEventsQueryDto extends AdminContentPageDto {
@@ -142,7 +139,6 @@ export class AdminContentEventCreateDto {
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(240) seoTitle?: string | null;
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(500) seoDescription?: string | null;
   @IsOptional() @IsIn(CONTENT_STATUSES) status: ContentPublishStatus = ContentPublishStatus.DRAFT;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentEventUpdateDto {
@@ -157,7 +153,6 @@ export class AdminContentEventUpdateDto {
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(240) seoTitle?: string | null;
   @Transform(({ value }) => trimOrNull(value)) @IsOptional() @IsString() @MaxLength(500) seoDescription?: string | null;
   @IsOptional() @IsIn(CONTENT_STATUSES) status?: ContentPublishStatus;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentAnnouncementsQueryDto extends AdminContentPageDto {
@@ -182,7 +177,6 @@ export class AdminContentAnnouncementCreateDto {
   @IsDateString() startsAt!: string;
   @IsOptional() @IsDateString() endsAt?: string | null;
   @IsOptional() @Type(() => Number) @IsInt() sortOrder = 0;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }
 
 export class AdminContentAnnouncementUpdateDto {
@@ -195,5 +189,4 @@ export class AdminContentAnnouncementUpdateDto {
   @IsOptional() @IsDateString() startsAt?: string;
   @IsOptional() @IsDateString() endsAt?: string | null;
   @IsOptional() @Type(() => Number) @IsInt() sortOrder?: number;
-  @Transform(({ value }) => trim(value)) @IsString() @MinLength(5) @MaxLength(500) reason!: string;
 }

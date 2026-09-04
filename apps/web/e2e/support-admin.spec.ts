@@ -96,9 +96,9 @@ test('SUPPORT agent works the queue and replies without exposing internal notes'
   await page.goto('/admin/support/faqs');
   await expect(page.getByRole('heading', { name: 'Quản lý FAQ' })).toBeVisible();
   await page.getByRole('button', { name: 'FAQ mới', exact: true }).click();
+  await expect(page.getByText('Lý do', { exact: true })).toHaveCount(0);
   await page.getByLabel('Câu hỏi').fill(`FAQ E2E ${Date.now()}`);
   await page.getByLabel('Nội dung Markdown').fill('Nội dung **FAQ** kiểm thử.');
-  await page.getByLabel('Lý do').fill('Tạo FAQ cho kiểm thử');
   await page.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
   await expect(page.getByText('Đã tạo FAQ.')).toBeVisible();
 });

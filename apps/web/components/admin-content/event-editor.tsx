@@ -30,7 +30,6 @@ type EventForm = {
   seoTitle: string;
   seoDescription: string;
   status: ContentPublishStatus;
-  reason: string;
 };
 
 export function EventEditor({ eventId }: { eventId?: string }) {
@@ -72,7 +71,6 @@ export function EventEditor({ eventId }: { eventId?: string }) {
       seoTitle: form.seoTitle || null,
       seoDescription: form.seoDescription || null,
       status: form.status,
-      reason: form.reason,
       expectedUpdatedAt: event!.updatedAt,
     }),
     onSuccess: () => {
@@ -89,7 +87,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
     return <div className="space-y-4"><BackLink /><Alert>{getErrorMessage(eventQuery.error, 'Không thể tải sự kiện.')}</Alert></div>;
   }
   const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) => setForm((current) => ({ ...current, [key]: value }));
-  const canSubmit = form.title.trim().length >= 3 && form.slug.trim().length >= 3 && form.excerpt.trim().length >= 3 && form.content.trim().length > 0 && Boolean(form.startsAt) && form.reason.trim().length >= 5;
+  const canSubmit = form.title.trim().length >= 3 && form.slug.trim().length >= 3 && form.excerpt.trim().length >= 3 && form.content.trim().length > 0 && Boolean(form.startsAt);
   return (
     <div className="space-y-6">
       <BackLink />
@@ -112,15 +110,15 @@ export function EventEditor({ eventId }: { eventId?: string }) {
           <div className="mt-5 grid gap-5 lg:grid-cols-2"><Textarea aria-label="Nội dung Markdown" value={form.content} onChange={(input) => set('content', input.target.value)} className="min-h-[420px] font-mono text-sm" placeholder="# Sự kiện\n\nNội dung…" maxLength={50000} /><div className="min-h-[420px] rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Preview</p><SupportMarkdown>{form.content || 'Chưa có nội dung.'}</SupportMarkdown></div></div>
         </section>
         <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7"><h3 className="font-black text-slate-900">SEO (tuỳ chọn)</h3><div className="mt-5 grid gap-5 md:grid-cols-2"><Field label="SEO title"><Input value={form.seoTitle} onChange={(input) => set('seoTitle', input.target.value)} maxLength={240} /></Field><Field label="SEO description"><Textarea value={form.seoDescription} onChange={(input) => set('seoDescription', input.target.value)} className="min-h-24" maxLength={500} /></Field></div></section>
-        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7"><Field label="Lý do thay đổi"><Textarea value={form.reason} onChange={(input) => set('reason', input.target.value)} placeholder="Nhập lý do, tối thiểu 5 ký tự…" /></Field><div className="mt-5 flex justify-end"><Button type="submit" disabled={pending || !canSubmit}><Save className="size-4" /> {pending ? 'Đang lưu…' : editing ? 'Lưu sự kiện' : 'Tạo sự kiện'}</Button></div></section>
+        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7"><div className="flex justify-end"><Button type="submit" disabled={pending || !canSubmit}><Save className="size-4" /> {pending ? 'Đang lưu…' : editing ? 'Lưu sự kiện' : 'Tạo sự kiện'}</Button></div></section>
       </form>
     </div>
   );
 }
 
-function defaultForm(): EventForm { return { gameId: '', title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', startsAt: '', endsAt: '', seoTitle: '', seoDescription: '', status: 'DRAFT', reason: '' }; }
-function toForm(event: AdminContentEvent): EventForm { return { gameId: event.gameId ?? '', title: event.title, slug: event.slug, excerpt: event.excerpt, content: event.content ?? '', coverImageUrl: event.coverImageUrl ?? '', startsAt: toInputDate(event.startsAt), endsAt: event.endsAt ? toInputDate(event.endsAt) : '', seoTitle: event.seoTitle ?? '', seoDescription: event.seoDescription ?? '', status: event.status, reason: '' }; }
-function toRequest(form: EventForm) { return { gameId: form.gameId || null, title: form.title, slug: form.slug, excerpt: form.excerpt, content: form.content, coverImageUrl: form.coverImageUrl || null, startsAt: toApiDate(form.startsAt), endsAt: form.endsAt ? toApiDate(form.endsAt) : null, seoTitle: form.seoTitle || null, seoDescription: form.seoDescription || null, status: form.status, reason: form.reason }; }
+function defaultForm(): EventForm { return { gameId: '', title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', startsAt: '', endsAt: '', seoTitle: '', seoDescription: '', status: 'DRAFT' }; }
+function toForm(event: AdminContentEvent): EventForm { return { gameId: event.gameId ?? '', title: event.title, slug: event.slug, excerpt: event.excerpt, content: event.content ?? '', coverImageUrl: event.coverImageUrl ?? '', startsAt: toInputDate(event.startsAt), endsAt: event.endsAt ? toInputDate(event.endsAt) : '', seoTitle: event.seoTitle ?? '', seoDescription: event.seoDescription ?? '', status: event.status }; }
+function toRequest(form: EventForm) { return { gameId: form.gameId || null, title: form.title, slug: form.slug, excerpt: form.excerpt, content: form.content, coverImageUrl: form.coverImageUrl || null, startsAt: toApiDate(form.startsAt), endsAt: form.endsAt ? toApiDate(form.endsAt) : null, seoTitle: form.seoTitle || null, seoDescription: form.seoDescription || null, status: form.status }; }
 function toInputDate(value: string) { const date = new Date(value); if (Number.isNaN(date.getTime())) return ''; const pad = (part: number) => String(part).padStart(2, '0'); return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`; }
 function toApiDate(value: string) { return new Date(value).toISOString(); }
 function BackLink() { return <Link href="/admin/content/events" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"><ArrowLeft className="size-4" /> Quay lại sự kiện</Link>; }

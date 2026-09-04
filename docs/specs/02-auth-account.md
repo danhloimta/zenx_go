@@ -39,7 +39,7 @@
 - `UserRole` là bảng mở rộng role; Phase 1 chưa có UI phân quyền, role đầu tiên được cấp bằng lệnh bootstrap idempotent.
 - Admin có thể xem/chỉnh hồ sơ, chuyển `ACTIVE`/`SUSPENDED`, thu hồi session và đặt mật khẩu tạm. `LOCKED` chỉ do cơ chế bảo mật và read-only trong admin.
 - Email/phone khi admin sửa có thể được đánh dấu verified hoặc chưa verified theo input; username/email/phone thay đổi sẽ revoke session.
-- CCCD admin reveal qua endpoint riêng, bắt buộc lý do và audit từng lần; không trả secret code, security answer hoặc dữ liệu mã hóa.
+- CCCD admin reveal qua endpoint riêng; không trả secret code, security answer hoặc dữ liệu mã hóa.
 - Admin profile mutations dùng `expectedUpdatedAt`; conflict trả `STALE_ADMIN_UPDATE` thay vì ghi đè.
 
 ### OTP

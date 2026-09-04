@@ -33,7 +33,7 @@ The Phase 1 admin area is available at `/admin` after an existing user is grante
 pnpm admin:role grant --email=existing-user@example.com
 ```
 
-Admin account operations, audit logging and the intentionally deferred CMS/support/finance admin phases are tracked in `docs/specs/`.
+Admin account operations and the intentionally deferred CMS/support/finance admin phases are tracked in `docs/specs/`.
 
 `lvh.me` resolves to loopback and is used so the shared `.lvh.me` session cookie works across the portal and game hosts. Keep `NEXT_PUBLIC_API_BASE_URL=/api/v1` and let the web dev server proxy that path to the API.
 

@@ -33,7 +33,6 @@ model User {
   supportTickets         SupportTicket[]          @relation("SupportTicketOwner")
   sensitiveProfile       SensitiveProfile?
   roles                  UserRole[]
-  adminAuditLogs         AdminAuditLog[]          @relation("AdminAuditActor")
   assignedSupportTickets SupportTicket[]          @relation("SupportTicketAssignee")
   supportMessages        SupportTicketMessage[]   @relation("SupportMessageAuthor")
   supportReadStates      SupportTicketReadState[] @relation("SupportReadUser")
@@ -52,26 +51,6 @@ model UserRole {
   @@unique([userId, role])
   @@index([role, userId])
   @@map("user_roles")
-}
-
-model AdminAuditLog {
-  id          String   @id @default(uuid()) @db.UniqueIdentifier
-  actorUserId String   @map("actor_user_id") @db.UniqueIdentifier
-  action      String   @db.VarChar(64)
-  targetType  String   @map("target_type") @db.VarChar(32)
-  targetId    String?  @map("target_id") @db.UniqueIdentifier
-  reason      String   @db.NVarChar(500)
-  metadata    String   @db.NVarChar(Max)
-  ipAddress   String?  @map("ip_address") @db.VarChar(64)
-  userAgent   String?  @map("user_agent") @db.NVarChar(512)
-  createdAt   DateTime @default(now()) @map("created_at")
-  actor       User     @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([createdAt])
-  @@index([actorUserId, createdAt])
-  @@index([targetType, targetId, createdAt])
-  @@index([action, createdAt])
-  @@map("admin_audit_logs")
 }
 
 model Game {

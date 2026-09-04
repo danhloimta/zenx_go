@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
-  AdminAuditAction,
   AdminRole,
   SupportMessageAuthorType,
   SupportMessageVisibility,
@@ -10,7 +9,6 @@ import {
 } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
-import { AdminAuditContext, AdminAuditService } from '../admin/admin.audit.service';
 import { assertLimitedMarkdown } from './limited-markdown';
 import {
   AdminCreateSupportMessageDto,
@@ -71,14 +69,9 @@ const TICKET_SELECT = {
   assignee: { select: AGENT_SELECT },
 } as const;
 
-type AdminContext = AdminAuditContext;
-
 @Injectable()
 export class SupportAdminService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly audit: AdminAuditService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async dashboard(actorUserId: string) {
     const [statusCounts, priorityCounts, unassigned, mine, unread] = await Promise.all([
@@ -260,7 +253,6 @@ export class SupportAdminService {
     actorUserId: string,
     ticketNo: string,
     dto: AdminSupportTicketClaimDto,
-    context: AdminContext,
   ) {
     const current = await this.prisma.supportTicket.findUnique({
       where: { ticketNo: ticketNo.trim() },
@@ -278,36 +270,23 @@ export class SupportAdminService {
         'This ticket is assigned to another agent',
         409,
       );
-    await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.supportTicket.updateMany({
-        where: { id: current.id, assigneeUserId: null, updatedAt: current.updatedAt },
-        data: {
-          assigneeUserId: actorUserId,
-          status:
-            current.status === SupportTicketStatus.NEW
-              ? SupportTicketStatus.IN_PROGRESS
-              : current.status,
-          lastActivityAt: new Date(),
-        },
-      });
-      if (updated.count !== 1)
-        throw new DomainError(
-          ErrorCode.SUPPORT_TICKET_ASSIGNED_TO_ANOTHER,
-          'This ticket was claimed by another agent',
-          409,
-        );
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.SUPPORT_TICKET_ASSIGNED,
-          targetType: 'SUPPORT_TICKET',
-          targetId: current.id,
-          reason: dto.reason,
-          metadata: { from: null, to: actorUserId },
-        },
-        tx,
-      );
+    const updated = await this.prisma.supportTicket.updateMany({
+      where: { id: current.id, assigneeUserId: null, updatedAt: current.updatedAt },
+      data: {
+        assigneeUserId: actorUserId,
+        status:
+          current.status === SupportTicketStatus.NEW
+            ? SupportTicketStatus.IN_PROGRESS
+            : current.status,
+        lastActivityAt: new Date(),
+      },
     });
+    if (updated.count !== 1)
+      throw new DomainError(
+        ErrorCode.SUPPORT_TICKET_ASSIGNED_TO_ANOTHER,
+        'This ticket was claimed by another agent',
+        409,
+      );
     return this.getTicket(actorUserId, ticketNo);
   }
 
@@ -315,7 +294,6 @@ export class SupportAdminService {
     actorUserId: string,
     ticketNo: string,
     dto: AdminSupportTicketUpdateDto,
-    context: AdminContext,
   ) {
     const current = await this.prisma.supportTicket.findUnique({
       where: { ticketNo: ticketNo.trim() },
@@ -354,54 +332,16 @@ export class SupportAdminService {
       if (dto.status === SupportTicketStatus.IN_PROGRESS) data.resolvedAt = null;
       if (dto.status === SupportTicketStatus.CLOSED) data.closedAt = now;
     }
-    await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.supportTicket.updateMany({
-        where: { id: current.id, updatedAt: current.updatedAt },
-        data,
-      });
-      if (updated.count !== 1)
-        throw new DomainError(
-          ErrorCode.STALE_ADMIN_UPDATE,
-          'The ticket was changed by another operator',
-          409,
-        );
-      if (assigneeChanged)
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_TICKET_ASSIGNED,
-            targetType: 'SUPPORT_TICKET',
-            targetId: current.id,
-            reason: dto.reason,
-            metadata: { from: current.assigneeUserId, to: dto.assigneeUserId },
-          },
-          tx,
-        );
-      if (priorityChanged)
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_TICKET_PRIORITY_CHANGED,
-            targetType: 'SUPPORT_TICKET',
-            targetId: current.id,
-            reason: dto.reason,
-            metadata: { from: current.priority, to: dto.priority },
-          },
-          tx,
-        );
-      if (statusChanged)
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_TICKET_STATUS_CHANGED,
-            targetType: 'SUPPORT_TICKET',
-            targetId: current.id,
-            reason: dto.reason,
-            metadata: { from: current.status, to: dto.status },
-          },
-          tx,
-        );
+    const updated = await this.prisma.supportTicket.updateMany({
+      where: { id: current.id, updatedAt: current.updatedAt },
+      data,
     });
+    if (updated.count !== 1)
+      throw new DomainError(
+        ErrorCode.STALE_ADMIN_UPDATE,
+        'The ticket was changed by another operator',
+        409,
+      );
     return this.getTicket(actorUserId, ticketNo);
   }
 
@@ -409,7 +349,6 @@ export class SupportAdminService {
     actorUserId: string,
     ticketNo: string,
     dto: AdminCreateSupportMessageDto,
-    context: AdminContext,
   ) {
     const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
@@ -463,24 +402,6 @@ export class SupportAdminService {
             : {}),
         },
       });
-      await this.audit.record(
-        {
-          ...context,
-          action:
-            dto.visibility === SupportMessageVisibility.PUBLIC
-              ? AdminAuditAction.SUPPORT_MESSAGE_SENT
-              : AdminAuditAction.SUPPORT_INTERNAL_NOTE_ADDED,
-          targetType: 'SUPPORT_TICKET',
-          targetId: current.id,
-          reason: 'Support message',
-          metadata: {
-            messageId: message.id,
-            visibility: dto.visibility,
-            authorType: SupportMessageAuthorType.STAFF,
-          },
-        },
-        tx,
-      );
       return message;
     });
     return this.publicMessage(result, actorUserId);
@@ -551,24 +472,10 @@ export class SupportAdminService {
     return { categories };
   }
 
-  async createCategory(dto: AdminSupportCategoryCreateDto, context: AdminContext) {
+  async createCategory(dto: AdminSupportCategoryCreateDto) {
     try {
-      const category = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.supportCategory.create({
-          data: { code: dto.code, name: dto.name, status: dto.status, sortOrder: dto.sortOrder },
-        });
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_CATEGORY_CREATED,
-            targetType: 'SUPPORT_CATEGORY',
-            targetId: created.id,
-            reason: dto.reason,
-            metadata: { fields: ['code', 'name', 'status', 'sortOrder'] },
-          },
-          tx,
-        );
-        return created;
+      const category = await this.prisma.supportCategory.create({
+        data: { code: dto.code, name: dto.name, status: dto.status, sortOrder: dto.sortOrder },
       });
       return category;
     } catch (error) {
@@ -585,7 +492,6 @@ export class SupportAdminService {
   async updateCategory(
     categoryId: string,
     dto: AdminSupportCategoryUpdateDto,
-    context: AdminContext,
   ) {
     const current = await this.prisma.supportCategory.findUnique({ where: { id: categoryId } });
     if (!current)
@@ -601,37 +507,23 @@ export class SupportAdminService {
       ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
       updatedAt: new Date(),
     };
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const changed = await tx.supportCategory.updateMany({
-        where: { id: categoryId, updatedAt: current.updatedAt },
-        data,
-      });
-      if (changed.count !== 1)
-        throw new DomainError(
-          ErrorCode.STALE_ADMIN_UPDATE,
-          'The category was changed by another operator',
-          409,
-        );
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.SUPPORT_CATEGORY_UPDATED,
-          targetType: 'SUPPORT_CATEGORY',
-          targetId: categoryId,
-          reason: dto.reason,
-          metadata: { fields: Object.keys(data).filter((key) => key !== 'updatedAt') },
-        },
-        tx,
-      );
-      return tx.supportCategory.findUniqueOrThrow({
-        where: { id: categoryId },
-        select: CATEGORY_SELECT,
-      });
+    const changed = await this.prisma.supportCategory.updateMany({
+      where: { id: categoryId, updatedAt: current.updatedAt },
+      data,
     });
-    return updated;
+    if (changed.count !== 1)
+      throw new DomainError(
+        ErrorCode.STALE_ADMIN_UPDATE,
+        'The category was changed by another operator',
+        409,
+      );
+    return this.prisma.supportCategory.findUniqueOrThrow({
+      where: { id: categoryId },
+      select: CATEGORY_SELECT,
+    });
   }
 
-  async createFaq(dto: AdminSupportFaqCreateDto, context: AdminContext) {
+  async createFaq(dto: AdminSupportFaqCreateDto) {
     assertLimitedMarkdown(dto.answer);
     const category = await this.prisma.supportCategory.findUnique({
       where: { id: dto.categoryId },
@@ -644,31 +536,14 @@ export class SupportAdminService {
         404,
       );
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const faq = await tx.supportFaq.create({
-          data: {
-            categoryId: dto.categoryId,
-            question: dto.question,
-            answer: dto.answer,
-            status: dto.status,
-            sortOrder: dto.sortOrder,
-          },
-        });
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_FAQ_CREATED,
-            targetType: 'SUPPORT_FAQ',
-            targetId: faq.id,
-            reason: dto.reason,
-            metadata: {
-              categoryId: dto.categoryId,
-              fields: ['question', 'answer', 'status', 'sortOrder'],
-            },
-          },
-          tx,
-        );
-        return faq;
+      return await this.prisma.supportFaq.create({
+        data: {
+          categoryId: dto.categoryId,
+          question: dto.question,
+          answer: dto.answer,
+          status: dto.status,
+          sortOrder: dto.sortOrder,
+        },
       });
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002')
@@ -681,7 +556,7 @@ export class SupportAdminService {
     }
   }
 
-  async updateFaq(faqId: string, dto: AdminSupportFaqUpdateDto, context: AdminContext) {
+  async updateFaq(faqId: string, dto: AdminSupportFaqUpdateDto) {
     const current = await this.prisma.supportFaq.findUnique({ where: { id: faqId } });
     if (!current)
       throw new DomainError(ErrorCode.SUPPORT_FAQ_NOT_FOUND, 'Support FAQ not found', 404);
@@ -695,30 +570,17 @@ export class SupportAdminService {
       updatedAt: new Date(),
     };
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const changed = await tx.supportFaq.updateMany({
-          where: { id: faqId, updatedAt: current.updatedAt },
-          data,
-        });
-        if (changed.count !== 1)
-          throw new DomainError(
-            ErrorCode.STALE_ADMIN_UPDATE,
-            'The FAQ was changed by another operator',
-            409,
-          );
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.SUPPORT_FAQ_UPDATED,
-            targetType: 'SUPPORT_FAQ',
-            targetId: faqId,
-            reason: dto.reason,
-            metadata: { fields: Object.keys(data).filter((key) => key !== 'updatedAt') },
-          },
-          tx,
-        );
-        return tx.supportFaq.findUniqueOrThrow({ where: { id: faqId } });
+      const changed = await this.prisma.supportFaq.updateMany({
+        where: { id: faqId, updatedAt: current.updatedAt },
+        data,
       });
+      if (changed.count !== 1)
+        throw new DomainError(
+          ErrorCode.STALE_ADMIN_UPDATE,
+          'The FAQ was changed by another operator',
+          409,
+        );
+      return this.prisma.supportFaq.findUniqueOrThrow({ where: { id: faqId } });
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002')
         throw new DomainError(

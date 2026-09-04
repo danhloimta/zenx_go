@@ -14,9 +14,15 @@ import {
   Mail,
   Phone,
   ShieldCheck,
-  UserRound,
   WalletCards,
   X,
+  Copy,
+  Check,
+  User,
+  Clock,
+  ChevronRight,
+  Shield,
+  CreditCard,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminUserDetail } from '@zenx-go/api-client';
@@ -27,13 +33,13 @@ import { formatAmount, formatDate, transactionTypeLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { UserAvatar } from '@/components/user-avatar';
+import { AccountStatusBadge } from '@/components/account-status-badge';
 import { toast } from 'sonner';
 
-type Action = 'status' | 'revoke' | 'password' | 'reveal' | null;
+type Action = 'password' | null;
 
 export default function AdminUserDetailPage() {
   const params = useParams<{ userId: string }>();
@@ -42,6 +48,7 @@ export default function AdminUserDetailPage() {
   const user = query.data;
   const queryClient = useQueryClient();
   const [action, setAction] = useState<Action>(null);
+  const [copiedId, setCopiedId] = useState(false);
   const [reveal, setReveal] = useState<{
     identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null;
   } | null>(null);
@@ -60,7 +67,6 @@ export default function AdminUserDetailPage() {
       address: user.profile?.address ?? '',
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
-      reason: '',
     });
   }, [user]);
 
@@ -68,8 +74,8 @@ export default function AdminUserDetailPage() {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'user', userId] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
   };
+
   const profileMutation = useMutation({
     mutationFn: () =>
       api.admin.updateProfile(userId, {
@@ -82,44 +88,36 @@ export default function AdminUserDetailPage() {
         expectedUpdatedAt: user!.updatedAt,
       }),
     onSuccess: () => {
-      toast.success('Đã cập nhật hồ sơ người dùng.');
+      toast.success('Đã cập nhật hồ sơ người dùng thành công.');
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
   const statusMutation = useMutation({
-    mutationFn: ({ status, reason }: { status: 'ACTIVE' | 'SUSPENDED'; reason: string }) =>
-      api.admin.updateStatus(userId, { status, reason, expectedUpdatedAt: user!.updatedAt }),
+    mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
+      api.admin.updateStatus(userId, { status, expectedUpdatedAt: user!.updatedAt }),
     onSuccess: () => {
       toast.success('Đã cập nhật trạng thái tài khoản.');
-      setAction(null);
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
   const revokeMutation = useMutation({
-    mutationFn: (reason: string) => api.admin.revokeSessions(userId, { reason }),
+    mutationFn: () => api.admin.revokeSessions(userId),
     onSuccess: () => {
       toast.success('Đã thu hồi toàn bộ phiên đăng nhập.');
-      setAction(null);
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
   const resetMutation = useMutation({
-    mutationFn: ({
-      password,
-      confirmation,
-      reason,
-    }: {
-      password: string;
-      confirmation: string;
-      reason: string;
-    }) =>
+    mutationFn: ({ password, confirmation }: { password: string; confirmation: string }) =>
       api.admin.resetPassword(userId, {
         temporaryPassword: password,
         temporaryPasswordConfirmation: confirmation,
-        reason,
         expectedUpdatedAt: user!.updatedAt,
       }),
     onSuccess: () => {
@@ -129,89 +127,189 @@ export default function AdminUserDetailPage() {
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
   const revealMutation = useMutation({
-    mutationFn: (reason: string) => api.admin.revealSensitiveProfile(userId, { reason }),
+    mutationFn: () => api.admin.revealSensitiveProfile(userId),
     onSuccess: (result) => {
-      setAction(null);
       setReveal({ identity: result.identity });
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
-  if (query.isLoading) return <Skeleton className="h-[720px] rounded-2xl" />;
-  if (query.isError || !user || !profile)
+  const copyUserId = () => {
+    if (!userId) return;
+    navigator.clipboard.writeText(userId);
+    setCopiedId(true);
+    toast.success('Đã sao chép User ID');
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  if (query.isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-44 rounded-3xl" />
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <Skeleton className="h-[520px] rounded-2xl" />
+          <div className="space-y-6">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (query.isError || !user || !profile) {
     return (
       <div className="space-y-4">
         <Link
           href="/admin/users"
           className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"
         >
-          <ArrowLeft className="size-4" /> Quay lại người dùng
+          <ArrowLeft className="size-4" /> Quay lại danh sách
         </Link>
-        <Alert>Không thể tải thông tin người dùng.</Alert>
+        <Alert>Không thể tải thông tin người dùng. Vui lòng kiểm tra lại liên kết.</Alert>
       </div>
     );
+  }
+
   const active = user.status === 'ACTIVE';
   const canChangeStatus = user.status === 'ACTIVE' || user.status === 'SUSPENDED';
+
   return (
-    <div className="space-y-6">
-      <Link
-        href="/admin/users"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"
-      >
-        <ArrowLeft className="size-4" /> Quay lại người dùng
-      </Link>
-      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-[#00873E]">
-              {user.profile?.avatarUrl ? (
-                <img src={user.profile.avatarUrl} alt="" className="size-full object-cover" />
-              ) : (
-                <UserRound className="size-8" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-2xl font-black text-slate-900">
+    <div className="space-y-7">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+          <Link href="/admin" className="hover:text-slate-700">
+            Tổng quan
+          </Link>
+          <ChevronRight className="size-3.5 text-slate-300" />
+          <Link href="/admin/users" className="hover:text-slate-700">
+            Người dùng
+          </Link>
+          <ChevronRight className="size-3.5 text-slate-300" />
+          <span className="text-slate-800 font-bold truncate max-w-48">
+            @{user.username}
+          </span>
+        </div>
+
+        <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-slate-600">
+          <Link href="/admin/users">
+            <ArrowLeft className="size-3.5" />
+            <span>Quay lại</span>
+          </Link>
+        </Button>
+      </div>
+
+      {/* User Header Summary Card */}
+      <section className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/20 p-6 shadow-xs sm:p-7">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-4 sm:gap-5">
+            <UserAvatar
+              id={user.id}
+              name={user.profile?.fullName || user.username}
+              username={user.username}
+              email={user.email}
+              avatarUrl={user.profile?.avatarUrl}
+              status={user.status}
+              showStatusDot
+              size="xl"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="truncate text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
                   {user.profile?.fullName || user.username}
                 </h2>
-                <StatusPill status={user.status ?? ''} />
+                <AccountStatusBadge status={user.status} variant="dot" size="md" />
               </div>
-              <p className="mt-1 text-sm text-slate-500">
-                @{user.username} · Tạo ngày {formatDate(user.createdAt)}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+
+              <div className="mt-1.5 flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">@{user.username}</span>
+                <span className="text-slate-300">·</span>
+                <span className="flex items-center gap-1">
+                  <Mail className="size-3.5 text-slate-400" />
+                  <span>{user.email}</span>
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="size-3.5 text-slate-400" />
+                  <span>Đăng ký: {formatDate(user.createdAt)}</span>
+                </span>
+              </div>
+
+              {/* Badges & Meta Tags */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={copyUserId}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-2xs hover:bg-slate-50"
+                  title="Sao chép ID người dùng"
+                >
+                  <span className="text-slate-400">ID:</span>
+                  <span className="font-mono text-[10px]">{user.id.slice(0, 8)}…</span>
+                  {copiedId ? (
+                    <Check className="size-3 text-emerald-600" />
+                  ) : (
+                    <Copy className="size-3 text-slate-400" />
+                  )}
+                </button>
+
                 {user.roles.length ? (
                   user.roles.map((role) => (
-                    <Badge key={role} variant="zenx">
+                    <span
+                      key={role}
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold border ${
+                        role === 'SUPER_ADMIN'
+                          ? 'bg-emerald-50 text-[#00873E] border-emerald-200'
+                          : 'bg-violet-50 text-violet-700 border-violet-200'
+                      }`}
+                    >
+                      <Shield className="size-3" />
                       {role}
-                    </Badge>
+                    </span>
                   ))
                 ) : (
-                  <Badge>User</Badge>
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                    Member
+                  </span>
                 )}
-                {user.mustChangePassword ? <Badge variant="warning">Cần đổi mật khẩu</Badge> : null}
+
+                {user.mustChangePassword ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                    <KeyRound className="size-3" /> Cần đổi mật khẩu
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setAction('revoke')}>
-              <LogOut className="size-4" /> Thu hồi phiên
-            </Button>
+
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 lg:border-t-0 lg:pt-0">
             <Button
               size="sm"
-              variant={active ? 'destructive' : 'secondary'}
-              onClick={() => setAction('status')}
-              disabled={!canChangeStatus}
+              variant="outline"
+              onClick={() => revokeMutation.mutate()}
+              disabled={revokeMutation.isPending}
+              className="gap-1.5 border-slate-200 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <LogOut className="size-3.5" /> Thu hồi phiên
+            </Button>
+
+            <Button
+              size="sm"
+              variant={active ? 'destructive' : 'default'}
+              onClick={() => statusMutation.mutate(active ? 'SUSPENDED' : 'ACTIVE')}
+              disabled={!canChangeStatus || statusMutation.isPending}
+              className="gap-1.5 font-semibold shadow-2xs"
             >
               {active ? (
                 <>
-                  <Ban className="size-4" /> Tạm ngưng
+                  <Ban className="size-3.5" /> Tạm ngưng
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="size-4" /> Kích hoạt
+                  <CheckCircle2 className="size-3.5" /> Kích hoạt
                 </>
               )}
             </Button>
@@ -219,205 +317,227 @@ export default function AdminUserDetailPage() {
         </div>
       </section>
 
+      {/* Main Form & Security Grid */}
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
-          <div className="flex items-center justify-between">
+        {/* Left Column: Chỉnh sửa hồ sơ tài khoản */}
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
-              <h3 className="font-black text-slate-900">Thông tin tài khoản</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Thay đổi liên hệ sẽ thu hồi phiên đăng nhập hiện tại.
+              <h3 className="font-bold text-slate-900 sm:text-base">Thông tin tài khoản & Hồ sơ</h3>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Lưu ý: Thay đổi thông tin liên hệ (Email, SĐT) sẽ tự động thu hồi các phiên đăng nhập.
               </p>
             </div>
-            <ShieldCheck className="size-5 text-[#00873E]" />
+            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]">
+              <User className="size-4.5" />
+            </div>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <Field label="Tên đăng nhập">
-              <Input
-                value={profile.username}
-                onChange={(event) => setProfile({ ...profile, username: event.target.value })}
-              />
-            </Field>
-            <Field label="Email">
-              <Input
-                type="email"
-                value={profile.email}
-                onChange={(event) => setProfile({ ...profile, email: event.target.value })}
-              />
-              <CheckRow
-                label="Email đã xác minh"
-                checked={profile.emailVerified}
-                onChange={(value) => setProfile({ ...profile, emailVerified: value })}
-              />
-            </Field>
-            <Field label="Số điện thoại">
-              <Input
-                value={profile.phone}
-                onChange={(event) => setProfile({ ...profile, phone: event.target.value })}
-              />
-              <CheckRow
-                label="Số điện thoại đã xác minh"
-                checked={profile.phoneVerified}
-                onChange={(value) => setProfile({ ...profile, phoneVerified: value })}
-              />
-            </Field>
-            <Field label="Họ và tên">
-              <Input
-                value={profile.fullName}
-                onChange={(event) => setProfile({ ...profile, fullName: event.target.value })}
-              />
-            </Field>
-            <Field label="Ngày sinh">
-              <Input
-                type="date"
-                value={profile.dateOfBirth}
-                onChange={(event) => setProfile({ ...profile, dateOfBirth: event.target.value })}
-              />
-            </Field>
-            <Field label="Giới tính">
-              <Select
-                value={profile.gender}
-                onChange={(event) => setProfile({ ...profile, gender: event.target.value })}
+
+          <div className="mt-6 space-y-6">
+            {/* Group 1: Thông tin đăng nhập & liên hệ */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                1. Thông tin định danh & liên hệ
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="Tên đăng nhập (Username)">
+                  <Input
+                    value={profile.username}
+                    onChange={(event) => setProfile({ ...profile, username: event.target.value })}
+                    className="h-10 text-sm"
+                  />
+                </Field>
+
+                <Field label="Email">
+                  <Input
+                    type="email"
+                    value={profile.email}
+                    onChange={(event) => setProfile({ ...profile, email: event.target.value })}
+                    className="h-10 text-sm"
+                  />
+                  <CheckRow
+                    label="Email đã xác minh"
+                    checked={profile.emailVerified}
+                    onChange={(value) => setProfile({ ...profile, emailVerified: value })}
+                  />
+                </Field>
+
+                <Field label="Số điện thoại" className="sm:col-span-2">
+                  <Input
+                    value={profile.phone}
+                    onChange={(event) => setProfile({ ...profile, phone: event.target.value })}
+                    placeholder="Chưa cập nhật số điện thoại"
+                    className="h-10 text-sm"
+                  />
+                  <CheckRow
+                    label="Số điện thoại đã xác minh"
+                    checked={profile.phoneVerified}
+                    onChange={(value) => setProfile({ ...profile, phoneVerified: value })}
+                  />
+                </Field>
+              </div>
+            </div>
+
+            {/* Group 2: Thông tin cá nhân */}
+            <div className="border-t border-slate-100 pt-5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                2. Thông tin người dùng
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <Field label="Họ và tên">
+                  <Input
+                    value={profile.fullName}
+                    onChange={(event) => setProfile({ ...profile, fullName: event.target.value })}
+                    placeholder="Nhập họ và tên đầy đủ"
+                    className="h-10 text-sm"
+                  />
+                </Field>
+
+                <Field label="Ngày sinh">
+                  <Input
+                    type="date"
+                    value={profile.dateOfBirth}
+                    onChange={(event) => setProfile({ ...profile, dateOfBirth: event.target.value })}
+                    className="h-10 text-sm"
+                  />
+                </Field>
+
+                <Field label="Giới tính">
+                  <Select
+                    value={profile.gender}
+                    onChange={(event) => setProfile({ ...profile, gender: event.target.value })}
+                    className="h-10 text-sm"
+                  >
+                    <option value="UNSPECIFIED">Chưa xác định</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </Select>
+                </Field>
+
+                <Field label="Tỉnh / thành phố">
+                  <Input
+                    value={profile.city}
+                    onChange={(event) => setProfile({ ...profile, city: event.target.value })}
+                    placeholder="Tỉnh/Thành phố cư trú"
+                    className="h-10 text-sm"
+                  />
+                </Field>
+
+                <Field label="Địa chỉ cư trú" className="sm:col-span-2">
+                  <Input
+                    value={profile.address}
+                    onChange={(event) => setProfile({ ...profile, address: event.target.value })}
+                    placeholder="Số nhà, tên đường, phường/xã…"
+                    className="h-10 text-sm"
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => profileMutation.mutate()}
+                disabled={profileMutation.isPending}
+                className="font-semibold shadow-xs"
               >
-                <option value="UNSPECIFIED">Chưa xác định</option>
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-                <option value="OTHER">Khác</option>
-              </Select>
-            </Field>
-            <Field label="Tỉnh / thành phố">
-              <Input
-                value={profile.city}
-                onChange={(event) => setProfile({ ...profile, city: event.target.value })}
-              />
-            </Field>
-            <Field label="Địa chỉ">
-              <Input
-                value={profile.address}
-                onChange={(event) => setProfile({ ...profile, address: event.target.value })}
-              />
-            </Field>
-          </div>
-          <Field label="Lý do cập nhật" className="mt-4">
-            <Textarea
-              value={profile.reason}
-              onChange={(event) => setProfile({ ...profile, reason: event.target.value })}
-              placeholder="Nhập lý do để lưu vào nhật ký…"
-            />
-            <p className="mt-1 text-[11px] text-slate-400">Tối thiểu 5 ký tự.</p>
-          </Field>
-          <div className="mt-5 flex justify-end">
-            <Button
-              onClick={() => profileMutation.mutate()}
-              disabled={profileMutation.isPending || profile.reason.trim().length < 5}
-            >
-              {profileMutation.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
-            </Button>
+                {profileMutation.isPending ? 'Đang lưu…' : 'Lưu cập nhật'}
+              </Button>
+            </div>
           </div>
         </section>
 
+        {/* Right Column: Bảo mật, KYC & Ví ZENX */}
         <div className="space-y-6">
-          <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
-            <h3 className="font-black text-slate-900">Bảo mật và định danh</h3>
-            <div className="mt-5 space-y-3">
+          {/* Security & KYC Card */}
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="font-bold text-slate-900">Bảo mật & Định danh KYC</h3>
+                <p className="text-xs text-slate-500">Thông tin xác thực danh tính</p>
+              </div>
+              <div className="flex size-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <ShieldCheck className="size-4.5" />
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3.5">
               <InfoRow
                 icon={<Mail className="size-4" />}
-                label="Email"
+                label="Địa chỉ Email"
                 value={user.email}
                 verified={user.emailVerified}
               />
               <InfoRow
                 icon={<Phone className="size-4" />}
-                label="Điện thoại"
+                label="Số điện thoại"
                 value={user.phone || 'Chưa cập nhật'}
                 verified={user.phoneVerified}
               />
               <InfoRow
                 icon={<Link2 className="size-4" />}
-                label="Đăng nhập mạng xã hội"
+                label="Liên kết mạng xã hội"
                 value={
                   user.socialIdentities.length
                     ? user.socialIdentities.map((item) => item.provider).join(', ')
-                    : 'Chưa liên kết'
+                    : 'Chưa liên kết tài khoản nào'
                 }
               />
             </div>
-            <div className="mt-6 border-t border-slate-100 pt-5">
+
+            {/* CCCD (Citizen Identity) Section */}
+            <div className="mt-5 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-slate-800">CCCD</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="size-4 text-slate-500" />
+                    <p className="text-xs font-bold text-slate-800">Căn cước công dân (CCCD)</p>
+                  </div>
+                  <p className="mt-1 font-mono text-xs font-semibold text-slate-600">
                     {user.sensitiveProfile.identity.configured
                       ? `•••• •••• ${user.sensitiveProfile.identity.last4 ?? '****'}`
-                      : 'Chưa thiết lập'}
+                      : 'Chưa cập nhật CCCD'}
                   </p>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setAction('reveal')}
-                  disabled={!user.sensitiveProfile.identity.configured}
+                  onClick={() => revealMutation.mutate()}
+                  disabled={!user.sensitiveProfile.identity.configured || revealMutation.isPending}
+                  className="h-8 gap-1 border-slate-200 bg-white px-2.5 text-xs font-semibold hover:bg-slate-50"
                 >
-                  <Eye className="size-4" /> Xem đầy đủ
+                  <Eye className="size-3.5" /> Xem chi tiết
                 </Button>
               </div>
             </div>
-            <div className="mt-6 border-t border-slate-100 pt-5">
+
+            {/* Reset Temporary Password */}
+            <div className="mt-5 border-t border-slate-100 pt-4">
               <Button
                 variant="outline"
-                className="w-full justify-center"
+                className="w-full justify-center gap-2 border-slate-200 font-semibold text-slate-700 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
                 onClick={() => setAction('password')}
               >
-                <KeyRound className="size-4" /> Đặt mật khẩu tạm
+                <KeyRound className="size-4 text-purple-600" /> Đặt mật khẩu tạm thời
               </Button>
             </div>
           </section>
+
+          {/* ZENX Wallet Section */}
           <WalletSection user={user} />
         </div>
       </div>
-      <section className="rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h3 className="font-black text-slate-900">Nhật ký liên quan</h3>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {user.auditLogs.length ? (
-            user.auditLogs.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="text-xs font-bold text-slate-800">{auditLabel(entry.action)}</p>
-                  <p className="mt-1 text-[11px] text-slate-500">{entry.reason}</p>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  {entry.actorUsername ?? 'admin'} · {formatDate(entry.createdAt)}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="p-8 text-center text-sm text-slate-500">Chưa có hoạt động.</p>
-          )}
-        </div>
-      </section>
-      {action ? (
-        <ActionDialog
-          action={action}
+
+      {/* Modals & Dialogs */}
+      {action === 'password' ? (
+        <PasswordDialog
           user={user}
           onClose={() => setAction(null)}
-          onStatus={(status, reason) => statusMutation.mutate({ status, reason })}
-          onRevoke={(reason) => revokeMutation.mutate(reason)}
-          onPassword={(password, confirmation, reason) =>
-            resetMutation.mutate({ password, confirmation, reason })
-          }
-          onReveal={(reason) => revealMutation.mutate(reason)}
-          pending={
-            statusMutation.isPending ||
-            revokeMutation.isPending ||
-            resetMutation.isPending ||
-            revealMutation.isPending
-          }
+          onSubmit={(password, confirmation) => resetMutation.mutate({ password, confirmation })}
+          pending={resetMutation.isPending}
         />
       ) : null}
+
       {reveal ? (
         <RevealDialog
           identity={reveal.identity}
@@ -442,7 +562,6 @@ type ProfileForm = {
   address: string;
   emailVerified: boolean;
   phoneVerified: boolean;
-  reason: string;
 };
 
 function Field({
@@ -455,12 +574,13 @@ function Field({
   className?: string;
 }) {
   return (
-    <label className={`block space-y-2 ${className}`}>
+    <label className={`block space-y-1.5 ${className}`}>
       <span className="text-xs font-bold text-slate-700">{label}</span>
       {children}
     </label>
   );
 }
+
 function CheckRow({
   label,
   checked,
@@ -471,17 +591,18 @@ function CheckRow({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-slate-600">
+    <label className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer select-none">
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="size-3.5 rounded border-slate-300 text-[#00873E] focus:ring-[#00873E]"
+        className="size-4 rounded border-slate-300 text-[#00873E] focus:ring-[#00873E]"
       />
-      {label}
+      <span>{label}</span>
     </label>
   );
 }
+
 function InfoRow({
   icon,
   label,
@@ -494,163 +615,138 @@ function InfoRow({
   verified?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex size-8 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+    <div className="flex items-center gap-3 rounded-xl bg-slate-50/60 p-3 border border-slate-100">
+      <span className="flex size-8 items-center justify-center rounded-lg bg-white text-slate-500 shadow-2xs">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] text-slate-400">{label}</p>
-        <p className="truncate text-xs font-semibold text-slate-700">{value}</p>
+        <p className="text-[11px] font-medium text-slate-400">{label}</p>
+        <p className="truncate text-xs font-bold text-slate-800">{value}</p>
       </div>
       {verified !== undefined ? (
         <span
-          className={`text-[10px] font-bold ${verified ? 'text-emerald-600' : 'text-slate-400'}`}
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+            verified
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-slate-100 text-slate-500'
+          }`}
         >
+          {verified ? <CheckCircle2 className="size-3" /> : null}
           {verified ? 'Đã xác minh' : 'Chưa xác minh'}
         </span>
       ) : null}
     </div>
   );
 }
-function StatusPill({ status }: { status: string }) {
-  const meta = (
-    {
-      ACTIVE: ['Đang hoạt động', 'success'],
-      SUSPENDED: ['Tạm ngưng', 'default'],
-      LOCKED: ['Bị khóa', 'destructive'],
-      PENDING: ['Chờ xác minh', 'warning'],
-    } as Record<string, [string, 'success' | 'default' | 'destructive' | 'warning']>
-  )[status] ?? [status, 'default'];
-  return <Badge variant={meta[1]}>{meta[0]}</Badge>;
-}
+
 function WalletSection({ user }: { user: AdminUserDetail }) {
   return (
-    <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:p-7">
-      <div className="flex items-center justify-between">
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div>
-          <h3 className="font-black text-slate-900">Ví ZENX · chỉ xem</h3>
-          <p className="mt-1 text-xs text-slate-500">
-            Không có thao tác cộng/trừ Coin trong Phase 1.
-          </p>
+          <h3 className="font-bold text-slate-900">Ví ZENX · Chế độ xem</h3>
+          <p className="text-xs text-slate-500">Số dư hiện tại & lịch sử biến động Coin</p>
         </div>
-        <WalletCards className="size-5 text-[#00873E]" />
+        <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]">
+          <WalletCards className="size-4.5" />
+        </div>
       </div>
-      <p className="mt-5 text-3xl font-black text-slate-900">
-        {formatAmount(user.wallet?.balance)}{' '}
-        <span className="text-sm text-[#00873E]">{user.wallet?.currency ?? 'ZENX'}</span>
-      </p>
-      <div className="mt-5 divide-y divide-slate-100 border-t border-slate-100">
-        {user.recentTransactions.length ? (
-          user.recentTransactions.slice(0, 5).map((transaction) => (
-            <div
-              key={transaction.transactionNo}
-              className="flex items-center justify-between gap-3 py-3"
-            >
-              <div>
-                <p className="text-xs font-semibold text-slate-700">
-                  {transactionTypeLabel(transaction.type)}
-                </p>
-                <p className="mt-1 text-[10px] text-slate-400">
-                  {transaction.transactionNo} · {formatDate(transaction.createdAt)}
-                </p>
-              </div>
-              <span
-                className={`text-xs font-bold ${transaction.type === 'DEBIT' ? 'text-red-600' : 'text-emerald-600'}`}
+
+      <div className="mt-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-5 text-white shadow-xs">
+        <p className="text-xs font-medium text-slate-400">Số dư khả dụng</p>
+        <p className="mt-1 text-3xl font-black tracking-tight text-white">
+          {formatAmount(user.wallet?.balance)}{' '}
+          <span className="text-sm font-bold text-emerald-400">
+            {user.wallet?.currency ?? 'ZENX'}
+          </span>
+        </p>
+      </div>
+
+      <div className="mt-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          Giao dịch gần đây
+        </p>
+        <div className="mt-2 divide-y divide-slate-100">
+          {user.recentTransactions.length ? (
+            user.recentTransactions.slice(0, 5).map((transaction) => (
+              <div
+                key={transaction.transactionNo}
+                className="flex items-center justify-between gap-3 py-3"
               >
-                {transaction.type === 'DEBIT' ? '-' : '+'}
-                {formatAmount(transaction.amount)}
-              </span>
-            </div>
-          ))
-        ) : (
-          <p className="py-5 text-center text-xs text-slate-400">Chưa có giao dịch.</p>
-        )}
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-slate-800">
+                    {transactionTypeLabel(transaction.type)}
+                  </p>
+                  <p className="mt-0.5 truncate text-[10px] text-slate-400">
+                    {transaction.transactionNo} · {formatDate(transaction.createdAt)}
+                  </p>
+                </div>
+                <span
+                  className={`text-xs font-black whitespace-nowrap ${
+                    transaction.type === 'DEBIT' ? 'text-rose-600' : 'text-emerald-600'
+                  }`}
+                >
+                  {transaction.type === 'DEBIT' ? '-' : '+'}
+                  {formatAmount(transaction.amount)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="py-6 text-center text-xs text-slate-400">Chưa có lịch sử giao dịch.</p>
+          )}
+        </div>
       </div>
     </section>
   );
 }
-function auditLabel(action: string) {
-  return (
-    (
-      {
-        PROFILE_UPDATED: 'Cập nhật hồ sơ',
-        STATUS_CHANGED: 'Đổi trạng thái',
-        SESSIONS_REVOKED: 'Thu hồi phiên',
-        PASSWORD_RESET: 'Đặt mật khẩu tạm',
-        SENSITIVE_PROFILE_REVEALED: 'Xem CCCD',
-      } as Record<string, string>
-    )[action] ?? action
-  );
-}
 
-function ActionDialog({
-  action,
+function PasswordDialog({
   user,
   onClose,
-  onStatus,
-  onRevoke,
-  onPassword,
-  onReveal,
+  onSubmit,
   pending,
 }: {
-  action: Exclude<Action, null>;
   user: AdminUserDetail;
   onClose: () => void;
-  onStatus: (status: 'ACTIVE' | 'SUSPENDED', reason: string) => void;
-  onRevoke: (reason: string) => void;
-  onPassword: (password: string, confirmation: string, reason: string) => void;
-  onReveal: (reason: string) => void;
+  onSubmit: (password: string, confirmation: string) => void;
   pending: boolean;
 }) {
-  const [reason, setReason] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
-  const title =
-    action === 'status'
-      ? user.status === 'ACTIVE'
-        ? 'Tạm ngưng tài khoản'
-        : 'Kích hoạt tài khoản'
-      : action === 'revoke'
-        ? 'Thu hồi phiên đăng nhập'
-        : action === 'password'
-          ? 'Đặt mật khẩu tạm'
-          : 'Xem CCCD đầy đủ';
+
   const submit = () => {
-    if (reason.trim().length < 5) return;
-    if (action === 'status')
-      onStatus(user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE', reason.trim());
-    else if (action === 'revoke') onRevoke(reason.trim());
-    else if (action === 'password') {
-      if (password !== confirmation || password.length < 8) return;
-      onPassword(password, confirmation, reason.trim());
-    } else onReveal(reason.trim());
+    if (password.length < 8 || password !== confirmation) return;
+    onSubmit(password, confirmation);
   };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black text-slate-900">{title}</h2>
+            <h2 className="text-lg font-black tracking-tight text-slate-900">Đặt mật khẩu tạm thời</h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Tác vụ trên @{user.username} sẽ được ghi vào nhật ký quản trị.
+              Nhập mật khẩu mới cho tài khoản <strong className="text-slate-800">@{user.username}</strong>.
             </p>
           </div>
           <button
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label="Đóng hộp thoại"
           >
             <X className="size-5" />
           </button>
         </div>
-        {action === 'password' ? (
-          <div className="mt-5 space-y-4">
-            <Field label="Mật khẩu tạm">
+
+        <div className="mt-5 space-y-3.5">
+            <Field label="Mật khẩu tạm mới">
               <Input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="new-password"
+                placeholder="Tối thiểu 8 ký tự"
+                className="h-10 text-sm"
               />
             </Field>
             <Field label="Xác nhận mật khẩu tạm">
@@ -659,35 +755,25 @@ function ActionDialog({
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
                 autoComplete="new-password"
+                placeholder="Nhập lại mật khẩu tạm"
+                className="h-10 text-sm"
               />
             </Field>
-            <p className="text-[11px] text-slate-500">
-              Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt. User sẽ bắt buộc đổi sau
-              lần đăng nhập tiếp theo.
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              * Mật khẩu yêu cầu gồm chữ hoa, chữ thường, số và ký tự đặc biệt. Người dùng sẽ bị bắt
+              buộc đổi mật khẩu ở lần đăng nhập tới.
             </p>
-          </div>
-        ) : null}
-        <Field label="Lý do" className="mt-5">
-          <Textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Nhập lý do (tối thiểu 5 ký tự)…"
-          />
-        </Field>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Hủy
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2.5">
+          <Button variant="outline" onClick={onClose} disabled={pending}>
+            Hủy bỏ
           </Button>
           <Button
-            variant={action === 'status' && user.status === 'ACTIVE' ? 'destructive' : 'default'}
             onClick={submit}
-            disabled={
-              pending ||
-              reason.trim().length < 5 ||
-              (action === 'password' && (password.length < 8 || password !== confirmation))
-            }
+            disabled={pending || password.length < 8 || password !== confirmation}
           >
-            {pending ? 'Đang xử lý…' : 'Xác nhận'}
+            {pending ? 'Đang xử lý…' : 'Đặt mật khẩu'}
           </Button>
         </div>
       </div>
@@ -702,44 +788,72 @@ function RevealDialog({
   identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null;
   onClose: () => void;
 }) {
+  const [copiedCccd, setCopiedCccd] = useState(false);
+
+  const copyCccd = () => {
+    if (!identity?.citizenId) return;
+    navigator.clipboard.writeText(identity.citizenId);
+    setCopiedCccd(true);
+    toast.success('Đã sao chép số CCCD');
+    setTimeout(() => setCopiedCccd(false), 2000);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black text-slate-900">Thông tin CCCD</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <ShieldCheck className="size-4" />
+            </div>
+            <h2 className="text-base font-black text-slate-900">Thông tin CCCD đã giải mã</h2>
+          </div>
           <button
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             onClick={onClose}
             aria-label="Đóng"
           >
             <X className="size-5" />
           </button>
         </div>
+
         {identity ? (
-          <div className="mt-5 space-y-3 rounded-xl bg-amber-50 p-4 text-sm">
-            <p>
-              <span className="text-xs text-slate-500">Số CCCD</span>
-              <br />
-              <strong className="tracking-wider">{identity.citizenId}</strong>
-            </p>
-            <p>
-              <span className="text-xs text-slate-500">Ngày cấp</span>
-              <br />
-              <strong>{formatDate(identity.issuedAt)}</strong>
-            </p>
-            <p>
-              <span className="text-xs text-slate-500">Nơi cấp</span>
-              <br />
-              <strong>{identity.issuedPlace}</strong>
-            </p>
+          <div className="mt-5 space-y-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-sm">
+            <div>
+              <span className="text-xs font-semibold text-amber-700">Số Căn cước công dân</span>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="font-mono text-base font-black tracking-widest text-slate-900">
+                  {identity.citizenId}
+                </span>
+                <button
+                  onClick={copyCccd}
+                  className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-semibold text-amber-800 shadow-2xs border border-amber-200 hover:bg-amber-50"
+                >
+                  {copiedCccd ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                  {copiedCccd ? 'Đã chép' : 'Sao chép'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-amber-200/60">
+              <div>
+                <span className="text-[11px] font-medium text-amber-700">Ngày cấp</span>
+                <p className="mt-0.5 font-bold text-slate-800">{formatDate(identity.issuedAt)}</p>
+              </div>
+              <div>
+                <span className="text-[11px] font-medium text-amber-700">Nơi cấp</span>
+                <p className="mt-0.5 font-bold text-slate-800">{identity.issuedPlace}</p>
+              </div>
+            </div>
           </div>
         ) : (
-          <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
-            Tài khoản chưa có thông tin CCCD.
+          <p className="mt-5 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+            Tài khoản chưa có thông tin CCCD được cấu hình.
           </p>
         )}
-        <Button className="mt-5 w-full" onClick={onClose}>
-          Đóng
+
+        <Button className="mt-6 w-full font-semibold" onClick={onClose}>
+          Đóng thông tin
         </Button>
       </div>
     </div>

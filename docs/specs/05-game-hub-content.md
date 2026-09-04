@@ -51,7 +51,7 @@ CMS dùng `AdminShell` và chỉ `SUPER_ADMIN` được truy cập. `SUPPORT` kh
 - Article/event/announcement dùng `DRAFT/PUBLISHED`; publish đặt `publishedAt=now`, unpublish xoá `publishedAt`. Không hard-delete, schedule, approval hoặc revision.
 - Slug được normalize khi tạo và immutable sau đó. Asset/CTA chỉ nhận path nội bộ an toàn hoặc URL `http/https`.
 - Content Markdown được escape, reject raw HTML/image/unsafe link ở API và preview bằng renderer hiện tại.
-- Mọi create/update yêu cầu reason; PATCH yêu cầu `expectedUpdatedAt`, conditional update và audit metadata chỉ lưu field/status, không lưu content body.
+- Mọi create/update cập nhật trực tiếp; PATCH vẫn yêu cầu `expectedUpdatedAt` và conditional update.
 
 | Screen ID | Route | Hành vi |
 | --- | --- | --- |

@@ -22,7 +22,7 @@ Folder này mô tả **source hiện tại** của ZENX GO: chức năng ngườ
 6. [Screen catalog](./06-screen-catalog.md) — inventory toàn bộ route `page.tsx`.
 7. [API & data catalog](./07-api-data-catalog.md) — inventory controller endpoint và data boundary.
 8. [Traceability matrix](./08-traceability-matrix.md) — mapping feature → screen → API → source → test.
-9. [Admin](./09-admin.md) — quyền truy cập, user operations, audit, dữ liệu nhạy cảm, vận hành và known gaps.
+9. [Admin](./09-admin.md) — quyền truy cập, user operations, dữ liệu nhạy cảm, vận hành và known gaps.
 
 ## Quy ước trạng thái
 

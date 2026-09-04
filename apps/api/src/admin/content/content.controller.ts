@@ -1,6 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../../auth/auth.guard';
-import { AdminGuard, AdminRequest } from '../admin.guard';
+import { AdminGuard } from '../admin.guard';
 import { RequireAdminRoles } from '../admin-roles.decorator';
 import { AdminRole } from '../../common/domain';
 import {
@@ -29,6 +41,14 @@ export class ContentAdminController {
     return this.content.dashboard();
   }
 
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  uploadAsset(
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size?: number } | undefined,
+  ) {
+    return this.content.uploadAsset(file);
+  }
+
   @Get('games')
   games(@Query() query: AdminContentGamesQueryDto) {
     return this.content.listGames(query);
@@ -42,10 +62,9 @@ export class ContentAdminController {
   @Patch('games/:gameId')
   updateGame(
     @Param('gameId') gameId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminContentGameUpdateDto,
   ) {
-    return this.content.updateGame(gameId, dto, this.context(request));
+    return this.content.updateGame(gameId, dto);
   }
 
   @Get('articles')
@@ -59,17 +78,16 @@ export class ContentAdminController {
   }
 
   @Post('articles')
-  createArticle(@Req() request: AdminRequest, @Body() dto: AdminContentArticleCreateDto) {
-    return this.content.createArticle(dto, this.context(request));
+  createArticle(@Body() dto: AdminContentArticleCreateDto) {
+    return this.content.createArticle(dto);
   }
 
   @Patch('articles/:articleId')
   updateArticle(
     @Param('articleId') articleId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminContentArticleUpdateDto,
   ) {
-    return this.content.updateArticle(articleId, dto, this.context(request));
+    return this.content.updateArticle(articleId, dto);
   }
 
   @Get('events')
@@ -83,17 +101,16 @@ export class ContentAdminController {
   }
 
   @Post('events')
-  createEvent(@Req() request: AdminRequest, @Body() dto: AdminContentEventCreateDto) {
-    return this.content.createEvent(dto, this.context(request));
+  createEvent(@Body() dto: AdminContentEventCreateDto) {
+    return this.content.createEvent(dto);
   }
 
   @Patch('events/:eventId')
   updateEvent(
     @Param('eventId') eventId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminContentEventUpdateDto,
   ) {
-    return this.content.updateEvent(eventId, dto, this.context(request));
+    return this.content.updateEvent(eventId, dto);
   }
 
   @Get('announcements')
@@ -103,27 +120,16 @@ export class ContentAdminController {
 
   @Post('announcements')
   createAnnouncement(
-    @Req() request: AdminRequest,
     @Body() dto: AdminContentAnnouncementCreateDto,
   ) {
-    return this.content.createAnnouncement(dto, this.context(request));
+    return this.content.createAnnouncement(dto);
   }
 
   @Patch('announcements/:announcementId')
   updateAnnouncement(
     @Param('announcementId') announcementId: string,
-    @Req() request: AdminRequest,
     @Body() dto: AdminContentAnnouncementUpdateDto,
   ) {
-    return this.content.updateAnnouncement(announcementId, dto, this.context(request));
-  }
-
-  private context(request: AdminRequest) {
-    const userAgent = request.get('user-agent');
-    return {
-      actorUserId: request.user.sub,
-      ipAddress: request.ip,
-      ...(userAgent ? { userAgent } : {}),
-    };
+    return this.content.updateAnnouncement(announcementId, dto);
   }
 }

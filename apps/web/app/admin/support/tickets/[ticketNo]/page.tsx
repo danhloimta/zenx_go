@@ -23,7 +23,6 @@ import { getErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/utils';
 import { useSupportAdminAgents, useSupportAdminTicket } from '@/hooks/use-support';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,7 +54,6 @@ export default function SupportAdminTicketPage() {
   const queryClient = useQueryClient();
   const [visibility, setVisibility] = useState<SupportMessageVisibility>('PUBLIC');
   const [body, setBody] = useState('');
-  const [reason, setReason] = useState('');
   const [nextStatus, setNextStatus] = useState<SupportTicketStatus | ''>('');
   const [nextPriority, setNextPriority] = useState<SupportTicketPriority | ''>('');
   const [nextAssignee, setNextAssignee] = useState('');
@@ -112,11 +110,9 @@ export default function SupportAdminTicketPage() {
     mutationFn: () =>
       api.admin.support.claim(ticketNo, {
         expectedUpdatedAt: ticket!.updatedAt,
-        reason: reason.trim() || 'Nhận ticket để xử lý',
       }),
     onSuccess: () => {
       toast.success('Đã nhận ticket.');
-      setReason('');
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -128,11 +124,9 @@ export default function SupportAdminTicketPage() {
         status: nextStatus || undefined,
         priority: nextPriority || undefined,
         assigneeUserId: nextAssignee || null,
-        reason: reason.trim(),
       }),
     onSuccess: () => {
       toast.success('Đã cập nhật workflow ticket.');
-      setReason('');
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -395,16 +389,10 @@ export default function SupportAdminTicketPage() {
                   ))}
                 </Select>
               </label>
-              <Input
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-                placeholder="Lý do cập nhật (tối thiểu 5 ký tự)"
-                disabled={isClosed}
-              />
               <Button
                 className="w-full"
                 onClick={() => update.mutate()}
-                disabled={update.isPending || reason.trim().length < 5 || isClosed}
+                disabled={update.isPending || isClosed}
               >
                 {update.isPending ? 'Đang lưu…' : 'Lưu workflow'}
               </Button>

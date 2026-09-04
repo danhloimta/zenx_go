@@ -90,7 +90,7 @@ Chọn category
 ### Roles and boundaries
 
 - `SUPPORT` và `SUPER_ADMIN` được truy cập support API.
-- `SUPPORT` chỉ nhìn limited user summary (username, email, phone, profile name), không nhìn CCCD, wallet, password hoặc global audit.
+- `SUPPORT` chỉ nhìn limited user summary (username, email, phone, profile name), không nhìn CCCD, wallet hoặc password.
 - `SUPER_ADMIN` giữ toàn quyền Phase 1 và có thêm support operations.
 - Role được kiểm tra live từ `user_roles`; chưa có role-management UI.
 
@@ -110,7 +110,7 @@ NEW/unassigned
 
 - Claim dùng conditional update để hai agent không cùng nhận một ticket.
 - Reassign chỉ tới user `ACTIVE` có role `SUPPORT` hoặc `SUPER_ADMIN`.
-- Status/priority/assignment mutation yêu cầu `expectedUpdatedAt`, reason và audit.
+- Status/priority/assignment mutation yêu cầu `expectedUpdatedAt`.
 - Public staff reply yêu cầu assignee hiện tại; internal note không yêu cầu assignee.
 - `lastCustomerMessageAt`, `lastStaffReplyAt`, `lastActivityAt` phục vụ queue sort và unread badge.
 - `SupportTicketReadState` lưu cursor riêng cho từng viewer; customer và mỗi staff agent có trạng thái độc lập.

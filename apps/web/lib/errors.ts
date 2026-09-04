@@ -17,6 +17,8 @@ const messages: Record<string, string> = {
   SOCIAL_LINKED_TO_ANOTHER_ACCOUNT: 'Tài khoản mạng xã hội đã thuộc tài khoản ZENX GO khác.',
   SOCIAL_NOT_CONFIGURED: 'Nhà cung cấp đăng nhập chưa được cấu hình.',
   INVALID_AVATAR: 'Ảnh đại diện không hợp lệ. Hãy chọn JPEG, PNG hoặc WebP tối đa 2 MB.',
+  INVALID_MEDIA:
+    'Hình ảnh tải lên không hợp lệ. Vui lòng chọn file JPEG, PNG, WebP, GIF hoặc SVG tối đa 10 MB.',
   INVALID_SENSITIVE_PROFILE: 'Thông tin định danh hoặc bảo mật không hợp lệ.',
   INVALID_SENSITIVE_CHALLENGE: 'Mã bí mật hoặc câu trả lời không đúng.',
   SENSITIVE_CHALLENGE_LOCKED: 'Bạn đã thử quá số lần cho phép. Hãy thử lại sau 15 phút.',

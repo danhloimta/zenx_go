@@ -140,6 +140,7 @@ describe('Admin API (SQL Server)', () => {
     expect(dashboard.status).toBe(200);
     expect(dashboard.body.data.users.total).toBeGreaterThanOrEqual(2);
     expect(dashboard.body.data.users.byStatus.ACTIVE).toBeGreaterThanOrEqual(2);
+    expect(dashboard.body.data).not.toHaveProperty('recentActivity');
 
     const list = await http()
       .get('/admin/users')
@@ -158,6 +159,7 @@ describe('Admin API (SQL Server)', () => {
     expect(detail.body.data).not.toHaveProperty('passwordHash');
     expect(detail.body.data).not.toHaveProperty('citizenIdCiphertext');
     expect(detail.body.data).not.toHaveProperty('secretCodeHash');
+    expect(detail.body.data).not.toHaveProperty('auditLogs');
   });
 
   it('updates profile with uniqueness and optimistic concurrency checks', async () => {
@@ -170,7 +172,6 @@ describe('Admin API (SQL Server)', () => {
         expectedUpdatedAt: before.updatedAt,
         fullName: 'Updated Admin Member',
         city: 'Đà Nẵng',
-        reason: 'Hỗ trợ cập nhật hồ sơ',
       });
     expect(updated.status).toBe(200);
     expect(updated.body.data.profile.fullName).toBe('Updated Admin Member');
@@ -183,7 +184,6 @@ describe('Admin API (SQL Server)', () => {
         expectedUpdatedAt: updated.body.data.updatedAt,
         email: nextEmail,
         emailVerified: true,
-        reason: 'Cập nhật email theo yêu cầu',
       });
     expect(contactUpdated.status).toBe(200);
     expect(contactUpdated.body.data.email).toBe(nextEmail);
@@ -197,7 +197,6 @@ describe('Admin API (SQL Server)', () => {
         expectedUpdatedAt: contactUpdated.body.data.updatedAt,
         email: adminEmail,
         emailVerified: false,
-        reason: 'Kiểm tra email trùng',
       });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error.code).toBe('EMAIL_ALREADY_EXISTS');
@@ -208,7 +207,6 @@ describe('Admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: before.updatedAt,
         city: 'Hà Nội',
-        reason: 'Kiểm tra phiên bản cũ',
       });
     expect(stale.status).toBe(409);
     expect(stale.body.error.code).toBe('STALE_ADMIN_UPDATE');
@@ -223,7 +221,6 @@ describe('Admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: before.updatedAt,
         status: 'SUSPENDED',
-        reason: 'Tạm ngưng để kiểm tra sự cố',
       });
     expect(suspended.status).toBe(200);
     expect(suspended.body.data.status).toBe('SUSPENDED');
@@ -236,7 +233,6 @@ describe('Admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: suspended.body.data.updatedAt,
         status: 'ACTIVE',
-        reason: 'Đã hoàn tất kiểm tra',
       });
     expect(reactivated.status).toBe(200);
     const staleAccess = await http().get('/account/me').set('Cookie', memberCookies);
@@ -244,7 +240,7 @@ describe('Admin API (SQL Server)', () => {
     const revoked = await http()
       .post(`/admin/users/${memberId}/revoke-sessions`)
       .set('Cookie', adminCookies)
-      .send({ reason: 'Đăng xuất toàn bộ thiết bị để bảo mật' });
+      .send();
     expect(revoked.status).toBe(201);
 
     const adminDetail = await http().get(`/admin/users/${adminId}`).set('Cookie', adminCookies);
@@ -254,13 +250,12 @@ describe('Admin API (SQL Server)', () => {
       .send({
         expectedUpdatedAt: adminDetail.body.data.updatedAt,
         status: 'SUSPENDED',
-        reason: 'Không được khóa admin cuối',
       });
     expect(lastAdmin.status).toBe(400);
     expect(lastAdmin.body.error.code).toBe('ADMIN_SELF_ACTION_FORBIDDEN');
   });
 
-  it('sets a temporary password, enforces password change, reveals CCCD with audit, and keeps wallet read-only', async () => {
+  it('sets a temporary password, enforces password change, reveals CCCD, and keeps wallet read-only', async () => {
     const before = (await http().get(`/admin/users/${memberId}`).set('Cookie', adminCookies)).body
       .data;
     const reset = await http()
@@ -270,7 +265,6 @@ describe('Admin API (SQL Server)', () => {
         expectedUpdatedAt: before.updatedAt,
         temporaryPassword: 'TemporaryPassword123!',
         temporaryPasswordConfirmation: 'TemporaryPassword123!',
-        reason: 'Cấp lại mật khẩu tạm cho user',
       });
     expect(reset.status).toBe(201);
 
@@ -301,25 +295,15 @@ describe('Admin API (SQL Server)', () => {
       .data;
     const revealed = await http()
       .post(`/admin/users/${memberId}/sensitive-profile/reveal`)
-      .set('Cookie', adminCookies)
-      .send({ reason: 'Đối soát định danh tài khoản' });
+      .set('Cookie', adminCookies);
     expect(revealed.status).toBe(201);
     expect(revealed.body.data.identity).toEqual({
       citizenId: memberCitizenId,
       issuedAt: '2024-05-20',
       issuedPlace: 'Cục Cảnh sát',
     });
-    const logs = await http()
-      .get('/admin/audit-logs')
-      .query({ targetId: memberId })
-      .set('Cookie', adminCookies);
-    expect(logs.status).toBe(200);
-    expect(
-      logs.body.data.items.some(
-        (entry: { action: string }) => entry.action === 'SENSITIVE_PROFILE_REVEALED',
-      ),
-    ).toBe(true);
-    expect(JSON.stringify(logs.body.data.items)).not.toContain(memberCitizenId);
+    const auditRoute = await http().get('/admin/audit-logs').set('Cookie', adminCookies);
+    expect(auditRoute.status).toBe(404);
     expect(detail.wallet.balance).toBe('1234');
   });
 

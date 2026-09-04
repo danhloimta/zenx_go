@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
-import {
-  AdminAuditAction,
-  ContentPublishStatus,
-  GameArticleStatus,
-} from '../../common/domain';
+import { randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { ContentPublishStatus, GameArticleStatus } from '../../common/domain';
 import { DomainError, ErrorCode } from '../../common/errors';
 import { PrismaService } from '../../database/prisma.service';
-import { AdminAuditContext, AdminAuditService } from '../admin.audit.service';
 import {
   AdminContentAnnouncementCreateDto,
   AdminContentAnnouncementUpdateDto,
@@ -22,6 +21,18 @@ import {
   AdminContentGamesQueryDto,
 } from './content.dto';
 import { assertAssetUrl, assertContentMarkdown, assertCtaPath, normalizeSlug } from './content-markdown';
+
+const ASSET_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/svg+xml': '.svg',
+};
+
+const ASSET_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+export type AssetUpload = { buffer: Buffer; mimetype: string; size?: number };
 
 const GAME_SELECT = {
   id: true,
@@ -119,13 +130,11 @@ const ANNOUNCEMENT_SELECT = {
   updatedAt: true,
 } as const;
 
-type ContentContext = AdminAuditContext;
-
 @Injectable()
 export class ContentAdminService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AdminAuditService,
+    private readonly config: ConfigService,
   ) {}
 
   async dashboard() {
@@ -206,7 +215,7 @@ export class ContentAdminService {
     return this.publicGame(game);
   }
 
-  async updateGame(gameId: string, dto: AdminContentGameUpdateDto, context: ContentContext) {
+  async updateGame(gameId: string, dto: AdminContentGameUpdateDto) {
     const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: GAME_SELECT });
     if (!current) throw this.notFound('Game not found');
     this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
@@ -259,21 +268,11 @@ export class ContentAdminService {
       ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
       updatedAt: new Date(),
     };
-    await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.game.updateMany({ where: { id: gameId, updatedAt: current.updatedAt }, data });
-      if (updated.count !== 1) throw this.stale('The game was changed by another operator');
-      await this.audit.record(
-        {
-          ...context,
-          action: AdminAuditAction.CONTENT_GAME_UPDATED,
-          targetType: 'GAME',
-          targetId: gameId,
-          reason: dto.reason,
-          metadata: { fields },
-        },
-        tx,
-      );
+    const updated = await this.prisma.game.updateMany({
+      where: { id: gameId, updatedAt: current.updatedAt },
+      data,
     });
+    if (updated.count !== 1) throw this.stale('The game was changed by another operator');
     return this.getGame(gameId);
   }
 
@@ -308,7 +307,7 @@ export class ContentAdminService {
     return this.publicArticle(article);
   }
 
-  async createArticle(dto: AdminContentArticleCreateDto, context: ContentContext) {
+  async createArticle(dto: AdminContentArticleCreateDto) {
     const game = await this.prisma.game.findUnique({ where: { id: dto.gameId }, select: { id: true } });
     if (!game) throw this.notFound('Game not found');
     const slug = normalizeSlug(dto.slug);
@@ -318,44 +317,30 @@ export class ContentAdminService {
     const status = dto.status ?? ContentPublishStatus.DRAFT;
     const publishedAt = status === ContentPublishStatus.PUBLISHED ? new Date() : null;
     try {
-      const id = await this.prisma.$transaction(async (tx) => {
-        const article = await tx.gameArticle.create({
-          data: {
-            gameId: dto.gameId,
-            title: dto.title,
-            slug,
-            excerpt: dto.excerpt,
-            content: dto.content,
-            coverImageUrl: dto.coverImageUrl,
-            category: dto.category,
-            status,
-            publishedAt,
-            seoTitle: dto.seoTitle,
-            seoDescription: dto.seoDescription,
-          },
-          select: { id: true },
-        });
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_ARTICLE_CREATED,
-            targetType: 'GAME_ARTICLE',
-            targetId: article.id,
-            reason: dto.reason,
-            metadata: { fields: ['gameId', 'title', 'slug', 'excerpt', 'coverImageUrl', 'category', 'seoTitle', 'seoDescription', 'status'], status: { from: null, to: status } },
-          },
-          tx,
-        );
-        return article.id;
+      const article = await this.prisma.gameArticle.create({
+        data: {
+          gameId: dto.gameId,
+          title: dto.title,
+          slug,
+          excerpt: dto.excerpt,
+          content: dto.content,
+          coverImageUrl: dto.coverImageUrl,
+          category: dto.category,
+          status,
+          publishedAt,
+          seoTitle: dto.seoTitle,
+          seoDescription: dto.seoDescription,
+        },
+        select: { id: true },
       });
-      return this.getArticle(id);
+      return this.getArticle(article.id);
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
     }
   }
 
-  async updateArticle(articleId: string, dto: AdminContentArticleUpdateDto, context: ContentContext) {
+  async updateArticle(articleId: string, dto: AdminContentArticleUpdateDto) {
     const current = await this.prisma.gameArticle.findUnique({ where: { id: articleId }, select: ARTICLE_SELECT });
     if (!current) throw this.notFound('Article not found');
     this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
@@ -392,21 +377,11 @@ export class ContentAdminService {
     if (dto.status === undefined && current.status === ContentPublishStatus.PUBLISHED)
       data.publishedAt = current.publishedAt ?? publishedAt;
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.gameArticle.updateMany({ where: { id: articleId, updatedAt: current.updatedAt }, data });
-        if (updated.count !== 1) throw this.stale('The article was changed by another operator');
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_ARTICLE_UPDATED,
-            targetType: 'GAME_ARTICLE',
-            targetId: articleId,
-            reason: dto.reason,
-            metadata: { fields, ...(dto.status !== undefined ? { status: { from: current.status, to: nextStatus } } : {}) },
-          },
-          tx,
-        );
+      const updated = await this.prisma.gameArticle.updateMany({
+        where: { id: articleId, updatedAt: current.updatedAt },
+        data,
       });
+      if (updated.count !== 1) throw this.stale('The article was changed by another operator');
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
@@ -436,7 +411,7 @@ export class ContentAdminService {
     return this.publicEvent(event);
   }
 
-  async createEvent(dto: AdminContentEventCreateDto, context: ContentContext) {
+  async createEvent(dto: AdminContentEventCreateDto) {
     await this.assertGame(dto.gameId);
     const startsAt = this.date(dto.startsAt);
     const endsAt = dto.endsAt === undefined || dto.endsAt === null ? null : this.date(dto.endsAt);
@@ -448,45 +423,31 @@ export class ContentAdminService {
     const status = dto.status ?? ContentPublishStatus.DRAFT;
     const publishedAt = status === ContentPublishStatus.PUBLISHED ? new Date() : null;
     try {
-      const id = await this.prisma.$transaction(async (tx) => {
-        const event = await tx.gameEvent.create({
-          data: {
-            gameId: dto.gameId,
-            title: dto.title,
-            slug,
-            excerpt: dto.excerpt,
-            content: dto.content,
-            coverImageUrl: dto.coverImageUrl,
-            status,
-            startsAt,
-            endsAt,
-            publishedAt,
-            seoTitle: dto.seoTitle,
-            seoDescription: dto.seoDescription,
-          },
-          select: { id: true },
-        });
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_EVENT_CREATED,
-            targetType: 'GAME_EVENT',
-            targetId: event.id,
-            reason: dto.reason,
-            metadata: { fields: ['gameId', 'title', 'slug', 'excerpt', 'coverImageUrl', 'startsAt', 'endsAt', 'seoTitle', 'seoDescription', 'status'], status: { from: null, to: status } },
-          },
-          tx,
-        );
-        return event.id;
+      const event = await this.prisma.gameEvent.create({
+        data: {
+          gameId: dto.gameId,
+          title: dto.title,
+          slug,
+          excerpt: dto.excerpt,
+          content: dto.content,
+          coverImageUrl: dto.coverImageUrl,
+          status,
+          startsAt,
+          endsAt,
+          publishedAt,
+          seoTitle: dto.seoTitle,
+          seoDescription: dto.seoDescription,
+        },
+        select: { id: true },
       });
-      return this.getEvent(id);
+      return this.getEvent(event.id);
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
     }
   }
 
-  async updateEvent(eventId: string, dto: AdminContentEventUpdateDto, context: ContentContext) {
+  async updateEvent(eventId: string, dto: AdminContentEventUpdateDto) {
     const current = await this.prisma.gameEvent.findUnique({ where: { id: eventId }, select: EVENT_SELECT });
     if (!current) throw this.notFound('Event not found');
     this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
@@ -528,21 +489,11 @@ export class ContentAdminService {
     if (dto.status === undefined && current.status === ContentPublishStatus.PUBLISHED)
       data.publishedAt = current.publishedAt ?? publishedAt;
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.gameEvent.updateMany({ where: { id: eventId, updatedAt: current.updatedAt }, data });
-        if (updated.count !== 1) throw this.stale('The event was changed by another operator');
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_EVENT_UPDATED,
-            targetType: 'GAME_EVENT',
-            targetId: eventId,
-            reason: dto.reason,
-            metadata: { fields, ...(dto.status !== undefined ? { status: { from: current.status, to: nextStatus } } : {}) },
-          },
-          tx,
-        );
+      const updated = await this.prisma.gameEvent.updateMany({
+        where: { id: eventId, updatedAt: current.updatedAt },
+        data,
       });
+      if (updated.count !== 1) throw this.stale('The event was changed by another operator');
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
@@ -565,39 +516,35 @@ export class ContentAdminService {
     return { items, page, pageSize, total, totalPages: Math.ceil(total / pageSize) };
   }
 
-  async createAnnouncement(dto: AdminContentAnnouncementCreateDto, context: ContentContext) {
+  async createAnnouncement(dto: AdminContentAnnouncementCreateDto) {
     const startsAt = this.date(dto.startsAt);
     const endsAt = dto.endsAt === undefined || dto.endsAt === null ? null : this.date(dto.endsAt);
     this.assertDateRange(startsAt, endsAt);
     assertCtaPath(dto.ctaPath);
     const status = dto.status ?? ContentPublishStatus.DRAFT;
     try {
-      const id = await this.prisma.$transaction(async (tx) => {
-        const announcement = await tx.portalAnnouncement.create({
-          data: { code: dto.code, title: dto.title, message: dto.message, ctaLabel: dto.ctaLabel, ctaPath: dto.ctaPath, status, startsAt, endsAt, sortOrder: dto.sortOrder },
-          select: { id: true },
-        });
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_ANNOUNCEMENT_CREATED,
-            targetType: 'PORTAL_ANNOUNCEMENT',
-            targetId: announcement.id,
-            reason: dto.reason,
-            metadata: { fields: ['code', 'title', 'ctaLabel', 'ctaPath', 'startsAt', 'endsAt', 'sortOrder', 'status'], status: { from: null, to: status } },
-          },
-          tx,
-        );
-        return announcement.id;
+      const announcement = await this.prisma.portalAnnouncement.create({
+        data: {
+          code: dto.code,
+          title: dto.title,
+          message: dto.message,
+          ctaLabel: dto.ctaLabel,
+          ctaPath: dto.ctaPath,
+          status,
+          startsAt,
+          endsAt,
+          sortOrder: dto.sortOrder,
+        },
+        select: { id: true },
       });
-      return this.getAnnouncement(id);
+      return this.getAnnouncement(announcement.id);
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
     }
   }
 
-  async updateAnnouncement(announcementId: string, dto: AdminContentAnnouncementUpdateDto, context: ContentContext) {
+  async updateAnnouncement(announcementId: string, dto: AdminContentAnnouncementUpdateDto) {
     const current = await this.prisma.portalAnnouncement.findUnique({ where: { id: announcementId }, select: ANNOUNCEMENT_SELECT });
     if (!current) throw this.notFound('Announcement not found');
     this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
@@ -624,21 +571,11 @@ export class ContentAdminService {
       updatedAt: new Date(),
     };
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.portalAnnouncement.updateMany({ where: { id: announcementId, updatedAt: current.updatedAt }, data });
-        if (updated.count !== 1) throw this.stale('The announcement was changed by another operator');
-        await this.audit.record(
-          {
-            ...context,
-            action: AdminAuditAction.CONTENT_ANNOUNCEMENT_UPDATED,
-            targetType: 'PORTAL_ANNOUNCEMENT',
-            targetId: announcementId,
-            reason: dto.reason,
-            metadata: { fields, ...(dto.status !== undefined ? { status: { from: current.status, to: nextStatus } } : {}) },
-          },
-          tx,
-        );
+      const updated = await this.prisma.portalAnnouncement.updateMany({
+        where: { id: announcementId, updatedAt: current.updatedAt },
+        data,
       });
+      if (updated.count !== 1) throw this.stale('The announcement was changed by another operator');
     } catch (error) {
       this.rethrowUnique(error);
       throw error;
@@ -698,6 +635,65 @@ export class ContentAdminService {
   private rethrowUnique(error: unknown): void {
     if ((error as { code?: string }).code === 'P2002')
       throw new DomainError(ErrorCode.CONTENT_SLUG_EXISTS, 'Content slug or code already exists', 409);
+  }
+
+  async uploadAsset(file?: AssetUpload) {
+    if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+      throw new DomainError(ErrorCode.INVALID_MEDIA, 'File is required', 400);
+    }
+    if (file.buffer.length > ASSET_MAX_BYTES) {
+      throw new DomainError(ErrorCode.INVALID_MEDIA, 'File must be 10 MB or smaller', 400);
+    }
+    const extension = ASSET_EXTENSIONS[file.mimetype];
+    if (!extension || !this.hasImageSignature(file.buffer, file.mimetype)) {
+      throw new DomainError(
+        ErrorCode.INVALID_MEDIA,
+        'File must be a valid JPEG, PNG, WebP, GIF, or SVG image',
+        400,
+      );
+    }
+
+    const uploadRoot = resolve(this.config.get<string>('uploadDir') ?? 'uploads');
+    const contentDir = join(uploadRoot, 'content');
+    const filename = `${randomUUID()}${extension}`;
+    const targetPath = join(contentDir, filename);
+    const url = `/uploads/content/${filename}`;
+    try {
+      await mkdir(contentDir, { recursive: true });
+      await writeFile(targetPath, file.buffer, { flag: 'wx' });
+    } catch {
+      throw new DomainError(ErrorCode.INVALID_MEDIA, 'Asset could not be stored', 500);
+    }
+    return { url };
+  }
+
+  private hasImageSignature(buffer: Buffer, mimetype: string) {
+    if (mimetype === 'image/jpeg') {
+      return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    }
+    if (mimetype === 'image/png') {
+      return buffer
+        .subarray(0, 8)
+        .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
+    if (mimetype === 'image/webp') {
+      return (
+        buffer.length >= 12 &&
+        buffer.toString('ascii', 0, 4) === 'RIFF' &&
+        buffer.toString('ascii', 8, 12) === 'WEBP'
+      );
+    }
+    if (mimetype === 'image/gif') {
+      return (
+        buffer.length >= 6 &&
+        (buffer.toString('ascii', 0, 6) === 'GIF87a' || buffer.toString('ascii', 0, 6) === 'GIF89a')
+      );
+    }
+    if (mimetype === 'image/svg+xml') {
+      const text = buffer.toString('utf8', 0, Math.min(buffer.length, 1000)).trim();
+      return text.includes('<svg') || text.includes('<?xml');
+    }
+    return false;
   }
 
   private notFound(message: string) {

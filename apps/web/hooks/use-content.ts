@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   ContentPublishStatus,
@@ -114,5 +114,11 @@ export function useAdminContentAnnouncements(
     enabled,
     retry: false,
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useAdminUploadAsset() {
+  return useMutation({
+    mutationFn: (file: Blob | File) => api.admin.content.uploadAsset(file),
   });
 }
