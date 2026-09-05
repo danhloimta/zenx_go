@@ -1,7 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Gamepad2, Search } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Gamepad2,
+  Layers,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { GameLifecycleStatus, GameOperationalStatus } from '@zenx-go/api-client';
 import { useAdminContentGames } from '@/hooks/use-content';
@@ -9,24 +22,25 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate } from '@/lib/utils';
+import { formatDate, mediaUrl } from '@/lib/utils';
 
 const lifecycleOptions: Array<{ value: '' | GameLifecycleStatus; label: string }> = [
   { value: '', label: 'Tất cả vòng đời' },
-  { value: 'CONCEPT', label: 'Ý tưởng' },
-  { value: 'IN_DEVELOPMENT', label: 'Đang phát triển' },
+  { value: 'LIVE', label: 'Đang vận hành (Live)' },
+  { value: 'OPEN_BETA', label: 'Open Beta' },
+  { value: 'CLOSED_BETA', label: 'Closed Beta' },
   { value: 'INTERNAL_TEST', label: 'Test nội bộ' },
-  { value: 'CLOSED_BETA', label: 'Closed beta' },
-  { value: 'OPEN_BETA', label: 'Open beta' },
-  { value: 'LIVE', label: 'Đang vận hành' },
+  { value: 'IN_DEVELOPMENT', label: 'Đang phát triển' },
   { value: 'COMING_SOON', label: 'Sắp ra mắt' },
-  { value: 'SUNSET', label: 'Đã đóng' },
+  { value: 'CONCEPT', label: 'Ý tưởng' },
+  { value: 'SUNSET', label: 'Đã đóng (Sunset)' },
 ];
+
 const operationalOptions: Array<{ value: '' | GameOperationalStatus; label: string }> = [
-  { value: '', label: 'Tất cả vận hành' },
-  { value: 'AVAILABLE', label: 'Sẵn sàng' },
-  { value: 'MAINTENANCE', label: 'Bảo trì' },
-  { value: 'DEGRADED', label: 'Suy giảm' },
+  { value: '', label: 'Tất cả trạng thái vận hành' },
+  { value: 'AVAILABLE', label: 'Sẵn sàng phục vụ' },
+  { value: 'MAINTENANCE', label: 'Đang bảo trì' },
+  { value: 'DEGRADED', label: 'Suy giảm hiệu năng' },
   { value: 'UNAVAILABLE', label: 'Không khả dụng' },
 ];
 
@@ -37,6 +51,7 @@ export default function AdminContentGamesPage() {
   const [operationalStatus, setOperationalStatus] = useState<'' | GameOperationalStatus>('');
   const [visibility, setVisibility] = useState<'' | 'PUBLIC' | 'PRIVATE'>('');
   const [page, setPage] = useState(1);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebounced(search.trim());
@@ -44,10 +59,11 @@ export default function AdminContentGamesPage() {
     }, 300);
     return () => window.clearTimeout(timer);
   }, [search]);
+
   const query = useMemo(
     () => ({
       page,
-      pageSize: 20,
+      pageSize: 15,
       search: debounced || undefined,
       lifecycleStatus: lifecycleStatus || undefined,
       operationalStatus: operationalStatus || undefined,
@@ -55,123 +71,457 @@ export default function AdminContentGamesPage() {
     }),
     [debounced, lifecycleStatus, operationalStatus, page, visibility],
   );
+
   const games = useAdminContentGames(query);
   const totalPages = Math.max(1, games.data?.totalPages ?? 1);
+  const totalCount = games.data?.total ?? 0;
+
+  // Stats calculation from current list
+  const liveCount = games.data?.items.filter((g) => g.lifecycleStatus === 'LIVE').length ?? 0;
+  const publicCount = games.data?.items.filter((g) => g.isPublic).length ?? 0;
+  const hasActiveFilters = Boolean(debounced || lifecycleStatus || operationalStatus || visibility);
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setDebounced('');
+    setLifecycleStatus('');
+    setOperationalStatus('');
+    setVisibility('');
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold text-[#00873E]">Content CMS</p>
-        <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Game</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Chỉnh sửa nội dung cơ bản của game đã có; code và hostname luôn ở chế độ chỉ đọc.
-        </p>
-      </div>
-      <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_190px_180px_150px]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm tên, code hoặc slug…"
-              className="pl-10"
-              aria-label="Tìm game"
-            />
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
+        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
+                <Gamepad2 className="size-3.5" /> Content CMS
+              </span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                {totalCount} games
+              </span>
+            </div>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+              Quản lý Game & Vũ trụ
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Quản lý danh sách tựa game, vòng đời phát hành, thông số vận hành, subdomain và giao diện CMS.
+            </p>
           </div>
-          <Select
-            value={lifecycleStatus}
-            onChange={(event) => {
-              setLifecycleStatus(event.target.value as '' | GameLifecycleStatus);
-              setPage(1);
-            }}
-            aria-label="Lọc vòng đời"
-          >
-            {lifecycleOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </Select>
-          <Select
-            value={operationalStatus}
-            onChange={(event) => {
-              setOperationalStatus(event.target.value as '' | GameOperationalStatus);
-              setPage(1);
-            }}
-            aria-label="Lọc trạng thái vận hành"
-          >
-            {operationalOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </Select>
-          <Select
-            value={visibility}
-            onChange={(event) => {
-              setVisibility(event.target.value as '' | 'PUBLIC' | 'PRIVATE');
-              setPage(1);
-            }}
-            aria-label="Lọc hiển thị"
-          >
-            <option value="">Tất cả hiển thị</option>
-            <option value="PUBLIC">Đang public</option>
-            <option value="PRIVATE">Đang ẩn</option>
-          </Select>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void games.refetch()}
+              disabled={games.isFetching}
+              className="gap-2 bg-white"
+            >
+              <RefreshCw className={`size-3.5 ${games.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
+              <Link href="/admin/content">
+                <Layers className="size-4" /> Tổng quan CMS
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick KPI stats strip */}
+        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
+            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Tổng số game</div>
+            <div className="mt-1 text-xl font-black text-slate-900">{totalCount}</div>
+          </div>
+          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
+            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đang vận hành (Live)</div>
+            <div className="mt-1 flex items-center gap-1.5 text-xl font-black text-emerald-600">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              {liveCount}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
+            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Hiển thị Public</div>
+            <div className="mt-1 text-xl font-black text-sky-600">{publicCount}</div>
+          </div>
+          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
+            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Vận hành chuẩn</div>
+            <div className="mt-1 text-xl font-black text-slate-800">
+              {games.data?.items.filter((g) => g.operationalStatus === 'AVAILABLE').length ?? 0}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_170px]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Tìm theo tên game, code (LDDM), slug…"
+                className="h-10 pl-10 pr-9 text-sm"
+                aria-label="Tìm game"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Select
+              value={lifecycleStatus}
+              onChange={(event) => {
+                setLifecycleStatus(event.target.value as '' | GameLifecycleStatus);
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc vòng đời"
+            >
+              {lifecycleOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              value={operationalStatus}
+              onChange={(event) => {
+                setOperationalStatus(event.target.value as '' | GameOperationalStatus);
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc trạng thái vận hành"
+            >
+              {operationalOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              value={visibility}
+              onChange={(event) => {
+                setVisibility(event.target.value as '' | 'PUBLIC' | 'PRIVATE');
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc hiển thị"
+            >
+              <option value="">Tất cả hiển thị</option>
+              <option value="PUBLIC">Đang Public</option>
+              <option value="PRIVATE">Đang Ẩn (Private)</option>
+            </Select>
+          </div>
+
+          {/* Filter badges & Clear */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs">
+              <span className="flex items-center gap-1 font-semibold text-slate-500">
+                <SlidersHorizontal className="size-3.5 text-[#00873E]" /> Bộ lọc đang kích hoạt:
+              </span>
+              {debounced && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-slate-700">
+                  Từ khoá: &quot;{debounced}&quot;
+                </span>
+              )}
+              {lifecycleStatus && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 font-medium text-[#00873E]">
+                  Vòng đời: {lifecycleLabel(lifecycleStatus)}
+                </span>
+              )}
+              {operationalStatus && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 font-medium text-blue-700">
+                  Vận hành: {operationalLabel(operationalStatus)}
+                </span>
+              )}
+              {visibility && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 font-medium text-purple-700">
+                  {visibility === 'PUBLIC' ? 'Public' : 'Private'}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-6 px-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                Đặt lại
+              </Button>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Main Table / Grid Content */}
       {games.isLoading ? (
-        <GameSkeleton />
+        <GameListSkeleton />
       ) : games.isError || !games.data ? (
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
-          Không thể tải danh sách game.
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700 shadow-xs">
+          <p className="font-bold">Không thể tải danh sách game.</p>
+          <p className="mt-1 text-xs text-rose-600">
+            Vui lòng kiểm tra kết nối mạng hoặc phiên đăng nhập quản trị của bạn.
+          </p>
+        </div>
+      ) : games.data.items.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-xs">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#00873E]">
+            <Gamepad2 className="size-7" />
+          </div>
+          <h3 className="mt-4 text-base font-bold text-slate-900">Không tìm thấy game nào</h3>
+          <p className="mx-auto mt-1.5 max-w-md text-xs text-slate-500">
+            Không có dữ liệu phù hợp với điều kiện tìm kiếm hoặc bộ lọc hiện tại của bạn.
+          </p>
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="mt-4 text-xs"
+            >
+              Xóa bộ lọc
+            </Button>
+          )}
         </div>
       ) : (
         <>
-          <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[780px] text-left text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
                   <tr>
-                    <th className="px-5 py-3">Game</th>
-                    <th className="px-5 py-3">Vòng đời</th>
-                    <th className="px-5 py-3">Vận hành</th>
-                    <th className="px-5 py-3">Hiển thị</th>
-                    <th className="px-5 py-3">Cập nhật</th>
+                    <th className="px-6 py-4">Tựa Game & Nhận diện</th>
+                    <th className="px-5 py-4">Vòng đời</th>
+                    <th className="px-5 py-4">Vận hành</th>
+                    <th className="px-5 py-4">Nền tảng & Thể loại</th>
+                    <th className="px-5 py-4">Hiển thị</th>
+                    <th className="px-5 py-4">Cập nhật</th>
+                    <th className="px-6 py-4 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {games.data.items.map((game) => (
-                    <tr key={game.id} className="group hover:bg-slate-50">
-                      <td className="px-5 py-4">
-                        <Link href={`/admin/content/games/${game.id}`} className="flex items-center gap-3">
-                          <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]"><Gamepad2 className="size-4" /></span>
-                          <span>
-                            <span className="block font-bold text-slate-800 group-hover:text-[#00873E]">{game.name}</span>
-                            <span className="mt-1 block text-xs text-slate-400">{game.code} · {game.slug}</span>
-                          </span>
+                    <tr
+                      key={game.id}
+                      className="group transition-colors hover:bg-slate-50/80"
+                    >
+                      {/* Name & Avatar */}
+                      <td className="px-6 py-4">
+                        <Link
+                          href={`/admin/content/games/${game.id}`}
+                          className="flex items-center gap-3.5"
+                        >
+                          <div className="relative size-12 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-100 shadow-xs">
+                            {game.iconUrl || game.coverUrl ? (
+                              <img
+                                src={mediaUrl(game.iconUrl || game.coverUrl || '')}
+                                alt={game.name}
+                                className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                onError={(e) => {
+                                  // Fallback icon on error
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : null}
+                            <div className="absolute inset-0 -z-10 flex items-center justify-center bg-emerald-50 text-[#00873E]">
+                              <Gamepad2 className="size-6" />
+                            </div>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 group-hover:text-[#00873E]">
+                                {game.name}
+                              </span>
+                              {game.primaryGame && (
+                                <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                  Primary
+                                </span>
+                              )}
+                              {game.featured && (
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                                  <Sparkles className="size-2.5" /> Nổi bật
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                              <span className="font-mono font-bold text-[#00873E]">{game.code}</span>
+                              <span>•</span>
+                              <span className="truncate">{game.slug}</span>
+                              {game.subdomain && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-slate-500">{game.subdomain}.zenx.vn</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </Link>
                       </td>
-                      <td className="px-5 py-4 text-xs text-slate-600">{lifecycleLabel(game.lifecycleStatus)}</td>
-                      <td className="px-5 py-4 text-xs text-slate-600">{operationalLabel(game.operationalStatus)}</td>
-                      <td className="px-5 py-4"><VisibilityBadge isPublic={game.isPublic} /></td>
-                      <td className="px-5 py-4 text-xs text-slate-500">{formatDate(game.updatedAt)}</td>
+
+                      {/* Lifecycle */}
+                      <td className="px-5 py-4">
+                        <LifecycleBadge status={game.lifecycleStatus} />
+                      </td>
+
+                      {/* Operational */}
+                      <td className="px-5 py-4">
+                        <OperationalBadge status={game.operationalStatus} />
+                      </td>
+
+                      {/* Platforms & Genres */}
+                      <td className="px-5 py-4">
+                        <div className="space-y-1">
+                          {game.platforms && game.platforms.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {game.platforms.slice(0, 3).map((p) => (
+                                <span
+                                  key={p}
+                                  className="inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600"
+                                >
+                                  {p}
+                                </span>
+                              ))}
+                              {game.platforms.length > 3 && (
+                                <span className="text-[10px] text-slate-400">+{game.platforms.length - 3}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+
+                          {game.genres && game.genres.length > 0 ? (
+                            <p className="max-w-[150px] truncate text-[11px] text-slate-500">
+                              {game.genres.map((g) => g.name).join(', ')}
+                            </p>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      {/* Visibility */}
+                      <td className="px-5 py-4">
+                        <VisibilityBadge isPublic={game.isPublic} />
+                      </td>
+
+                      {/* Updated At */}
+                      <td className="px-5 py-4 text-xs text-slate-500">
+                        {formatDate(game.updatedAt)}
+                      </td>
+
+                      {/* Action */}
+                      <td className="px-6 py-4 text-right">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1.5 rounded-xl px-3 text-xs font-bold text-slate-700 hover:bg-[#00873E]/10 hover:text-[#00873E]"
+                        >
+                          <Link href={`/admin/content/games/${game.id}`}>
+                            Chi tiết <ArrowRight className="size-3.5" />
+                          </Link>
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="space-y-3 p-4 md:hidden">
+
+            {/* Mobile / Tablet Cards */}
+            <div className="grid divide-y divide-slate-100 lg:hidden">
               {games.data.items.map((game) => (
-                <Link key={game.id} href={`/admin/content/games/${game.id}`} className="block rounded-xl border border-slate-100 p-4 hover:bg-slate-50">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><p className="text-xs font-bold text-[#00873E]">{game.code}</p><h3 className="mt-1 truncate font-bold text-slate-900">{game.name}</h3><p className="mt-1 truncate text-xs text-slate-400">{game.slug}</p></div>
-                    <VisibilityBadge isPublic={game.isPublic} />
+                <div key={game.id} className="p-4 transition hover:bg-slate-50">
+                  <div className="flex items-start gap-3.5">
+                    <div className="relative size-12 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-100">
+                      {game.iconUrl || game.coverUrl ? (
+                        <img
+                          src={mediaUrl(game.iconUrl || game.coverUrl || '')}
+                          alt={game.name}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-full items-center justify-center bg-emerald-50 text-[#00873E]">
+                          <Gamepad2 className="size-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          href={`/admin/content/games/${game.id}`}
+                          className="truncate font-bold text-slate-900 hover:text-[#00873E]"
+                        >
+                          {game.name}
+                        </Link>
+                        <VisibilityBadge isPublic={game.isPublic} />
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        <span className="font-mono font-bold text-[#00873E]">{game.code}</span> • {game.slug}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <LifecycleBadge status={game.lifecycleStatus} />
+                        <OperationalBadge status={game.operationalStatus} />
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-400">
+                        <span>Cập nhật {formatDate(game.updatedAt)}</span>
+                        <Link
+                          href={`/admin/content/games/${game.id}`}
+                          className="inline-flex items-center gap-1 font-bold text-[#00873E]"
+                        >
+                          Chỉnh sửa <ArrowRight className="size-3" />
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>{lifecycleLabel(game.lifecycleStatus)}</span><span>{formatDate(game.updatedAt)}</span></div>
-                </Link>
+                </div>
               ))}
             </div>
-            {!games.data.items.length ? <p className="p-12 text-center text-sm text-slate-500">Không có game phù hợp.</p> : null}
           </section>
-          <div className="flex flex-col items-center justify-between gap-3 text-xs text-slate-500 sm:flex-row">
-            <span>{games.data.total.toLocaleString('vi-VN')} game</span>
+
+          {/* Pagination */}
+          <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-5 py-3.5 text-xs text-slate-500 shadow-xs sm:flex-row">
+            <span>
+              Hiển thị <strong>{games.data.items.length}</strong> / <strong>{totalCount}</strong> game (Trang {games.data.page} / {totalPages})
+            </span>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1 || games.isFetching}><ChevronLeft className="size-4" /> Trước</Button>
-              <span className="min-w-24 text-center font-semibold text-slate-700">Trang {games.data.page} / {totalPages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPage((value) => value + 1)} disabled={page >= totalPages || games.isFetching}>Sau <ChevronRight className="size-4" /></Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                disabled={page <= 1 || games.isFetching}
+                className="h-8 gap-1 rounded-xl px-3 text-xs"
+              >
+                <ChevronLeft className="size-4" /> Trước
+              </Button>
+              <div className="flex items-center gap-1 px-1 font-semibold text-slate-700">
+                {page} / {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((value) => value + 1)}
+                disabled={page >= totalPages || games.isFetching}
+                className="h-8 gap-1 rounded-xl px-3 text-xs"
+              >
+                Sau <ChevronRight className="size-4" />
+              </Button>
             </div>
           </div>
         </>
@@ -180,8 +530,99 @@ export default function AdminContentGamesPage() {
   );
 }
 
+function LifecycleBadge({ status }: { status: GameLifecycleStatus }) {
+  switch (status) {
+    case 'LIVE':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Đang vận hành
+        </span>
+      );
+    case 'OPEN_BETA':
+    case 'CLOSED_BETA':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-700">
+          <span className="size-1.5 rounded-full bg-sky-500" />
+          {status === 'OPEN_BETA' ? 'Open Beta' : 'Closed Beta'}
+        </span>
+      );
+    case 'IN_DEVELOPMENT':
+    case 'CONCEPT':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+          <span className="size-1.5 rounded-full bg-amber-500" />
+          {status === 'IN_DEVELOPMENT' ? 'Đang phát triển' : 'Ý tưởng'}
+        </span>
+      );
+    case 'COMING_SOON':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+          <span className="size-1.5 rounded-full bg-indigo-500" />
+          Sắp ra mắt
+        </span>
+      );
+    case 'SUNSET':
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+          <span className="size-1.5 rounded-full bg-slate-400" />
+          Đã đóng
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+          {status}
+        </span>
+      );
+  }
+}
+
+function OperationalBadge({ status }: { status: GameOperationalStatus }) {
+  switch (status) {
+    case 'AVAILABLE':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+          <span className="size-1.5 rounded-full bg-emerald-500" /> Sẵn sàng
+        </span>
+      );
+    case 'MAINTENANCE':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+          <span className="size-1.5 rounded-full bg-amber-500" /> Bảo trì
+        </span>
+      );
+    case 'DEGRADED':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700">
+          <span className="size-1.5 rounded-full bg-orange-500" /> Suy giảm
+        </span>
+      );
+    case 'UNAVAILABLE':
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+          <span className="size-1.5 rounded-full bg-rose-500" /> Ngắt kết nối
+        </span>
+      );
+    default:
+      return (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+          {status}
+        </span>
+      );
+  }
+}
+
 function VisibilityBadge({ isPublic }: { isPublic: boolean }) {
-  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${isPublic ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{isPublic ? 'Public' : 'Đang ẩn'}</span>;
+  return isPublic ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+      <Eye className="size-3" /> Public
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+      <EyeOff className="size-3" /> Đang ẩn
+    </span>
+  );
 }
 
 function lifecycleLabel(value: string) {
@@ -192,6 +633,24 @@ function operationalLabel(value: string) {
   return operationalOptions.find((option) => option.value === value)?.label ?? value;
 }
 
-function GameSkeleton() {
-  return <div className="space-y-2 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">{[1, 2, 3, 4].map((value) => <Skeleton key={value} className="h-16 rounded-xl" />)}</div>;
+function GameListSkeleton() {
+  return (
+    <div className="space-y-3 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <Skeleton className="h-10 w-full rounded-2xl" />
+      {[1, 2, 3, 4, 5].map((value) => (
+        <div key={value} className="flex items-center justify-between gap-4 py-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-12 rounded-2xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-8 w-20 rounded-xl" />
+        </div>
+      ))}
+    </div>
+  );
 }

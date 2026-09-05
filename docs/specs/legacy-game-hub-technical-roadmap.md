@@ -85,7 +85,6 @@ Thay cấu hình đơn `WEB_ORIGIN` hiện tại bằng cấu hình có mục đ
 ```text
 PUBLIC_BASE_DOMAIN=zenxgo.io.vn
 PUBLIC_WEB_ORIGIN=https://zenxgo.io.vn
-PUBLIC_GAME_SUBDOMAINS=lucdia,hoalong,thitranmay,orion
 ALLOWED_WEB_ORIGINS=https://zenxgo.io.vn
 ALLOW_GAME_SUBDOMAINS=true
 COOKIE_DOMAIN=.zenxgo.io.vn

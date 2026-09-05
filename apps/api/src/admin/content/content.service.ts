@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { ContentPublishStatus, GameArticleStatus } from '../../common/domain';
 import { DomainError, ErrorCode } from '../../common/errors';
 import { PrismaService } from '../../database/prisma.service';
+import { RESERVED_SUBDOMAINS } from '../../common/web-domain';
 import {
   AdminContentAnnouncementCreateDto,
   AdminContentAnnouncementUpdateDto,
@@ -219,12 +220,20 @@ export class ContentAdminService {
     const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: GAME_SELECT });
     if (!current) throw this.notFound('Game not found');
     this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
+
+    const code = dto.code === undefined ? undefined : dto.code.trim().toUpperCase();
+    const slug = dto.slug === undefined ? undefined : normalizeGameSlug(dto.slug);
+    const subdomain = dto.subdomain === undefined ? undefined : normalizeGameSubdomain(dto.subdomain);
+    if (subdomain !== undefined) assertGameSubdomain(subdomain);
     const assetFields = ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const;
     for (const field of assetFields) assertAssetUrl(dto[field]);
     assertCtaPath(dto.primaryCtaPath);
     assertCtaPath(dto.secondaryCtaPath);
 
     const fields = [
+      'code',
+      'slug',
+      'subdomain',
       'name',
       'tagline',
       'shortDescription',
@@ -244,9 +253,15 @@ export class ContentAdminService {
       'featured',
       'isPublic',
       'sortOrder',
-    ].filter((field) => dto[field as keyof AdminContentGameUpdateDto] !== undefined);
-    if (!fields.length) throw new DomainError(ErrorCode.ADMIN_NO_CHANGES, 'No content changes were provided', 400);
+    ].filter(
+      (field) => dto[field as keyof AdminContentGameUpdateDto] !== undefined,
+    );
+    if (!fields.length)
+      throw new DomainError(ErrorCode.ADMIN_NO_CHANGES, 'No content changes were provided', 400);
     const data: Prisma.GameUpdateManyMutationInput = {
+      ...(code !== undefined ? { code } : {}),
+      ...(slug !== undefined ? { slug } : {}),
+      ...(subdomain !== undefined ? { subdomain } : {}),
       ...(dto.name !== undefined ? { name: dto.name } : {}),
       ...(dto.tagline !== undefined ? { tagline: dto.tagline } : {}),
       ...(dto.shortDescription !== undefined ? { shortDescription: dto.shortDescription } : {}),
@@ -268,11 +283,16 @@ export class ContentAdminService {
       ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
       updatedAt: new Date(),
     };
-    const updated = await this.prisma.game.updateMany({
-      where: { id: gameId, updatedAt: current.updatedAt },
-      data,
-    });
-    if (updated.count !== 1) throw this.stale('The game was changed by another operator');
+    try {
+      const updated = await this.prisma.game.updateMany({
+        where: { id: gameId, updatedAt: current.updatedAt },
+        data,
+      });
+      if (updated.count !== 1) throw this.stale('The game was changed by another operator');
+    } catch (error) {
+      this.rethrowUnique(error);
+      throw error;
+    }
     return this.getGame(gameId);
   }
 
@@ -706,5 +726,21 @@ export class ContentAdminService {
 
   private stale(message: string) {
     return new DomainError(ErrorCode.STALE_ADMIN_UPDATE, message, 409);
+  }
+}
+
+function normalizeGameSlug(value: string) {
+  const slug = normalizeSlug(value);
+  if (slug.length > 160) throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game slug is invalid', 400);
+  return slug;
+}
+
+function normalizeGameSubdomain(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function assertGameSubdomain(value: string) {
+  if (RESERVED_SUBDOMAINS.has(value) || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) {
+    throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game subdomain is invalid or reserved', 400);
   }
 }

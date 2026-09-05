@@ -7,12 +7,35 @@ function baseDomain() {
   try { return normalizeBaseDomain(new URL(process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? 'http://lvh.me:3000').hostname); } catch { return 'lvh.me'; }
 }
 
-function publicGameSubdomains() {
-  const configured = process.env.PUBLIC_GAME_SUBDOMAINS?.split(',').map((value) => normalizeHostname(value)).filter(Boolean);
-  return new Set(configured?.length ? configured : ['lucdia', 'hoalong', 'thitranmay', 'orion']);
+function apiBaseUrl() {
+  const configured = process.env.API_PROXY_ORIGIN ?? process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!configured) return null;
+  try {
+    const url = new URL(configured, 'http://zenx-go.local');
+    if (url.origin === 'http://zenx-go.local') return null;
+    return url.pathname.replace(/\/$/, '').endsWith('/api/v1')
+      ? `${url.origin}${url.pathname.replace(/\/$/, '')}`
+      : `${url.origin}/api/v1`;
+  } catch {
+    return null;
+  }
 }
 
-export function middleware(request: NextRequest) {
+async function isPublicGameSubdomain(subdomain: string) {
+  const baseUrl = apiBaseUrl();
+  if (!baseUrl) return false;
+  try {
+    const response = await fetch(`${baseUrl}/games/by-subdomain/${encodeURIComponent(subdomain)}`, {
+      headers: { accept: 'application/json' },
+      cache: 'no-store',
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/_')) return NextResponse.next();
 
@@ -33,8 +56,9 @@ export function middleware(request: NextRequest) {
     return new NextResponse('Not Found', { status: 404 });
   }
 
-  // Host classification accepts any direct subdomain; only configured public games may enter the game shell.
-  if (!publicGameSubdomains().has(host.subdomain ?? '')) {
+  // Validate against the database so newly edited public subdomains work immediately,
+  // while unknown/private subdomains still return a real 404 from the edge.
+  if (!(await isPublicGameSubdomain(host.subdomain ?? ''))) {
     return new NextResponse('Not Found', { status: 404 });
   }
 

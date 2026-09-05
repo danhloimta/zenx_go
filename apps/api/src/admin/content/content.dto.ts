@@ -20,7 +20,8 @@ import {
   MinLength,
 } from 'class-validator';
 
-const PAGE_SIZES = [10, 20, 50] as const;
+// Keep the compact page sizes used by the CMS dashboard/list views alongside the public API defaults.
+const PAGE_SIZES = [3, 4, 5, 10, 15, 20, 50] as const;
 const CONTENT_STATUSES = Object.values(ContentPublishStatus);
 
 function trim(value: unknown) {
@@ -60,6 +61,16 @@ export class AdminContentGamesQueryDto extends AdminContentPageDto {
 
 export class AdminContentGameUpdateDto {
   @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(32) @Matches(/^[A-Z0-9][A-Z0-9_-]*$/)
+  code?: string;
+  @Transform(({ value }) => trim(value))
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(180)
+  slug?: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(63)
+  @Matches(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/)
+  subdomain?: string;
   @Transform(({ value }) => trim(value)) @IsOptional() @IsString() @MinLength(2) @MaxLength(160) name?: string;
   @Transform(({ value }) => trim(value)) @IsOptional() @IsString() @MaxLength(500) tagline?: string;
   @Transform(({ value }) => trim(value)) @IsOptional() @IsString() @MaxLength(1000) shortDescription?: string;

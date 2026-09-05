@@ -1,7 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search, Ticket as TicketIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Flame,
+  LifeBuoy,
+  RefreshCw,
+  Search,
+  Ticket as TicketIcon,
+  X,
+} from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { SupportTicketPriority, SupportTicketStatus } from '@zenx-go/api-client';
@@ -10,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/user-avatar';
 import {
   supportPriorityClass,
   supportPriorityLabel,
@@ -22,16 +34,17 @@ const statusOptions: Array<{ value: '' | SupportTicketStatus; label: string }> =
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'NEW', label: 'Mới tiếp nhận' },
   { value: 'IN_PROGRESS', label: 'Đang xử lý' },
-  { value: 'WAITING_USER', label: 'Chờ phản hồi' },
+  { value: 'WAITING_USER', label: 'Chờ khách phản hồi' },
   { value: 'RESOLVED', label: 'Đã giải quyết' },
   { value: 'CLOSED', label: 'Đã đóng' },
 ];
+
 const priorityOptions: Array<{ value: '' | SupportTicketPriority; label: string }> = [
-  { value: '', label: 'Tất cả ưu tiên' },
-  { value: 'URGENT', label: 'Khẩn cấp' },
-  { value: 'HIGH', label: 'Cao' },
+  { value: '', label: 'Tất cả độ ưu tiên' },
+  { value: 'URGENT', label: 'Khẩn cấp (Urgent)' },
+  { value: 'HIGH', label: 'Mức cao (High)' },
   { value: 'NORMAL', label: 'Bình thường' },
-  { value: 'LOW', label: 'Thấp' },
+  { value: 'LOW', label: 'Mức thấp' },
 ];
 
 export default function SupportAdminTicketsPage() {
@@ -43,6 +56,7 @@ export default function SupportAdminTicketsPage() {
   const [assignee, setAssignee] = useState<'' | 'ME' | 'UNASSIGNED'>('');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
+
   useEffect(() => {
     const initialAssignee = params.get('assignee');
     if (initialAssignee === 'ME' || initialAssignee === 'UNASSIGNED') setAssignee(initialAssignee);
@@ -58,6 +72,7 @@ export default function SupportAdminTicketsPage() {
     }
     if (params.get('unreadOnly') === 'true') setUnreadOnly(true);
   }, [params]);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebounced(search.trim());
@@ -65,6 +80,7 @@ export default function SupportAdminTicketsPage() {
     }, 300);
     return () => window.clearTimeout(timer);
   }, [search]);
+
   const query = useMemo(
     () => ({
       page,
@@ -77,175 +93,412 @@ export default function SupportAdminTicketsPage() {
     }),
     [page, debounced, status, priority, assignee, unreadOnly],
   );
+
   const tickets = useSupportAdminTickets(query);
   const totalPages = Math.max(1, tickets.data?.totalPages ?? 1);
+  const totalCount = tickets.data?.total ?? 0;
+
+  const hasActiveFilters = Boolean(debounced || status || priority || assignee || unreadOnly);
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setDebounced('');
+    setStatus('');
+    setPriority('');
+    setAssignee('');
+    setUnreadOnly(false);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-semibold text-[#00873E]">Support Operations</p>
-        <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Hàng đợi ticket</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Nhận việc, phân công và theo dõi yêu cầu khách hàng.
-        </p>
-      </div>
-      <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_190px_170px_170px]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm mã ticket, subject, user…"
-              className="pl-10"
-              aria-label="Tìm ticket"
-            />
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
+        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
+                <LifeBuoy className="size-3.5" /> Support Operations
+              </span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                {totalCount} tickets phù hợp
+              </span>
+            </div>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+              Hàng đợi Xử lý Yêu cầu
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Danh sách tiếp nhận yêu cầu từ người chơi, phân công chuyên viên và cập nhật tiến độ xử lý.
+            </p>
           </div>
-          <Select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as '' | SupportTicketStatus);
-              setPage(1);
-            }}
-            aria-label="Lọc trạng thái"
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={priority}
-            onChange={(event) => {
-              setPriority(event.target.value as '' | SupportTicketPriority);
-              setPage(1);
-            }}
-            aria-label="Lọc ưu tiên"
-          >
-            {priorityOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={assignee}
-            onChange={(event) => {
-              setAssignee(event.target.value as '' | 'ME' | 'UNASSIGNED');
-              setPage(1);
-            }}
-            aria-label="Lọc phân công"
-          >
-            <option value="">Tất cả người xử lý</option>
-            <option value="UNASSIGNED">Chưa nhận</option>
-            <option value="ME">Ticket của tôi</option>
-          </Select>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void tickets.refetch()}
+              disabled={tickets.isFetching}
+              className="gap-2 bg-white"
+            >
+              <RefreshCw className={`size-3.5 ${tickets.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
+              <Link href="/admin/support">
+                <LifeBuoy className="size-4" /> Tổng quan Support
+              </Link>
+            </Button>
+          </div>
         </div>
-        <label className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(event) => {
-              setUnreadOnly(event.target.checked);
-              setPage(1);
-            }}
-            className="size-3.5 rounded border-slate-300 text-[#00873E] focus:ring-[#00873E]"
-          />{' '}
-          Chỉ xem ticket chưa đọc
-        </label>
+      </div>
+
+      {/* Filter Toolbar */}
+      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Tìm theo mã ticket, tiêu đề, tên user…"
+                className="h-10 pl-10 pr-9 text-sm"
+                aria-label="Tìm ticket"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as '' | SupportTicketStatus);
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc trạng thái"
+            >
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              value={priority}
+              onChange={(event) => {
+                setPriority(event.target.value as '' | SupportTicketPriority);
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc ưu tiên"
+            >
+              {priorityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              value={assignee}
+              onChange={(event) => {
+                setAssignee(event.target.value as '' | 'ME' | 'UNASSIGNED');
+                setPage(1);
+              }}
+              className="h-10 text-sm"
+              aria-label="Lọc phân công"
+            >
+              <option value="">Tất cả người xử lý</option>
+              <option value="UNASSIGNED">Chưa nhận xử lý</option>
+              <option value="ME">Được giao cho tôi</option>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <label className="inline-flex cursor-pointer select-none items-center gap-2 text-xs font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={unreadOnly}
+                onChange={(event) => {
+                  setUnreadOnly(event.target.checked);
+                  setPage(1);
+                }}
+                className="size-4 rounded border-slate-300 text-[#00873E] focus:ring-[#00873E]"
+              />
+              <span className="flex items-center gap-1.5">
+                <CircleAlert className="size-3.5 text-rose-500" />
+                Chỉ hiển thị ticket có tin nhắn chưa đọc
+              </span>
+            </label>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-7 text-xs text-rose-600 hover:bg-rose-50"
+              >
+                Đặt lại toàn bộ bộ lọc
+              </Button>
+            )}
+          </div>
+        </div>
       </section>
+
+      {/* Main Table / List Content */}
       {tickets.isLoading ? (
-        <TicketSkeleton />
+        <TicketListSkeleton />
       ) : tickets.isError || !tickets.data ? (
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
-          Không thể tải hàng đợi ticket.
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700 shadow-xs">
+          <p className="font-bold">Không thể tải danh sách hàng đợi ticket.</p>
+          <p className="mt-1 text-xs text-rose-600">
+            Vui lòng kiểm tra lại kết nối mạng hoặc phiên đăng nhập.
+          </p>
+        </div>
+      ) : tickets.data.items.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center shadow-xs">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#00873E]">
+            <TicketIcon className="size-7" />
+          </div>
+          <h3 className="mt-4 text-base font-bold text-slate-900">Không có ticket nào</h3>
+          <p className="mx-auto mt-1.5 max-w-md text-xs text-slate-500">
+            {hasActiveFilters
+              ? 'Không có yêu cầu nào khớp với các điều kiện lọc hiện tại.'
+              : 'Hàng đợi đang trống. Tuyệt vời! Tất cả yêu cầu người chơi đã được giải quyết.'}
+          </p>
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="mt-4 text-xs"
+            >
+              Xóa bộ lọc
+            </Button>
+          )}
         </div>
       ) : (
         <>
-          <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-            <div className="divide-y divide-slate-100">
-              {tickets.data.items.length ? (
-                tickets.data.items.map((ticket) => (
-                  <Link
-                    key={ticket.ticketNo}
-                    href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
-                    className="flex flex-col gap-3 px-5 py-4 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex min-w-0 gap-3">
-                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]">
-                        <TicketIcon className="size-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-[#00873E]">
-                            {ticket.ticketNo}
-                          </span>
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${supportPriorityClass(ticket.priority)}`}
-                          >
-                            {supportPriorityLabel(ticket.priority)}
-                          </span>
-                          {ticket.unread ? (
-                            <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                              Chưa đọc
+          <section className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-sm">
+            {/* Desktop Table View */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-6 py-4">Mã & Nội dung yêu cầu</th>
+                    <th className="px-5 py-4">Khách hàng</th>
+                    <th className="px-5 py-4">Chuyên mục</th>
+                    <th className="px-5 py-4">Mức ưu tiên</th>
+                    <th className="px-5 py-4">Trạng thái</th>
+                    <th className="px-5 py-4">Chuyên viên</th>
+                    <th className="px-6 py-4 text-right">Hoạt động cuối</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {tickets.data.items.map((ticket) => (
+                    <tr
+                      key={ticket.ticketNo}
+                      className="group transition-colors hover:bg-slate-50/80"
+                    >
+                      {/* Ticket Code & Subject */}
+                      <td className="px-6 py-4.5">
+                        <Link
+                          href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
+                          className="block max-w-md"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-black text-[#00873E]">
+                              {ticket.ticketNo}
                             </span>
-                          ) : null}
+                            {ticket.unread ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                                <span className="size-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                Mới
+                              </span>
+                            ) : null}
+                          </div>
+                          <h4 className="mt-1 line-clamp-1 font-bold text-slate-900 group-hover:text-[#00873E]">
+                            {ticket.subject}
+                          </h4>
+                        </Link>
+                      </td>
+
+                      {/* Customer Info */}
+                      <td className="px-5 py-4.5">
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar
+                            id={ticket.user.id}
+                            name={ticket.user.profile?.fullName}
+                            username={ticket.user.username}
+                            email={ticket.user.email}
+                            avatarUrl={ticket.user.profile?.avatarUrl}
+                            size="sm"
+                          />
+                          <div className="min-w-0 max-w-[140px]">
+                            <p className="truncate text-xs font-bold text-slate-900">
+                              {ticket.user.profile?.fullName || ticket.user.username}
+                            </p>
+                            <p className="truncate text-[11px] text-slate-400">
+                              @{ticket.user.username}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-1 truncate text-sm font-bold text-slate-800">
-                          {ticket.subject}
-                        </p>
-                        <p className="mt-1 truncate text-xs text-slate-500">
-                          {ticket.user.profile?.fullName || ticket.user.username} ·{' '}
+                      </td>
+
+                      {/* Category */}
+                      <td className="px-5 py-4.5">
+                        <span className="inline-block rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
                           {ticket.category.name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end">
-                      <div className="text-right">
-                        <p className="text-[10px] text-slate-400">
-                          {ticket.assignee?.fullName || ticket.assignee?.username || 'Chưa nhận'}
-                        </p>
-                        <p
-                          className={`mt-1 rounded-full px-2.5 py-1 text-[10px] font-bold ${supportStatusClass(ticket.status)}`}
+                        </span>
+                      </td>
+
+                      {/* Priority */}
+                      <td className="px-5 py-4.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${supportPriorityClass(
+                            ticket.priority,
+                          )}`}
+                        >
+                          {ticket.priority === 'URGENT' && <Flame className="size-3 text-red-600" />}
+                          {supportPriorityLabel(ticket.priority)}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-4.5">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${supportStatusClass(
+                            ticket.status,
+                          )}`}
                         >
                           {supportStatusLabel(ticket.status)}
-                        </p>
-                      </div>
-                      <span className="text-[11px] text-slate-400">
-                        {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
+                        </span>
+                      </td>
+
+                      {/* Assignee */}
+                      <td className="px-5 py-4.5">
+                        {ticket.assignee ? (
+                          <div className="flex items-center gap-2">
+                            <UserAvatar
+                              id={ticket.assignee.id}
+                              name={ticket.assignee.fullName}
+                              username={ticket.assignee.username}
+                              size="xs"
+                            />
+                            <span className="truncate text-xs font-bold text-slate-800">
+                              {ticket.assignee.fullName || ticket.assignee.username}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-block rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                            Chưa nhận
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Last Activity */}
+                      <td className="px-6 py-4.5 text-right">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
+                        </div>
+                        <Link
+                          href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
+                          className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#00873E] hover:underline"
+                        >
+                          Chi tiết <ArrowRight className="size-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="grid divide-y divide-slate-100 lg:hidden">
+              {tickets.data.items.map((ticket) => (
+                <Link
+                  key={ticket.ticketNo}
+                  href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
+                  className="block p-4 transition hover:bg-slate-50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-black text-[#00873E]">
+                      {ticket.ticketNo}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${supportStatusClass(
+                        ticket.status,
+                      )}`}
+                    >
+                      {supportStatusLabel(ticket.status)}
+                    </span>
+                  </div>
+
+                  <h4 className="mt-1.5 font-bold text-slate-900">{ticket.subject}</h4>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${supportPriorityClass(
+                        ticket.priority,
+                      )}`}
+                    >
+                      {supportPriorityLabel(ticket.priority)}
+                    </span>
+                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                      {ticket.category.name}
+                    </span>
+                    {ticket.unread && (
+                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                        Chưa đọc
                       </span>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="p-12 text-center">
-                  <TicketIcon className="mx-auto size-10 text-slate-300" />
-                  <p className="mt-3 text-sm font-semibold text-slate-700">
-                    Không có ticket phù hợp
-                  </p>
-                </div>
-              )}
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
+                    <span>
+                      {ticket.assignee?.fullName || ticket.assignee?.username || 'Chưa nhận'}
+                    </span>
+                    <span>{formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}</span>
+                  </div>
+                </Link>
+              ))}
             </div>
           </section>
-          <div className="flex flex-col items-center justify-between gap-3 text-xs text-slate-500 sm:flex-row">
-            <span>{tickets.data.total.toLocaleString('vi-VN')} ticket</span>
+
+          {/* Pagination Footer */}
+          <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-5 py-3.5 text-xs text-slate-500 shadow-xs sm:flex-row">
+            <span>
+              Hiển thị <strong>{tickets.data.items.length}</strong> / <strong>{totalCount}</strong> ticket (Trang {tickets.data.page} / {totalPages})
+            </span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 disabled={page <= 1 || tickets.isFetching}
+                className="h-8 gap-1 rounded-xl px-3 text-xs"
               >
                 <ChevronLeft className="size-4" /> Trước
               </Button>
-              <span className="min-w-24 text-center font-semibold text-slate-700">
-                Trang {tickets.data.page} / {totalPages}
-              </span>
+              <div className="flex items-center gap-1 px-1 font-semibold text-slate-700">
+                {page} / {totalPages}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((value) => value + 1)}
                 disabled={page >= totalPages || tickets.isFetching}
+                className="h-8 gap-1 rounded-xl px-3 text-xs"
               >
                 Sau <ChevronRight className="size-4" />
               </Button>
@@ -257,11 +510,22 @@ export default function SupportAdminTicketsPage() {
   );
 }
 
-function TicketSkeleton() {
+function TicketListSkeleton() {
   return (
-    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="space-y-3 rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+      <Skeleton className="h-10 w-full rounded-2xl" />
       {[1, 2, 3, 4, 5].map((value) => (
-        <Skeleton key={value} className="h-16 rounded-xl" />
+        <div key={value} className="flex items-center justify-between gap-4 py-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="size-10 rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-44" />
+              <Skeleton className="h-3 w-64" />
+            </div>
+          </div>
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-8 w-20 rounded-xl" />
+        </div>
       ))}
     </div>
   );

@@ -188,7 +188,7 @@ Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `2026
 
 ### Content data model
 
-Phase 3 dùng các bảng hiện tại `Game`, `GameArticle`, `GameEvent` và `PortalAnnouncement`; không thêm migration. CMS chỉ ghi các trường được phép, giữ code/slug/subdomain và theme/feature config ở chế độ read-only theo từng resource. Draft không được trả bởi public API.
+Phase 3 dùng các bảng hiện tại `Game`, `GameArticle`, `GameEvent` và `PortalAnnouncement`; không thêm migration. CMS cho phép SUPER_ADMIN cập nhật nội dung/media/CTA/trạng thái cơ bản và code/slug/subdomain của `Game`; cấu hình nâng cao chỉ đọc, cập nhật dùng optimistic concurrency và không giữ alias URL cũ. Draft không được trả bởi public API.
 
 ## Bootstrap and operations
 

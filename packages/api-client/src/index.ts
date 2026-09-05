@@ -990,6 +990,9 @@ export interface AdminContentAnnouncement {
 
 export interface AdminContentGameUpdateRequest {
   expectedUpdatedAt: string;
+  code?: string;
+  slug?: string;
+  subdomain?: string;
   name?: string;
   tagline?: string;
   shortDescription?: string;

@@ -59,7 +59,7 @@ describe('Content admin API (SQL Server)', () => {
     await app.close();
   });
 
-  it('limits CMS to SUPER_ADMIN and exposes dashboard/game operations', async () => {
+  it('limits CMS to SUPER_ADMIN and exposes dashboard/game reads', async () => {
     const denied = await http().get('/admin/content/dashboard').set('Cookie', supportCookies);
     expect(denied.status).toBe(403);
     expect(denied.body.error.code).toBe('ADMIN_ACCESS_REQUIRED');
@@ -73,32 +73,77 @@ describe('Content admin API (SQL Server)', () => {
     expect(list.status).toBe(200);
     expect(list.body.data.items.some((item: { id: string }) => item.id === gameId)).toBe(true);
 
+    expect((await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies)).status).toBe(200);
+  });
+
+  it('updates basic fields and identifiers while keeping advanced config read-only', async () => {
     const current = await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies);
     expect(current.status).toBe(200);
-    const updated = await http()
-      .patch(`/admin/content/games/${gameId}`)
-      .set('Cookie', adminCookies)
-      .send({
-        expectedUpdatedAt: current.body.data.updatedAt,
-        tagline: 'Tagline CMS integration test',
-        isPublic: false,
-      });
-    expect(updated.status).toBe(200);
-    expect(updated.body.data.isPublic).toBe(false);
+    const original = current.body.data;
+    const otherGame = await prisma.game.findFirst({ where: { id: { not: gameId } }, select: { code: true } });
+    if (!otherGame) throw new Error('A second seed game is required');
 
-    const hidden = await http().get(`/games/${gameSlug}`);
-    expect(hidden.status).toBe(404);
-    await prisma.game.update({ where: { id: gameId }, data: { isPublic: true } });
+    const suffixPart = suffix.slice(-12);
+    const editedSlug = `cms-game-${suffixPart}`;
+    const editedSubdomain = `cms-${suffixPart}`;
+    const editedCode = `CMS${suffixPart}`.slice(0, 32).toUpperCase();
+    let editedUpdatedAt = '';
+    try {
+      const changed = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({
+          expectedUpdatedAt: original.updatedAt,
+          code: editedCode,
+          slug: editedSlug,
+          subdomain: editedSubdomain,
+          tagline: 'Basic field updated',
+          recordType: original.recordType === 'REAL' ? 'DEMO' : 'REAL',
+          primaryGame: !original.primaryGame,
+        });
+      expect(changed.status).toBe(200);
+      editedUpdatedAt = changed.body.data.updatedAt;
+      expect(changed.body.data.code).toBe(editedCode);
+      expect(changed.body.data.slug).toBe(editedSlug);
+      expect(changed.body.data.subdomain).toBe(editedSubdomain);
+      expect(changed.body.data.tagline).toBe('Basic field updated');
+      expect(changed.body.data.recordType).toBe(original.recordType);
+      expect(changed.body.data.primaryGame).toBe(original.primaryGame);
+      expect((await http().get(`/games/${gameSlug}`)).status).toBe(404);
+      expect((await http().get(`/games/${editedSlug}`)).status).toBe(200);
 
-    const stale = await http()
-      .patch(`/admin/content/games/${gameId}`)
-      .set('Cookie', adminCookies)
-      .send({
-        expectedUpdatedAt: current.body.data.updatedAt,
-        tagline: 'Không được ghi đè',
-      });
-    expect(stale.status).toBe(409);
-    expect(stale.body.error.code).toBe('STALE_ADMIN_UPDATE');
+      const duplicate = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: editedUpdatedAt, code: otherGame.code });
+      expect(duplicate.status).toBe(409);
+
+      const reservedSubdomain = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: editedUpdatedAt, subdomain: 'admin' });
+      expect(reservedSubdomain.status).toBe(400);
+
+      const stale = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: original.updatedAt, code: original.code });
+      expect(stale.status).toBe(409);
+      expect(stale.body.error.code).toBe('STALE_ADMIN_UPDATE');
+    } finally {
+      if (editedUpdatedAt) {
+        await http()
+          .patch(`/admin/content/games/${gameId}`)
+          .set('Cookie', adminCookies)
+          .send({
+            expectedUpdatedAt: editedUpdatedAt,
+            code: original.code,
+            slug: original.slug,
+            subdomain: original.subdomain,
+            tagline: original.tagline,
+          });
+      }
+    }
   });
 
   it('keeps draft articles/events out of public API and publishes them safely', async () => {

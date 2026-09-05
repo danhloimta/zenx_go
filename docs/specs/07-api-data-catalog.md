@@ -119,8 +119,8 @@
 | --- | --- | --- | --- | --- |
 | `API-ADMIN-CONTENT-DASHBOARD` | `GET /admin/content/dashboard` | SUPER_ADMIN | `IMPLEMENTED` | Game/article/event/announcement KPI. |
 | `API-ADMIN-CONTENT-GAMES` | `GET /admin/content/games` | SUPER_ADMIN | `IMPLEMENTED` | Search/filter/paginated game list. |
-| `API-ADMIN-CONTENT-GAME` | `GET /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Game detail including read-only identifiers/config. |
-| `API-ADMIN-CONTENT-GAME-UPDATE` | `PATCH /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Update allowed basic game fields and expectedUpdatedAt. |
+| `API-ADMIN-CONTENT-GAME` | `GET /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Game detail; basic fields and code/slug/subdomain are editable. |
+| `API-ADMIN-CONTENT-GAME-UPDATE` | `PATCH /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Update basic fields and code/slug/subdomain with expectedUpdatedAt. |
 | `API-ADMIN-CONTENT-ARTICLES` | `GET /admin/content/articles`, `GET /admin/content/articles/:id` | SUPER_ADMIN | `IMPLEMENTED` | Article list/detail including draft. |
 | `API-ADMIN-CONTENT-ARTICLE-MUTATION` | `POST /admin/content/articles`, `PATCH /admin/content/articles/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update Markdown article and publish state. |
 | `API-ADMIN-CONTENT-EVENTS` | `GET /admin/content/events`, `GET /admin/content/events/:id` | SUPER_ADMIN | `IMPLEMENTED` | Event list/detail including draft. |
