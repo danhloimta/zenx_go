@@ -204,6 +204,7 @@ export function validateGameThemeConfig(value: unknown): GameThemeConfig {
   const theme = value as Partial<GameThemeConfig>;
   const required = ['primary', 'secondary', 'surface', 'text', 'heading', 'body', 'radius', 'motion'] as const;
   if (required.some((key) => typeof theme[key] !== 'string' || !(theme[key] as string).trim())) throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'themeConfig is incomplete', 400);
+  if (['primary', 'secondary', 'surface', 'text'].some((key) => !/^#[0-9a-f]{3,8}$/iu.test(String(theme[key])))) throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'themeConfig colors are invalid', 400);
   return theme as GameThemeConfig;
 }
 
@@ -236,13 +237,14 @@ export function checkGameReadiness(game: {
   try { featureConfig = validateGameFeatureConfig(parseJsonConfig(game.featureConfig, 'featureConfig')); } catch { errors.push({ field: 'featureConfig', message: 'Feature config không hợp lệ.' }); }
   let pageConfig: GamePageConfig | null = null;
   try { pageConfig = parseGamePageConfig(game.pageConfig, game.themePreset); } catch { errors.push({ field: 'pageConfig', message: 'Page config không hợp lệ.' }); }
-  if (pageConfig) {
+  if (pageConfig && !pageConfig.legacyRenderer) {
     for (const requirement of definition.required) {
       const [path = '', countText] = requirement.split(':');
       const value = path.split('.').reduce<unknown>((current, key) => current && typeof current === 'object' ? (current as Record<string, unknown>)[key] : undefined, pageConfig);
       if (path === 'hero.imageUrl' && !value && game.heroDesktopUrl) continue;
       if (countText && Array.isArray(value) && value.length < Number(countText)) errors.push({ field: path, message: `Cần ít nhất ${countText} mục.` });
       else if (!countText && (!value || (typeof value === 'string' && !value.trim()))) errors.push({ field: path, message: 'Trường bắt buộc chưa được nhập.' });
+      if (Array.isArray(value) && value.some((item) => !item || typeof item !== 'object' || typeof (item as { title?: unknown }).title !== 'string' || !(item as { title: string }).title.trim() || typeof (item as { description?: unknown }).description !== 'string' || !(item as { description: string }).description.trim() || (['gallery', 'roles', 'locations', 'equipment'].includes(path) && !(item as { imageUrl?: unknown }).imageUrl))) errors.push({ field: path, message: 'Mỗi mục cần có tiêu đề, mô tả và asset hình ảnh.' });
     }
   }
   if (Array.isArray(featureConfig.sections) && featureConfig.sections.includes('ARTICLE_GRID') && !(game.articles ?? []).some((article) => article.status === 'PUBLISHED')) errors.push({ field: 'articles', message: 'Section tin tức đang bật nhưng chưa có bài viết đã publish.' });

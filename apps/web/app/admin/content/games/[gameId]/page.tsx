@@ -16,6 +16,7 @@ import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUploadField } from '@/components/image-upload-field';
+import { GamePresentationEditor, type PresentationValue } from '@/components/admin-content/game-presentation-editor';
 import { toast } from 'sonner';
 
 const lifecycleOptions: Array<{ value: GameLifecycleStatus; label: string }> = [
@@ -73,15 +74,13 @@ export default function AdminContentGameDetailPage() {
   const options = optionsQuery.data;
   const queryClient = useQueryClient();
   const [form, setForm] = useState<GameForm | null>(null);
-  const [presentation, setPresentation] = useState<PresentationForm | null>(null);
+  const [presentation, setPresentation] = useState<PresentationValue | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const hasUnsavedChanges = Boolean(
     game && form && presentation && (
       JSON.stringify(form) !== JSON.stringify(toForm(game)) ||
-      presentation.themeConfig !== prettyJson(game.themeConfig) ||
-      presentation.featureConfig !== prettyJson(game.featureConfig) ||
-      presentation.pageConfig !== prettyJson(game.pageConfig)
+      JSON.stringify(presentation) !== JSON.stringify(toPresentation(game))
     ),
   );
 
@@ -143,11 +142,7 @@ export default function AdminContentGameDetailPage() {
 
   const savePresentation = useMutation({
     mutationFn: () => {
-      const themeConfig = parseJson<ThemeConfig>(presentation!.themeConfig);
-      const featureConfig = parseJson<FeatureConfig>(presentation!.featureConfig);
-      const pageConfig = parseJson<GamePageConfig>(presentation!.pageConfig);
-      if (!themeConfig || !featureConfig || !pageConfig) throw new Error('Cấu hình phải là JSON hợp lệ.');
-      return api.admin.content.updateGamePresentation(gameId, { expectedUpdatedAt: game!.updatedAt, themeConfig, featureConfig, pageConfig });
+      return api.admin.content.updateGamePresentation(gameId, { expectedUpdatedAt: game!.updatedAt, ...presentation! });
     },
     onSuccess: () => {
       toast.success('Đã lưu cấu hình giao diện thành công.');
@@ -265,7 +260,7 @@ export default function AdminContentGameDetailPage() {
             <Toggle label="Primary game" checked={form.primaryGame} onChange={(value) => set('primaryGame', value)} />
           </Section>
 
-          <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="border-b border-slate-100 pb-3"><h2 className="font-black text-slate-900">Giao diện & nội dung trang</h2><p className="mt-1 text-xs text-slate-500">Template <strong>{game.themePreset}</strong> được khóa sau khi tạo. Các cấu hình được lưu dưới dạng JSON theo schema của template.</p></div><Field label="Theme config"><Textarea value={presentation.themeConfig} onChange={(event) => setPresentation({ ...presentation, themeConfig: event.target.value })} className="min-h-36 font-mono text-xs" /></Field><Field label="Feature config"><Textarea value={presentation.featureConfig} onChange={(event) => setPresentation({ ...presentation, featureConfig: event.target.value })} className="min-h-36 font-mono text-xs" /></Field><Field label="Page config"><Textarea value={presentation.pageConfig} onChange={(event) => setPresentation({ ...presentation, pageConfig: event.target.value })} className="min-h-64 font-mono text-xs" /></Field><Button type="button" disabled={savePresentation.isPending} onClick={() => savePresentation.mutate()} className="bg-[#00873E] text-white hover:bg-[#007234]">{savePresentation.isPending ? 'Đang lưu…' : 'Lưu giao diện & nội dung trang'}</Button></section>
+          <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="border-b border-slate-100 pb-3"><h2 className="font-black text-slate-900">Giao diện & nội dung trang</h2><p className="mt-1 text-xs text-slate-500">Template <strong>{game.themePreset}</strong> được khóa sau khi tạo. Nội dung được cấu hình theo đúng layout template.</p></div><GamePresentationEditor value={presentation} preset={game.themePreset} onChange={setPresentation} /><Button type="button" disabled={savePresentation.isPending} onClick={() => savePresentation.mutate()} className="bg-[#00873E] text-white hover:bg-[#007234]">{savePresentation.isPending ? 'Đang lưu…' : 'Lưu giao diện & nội dung trang'}</Button></section>
 
           <ReadonlySection title="Metadata"><ReadonlyRow label="Game ID" value={game.id} /><ReadonlyRow label="Tạo lúc" value={game.createdAt} /><ReadonlyRow label="Cập nhật" value={game.updatedAt} /></ReadonlySection>
 
@@ -328,10 +323,8 @@ function toForm(game: AdminContentGame): GameForm {
   };
 }
 
-type PresentationForm = { themeConfig: string; featureConfig: string; pageConfig: string };
-function toPresentation(game: AdminContentGame): PresentationForm { return { themeConfig: prettyJson(game.themeConfig), featureConfig: prettyJson(game.featureConfig), pageConfig: prettyJson(game.pageConfig) }; }
-function prettyJson(value: string) { try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; } }
-function parseJson<T>(value: string): T | null { try { const parsed: unknown = JSON.parse(value); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as T : null; } catch { return null; } }
+function toPresentation(game: AdminContentGame): PresentationValue { return { themeConfig: parseStored<ThemeConfig>(game.themeConfig), featureConfig: parseStored<FeatureConfig>(game.featureConfig), pageConfig: parseStored<GamePageConfig>(game.pageConfig) }; }
+function parseStored<T>(value: string): T { try { return JSON.parse(value) as T; } catch { return {} as T; } }
 
 function isGamePlatform(value: string): value is GamePlatform {
   return value === 'PC' || value === 'MOBILE' || value === 'WEB';
