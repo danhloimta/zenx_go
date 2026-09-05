@@ -119,7 +119,7 @@ export default function AdminContentGameCreatePage() {
     setForm((current) => {
       if (identityTouched) return { ...current, name };
       const slug = toSlug(name);
-      return { ...current, name, slug, subdomain: slug.slice(0, 63) };
+      return { ...current, name, slug, subdomain: slug.slice(0, 63).replace(/-+$/g, '') };
     });
   };
 

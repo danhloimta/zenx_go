@@ -18,7 +18,6 @@ import {
   Save,
   Sparkles,
   SplitSquareVertical,
-  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';

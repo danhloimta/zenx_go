@@ -231,15 +231,16 @@ export function checkGameReadiness(game: {
   if (!game.longDescription?.trim()) errors.push({ field: 'longDescription', message: 'Mô tả chi tiết là bắt buộc.' });
   for (const field of ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const) if (!game[field]) errors.push({ field, message: 'Media bắt buộc chưa được thiết lập.' });
   if ((game.primaryCtaLabel && !game.primaryCtaPath) || (!game.primaryCtaLabel && game.primaryCtaPath)) errors.push({ field: 'primaryCta', message: 'CTA chính phải có cả nhãn và đường dẫn.' });
-  try { parseJsonConfig(game.themeConfig, 'themeConfig'); } catch { errors.push({ field: 'themeConfig', message: 'Theme config không hợp lệ.' }); }
+  try { validateGameThemeConfig(parseJsonConfig(game.themeConfig, 'themeConfig')); } catch { errors.push({ field: 'themeConfig', message: 'Theme config không hợp lệ.' }); }
   let featureConfig: Record<string, unknown> = {};
-  try { featureConfig = parseJsonConfig(game.featureConfig, 'featureConfig'); } catch { errors.push({ field: 'featureConfig', message: 'Feature config không hợp lệ.' }); }
+  try { featureConfig = validateGameFeatureConfig(parseJsonConfig(game.featureConfig, 'featureConfig')); } catch { errors.push({ field: 'featureConfig', message: 'Feature config không hợp lệ.' }); }
   let pageConfig: GamePageConfig | null = null;
   try { pageConfig = parseGamePageConfig(game.pageConfig, game.themePreset); } catch { errors.push({ field: 'pageConfig', message: 'Page config không hợp lệ.' }); }
   if (pageConfig) {
     for (const requirement of definition.required) {
       const [path = '', countText] = requirement.split(':');
       const value = path.split('.').reduce<unknown>((current, key) => current && typeof current === 'object' ? (current as Record<string, unknown>)[key] : undefined, pageConfig);
+      if (path === 'hero.imageUrl' && !value && game.heroDesktopUrl) continue;
       if (countText && Array.isArray(value) && value.length < Number(countText)) errors.push({ field: path, message: `Cần ít nhất ${countText} mục.` });
       else if (!countText && (!value || (typeof value === 'string' && !value.trim()))) errors.push({ field: path, message: 'Trường bắt buộc chưa được nhập.' });
     }

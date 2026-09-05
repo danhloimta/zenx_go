@@ -249,6 +249,10 @@ export class ContentAdminService {
     const genreCodes = normalizeGameCodes(dto.genreCodes);
     const platforms = normalizeGamePlatforms(dto.platforms);
     const genreIds = await this.resolveGenreIds(genreCodes);
+    const pageConfig = createPageConfig(template.id, dto.name, dto.tagline ?? '', dto.shortDescription ?? '');
+    pageConfig.hero.imageUrl = dto.heroDesktopUrl ?? null;
+    pageConfig.hero.mobileImageUrl = dto.heroMobileUrl ?? dto.heroDesktopUrl ?? null;
+    pageConfig.intro.imageUrl = dto.coverUrl ?? null;
     const assetFields = ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const;
     for (const field of assetFields) assertAssetUrl(dto[field]);
     assertCtaPath(dto.primaryCtaPath);
@@ -272,7 +276,7 @@ export class ContentAdminService {
           templateVersion: 1,
           themeConfig: JSON.stringify(template.theme),
           featureConfig: JSON.stringify(template.featureConfig),
-          pageConfig: JSON.stringify(createPageConfig(template.id, dto.name, dto.tagline ?? '', dto.shortDescription ?? '')),
+          pageConfig: JSON.stringify(pageConfig),
           logoUrl: dto.logoUrl,
           iconUrl: dto.iconUrl,
           coverUrl: dto.coverUrl,

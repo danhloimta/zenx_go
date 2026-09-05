@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import {
-  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -23,12 +22,6 @@ import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/user-avatar';
-import {
-  supportPriorityClass,
-  supportPriorityLabel,
-  supportStatusClass,
-  supportStatusLabel,
-} from '@/lib/support';
 import { formatDate } from '@/lib/utils';
 
 const statusOptions: Array<{ value: '' | SupportTicketStatus; label: string }> = [
