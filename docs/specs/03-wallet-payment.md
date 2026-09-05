@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-03
+> Last verified: 2026-09-06
 >
 > Verified commit: `788f781`
 
@@ -17,6 +17,7 @@
 | `FEAT-PAYMENT-002` | Create/payment status/history     | User       | Chọn package/method → tạo payment idempotent → provider payload → theo dõi status.          | `PARTIAL`     |
 | `FEAT-PAYMENT-003` | Mock payment completion           | User       | Hoàn tất callback giả lập trong development/test; không cho production.                     | `MOCK`        |
 | `FEAT-PAYMENT-004` | SePay VietQR/webhook              | Provider   | Nhận signed webhook, kiểm tra payment/account/amount/type, credit TOPUP một lần.            | `PARTIAL`     |
+| `FEAT-PAYMENT-005` | Admin finance operations          | SUPER_ADMIN | Quản lý coin package, payment/ledger, command transition, refund và wallet adjustment atomic. | `IMPLEMENTED` |
 
 ## Wallet rules
 
@@ -50,6 +51,9 @@ Chọn coin package + payment method
 - Mock provider hỗ trợ deterministic callback ở non-production; `mock-complete` bị chặn ở production.
 - SePay chỉ chấp nhận VietQR, signed webhook, giao dịch `in`, đúng account/amount/payment provider và transaction ID không xung đột.
 - SePay webhook response là `{ success: true }` ngoài response envelope; invalid signature/payload được filter riêng.
+- Admin finance commands chỉ dành cho `SUPER_ADMIN`; `SUPPORT` không đọc payment/provider payload hoặc ledger toàn hệ thống.
+- Manual success và refund cập nhật payment cùng wallet ledger trong transaction Serializable; payment terminal không được cộng/trừ lần hai.
+- Wallet transaction có `idempotency_key` bắt buộc, unique theo `(user_id, idempotency_key)` sau migration `202609050004_finance_operations`.
 
 ## Screens
 
@@ -60,6 +64,10 @@ Chọn coin package + payment method
 | `SCR-WALLET-TX-DETAIL` | `/wallet/transactions/[transactionNo]` | Chi tiết ledger/payment metadata và link hỗ trợ.                                       | `/wallet/transactions/:transactionNo`; `apps/web/app/wallet/transactions/[transactionNo]/page.tsx`; vertical integration/E2E |
 | `SCR-PAYMENT-CREATE`   | `/payment`                             | Load packages/config, chọn package/method, tạo payment, xử lý empty/error/demo states. | `/coin-packages`, `/payment-config`, `POST /payments`; `apps/web/app/payment/page.tsx`; vertical/sepay E2E                   |
 | `SCR-PAYMENT-DETAIL`   | `/payment/[paymentNo]`                 | Hiện QR/instructions/status, refresh payment và mock completion.                       | `/payments/:paymentNo`, `/payments/:paymentNo/mock-complete`; `apps/web/app/payment/[paymentNo]/page.tsx`; sepay E2E         |
+| `SCR-ADMIN-FINANCE`    | `/admin/finance`                        | KPI payment, doanh thu/refund và payment pending.                                      | `/admin/finance/dashboard`; finance admin integration                                      |
+| `SCR-ADMIN-PACKAGES`   | `/admin/finance/packages`               | CRUD gói nạp, trạng thái và thứ tự.                                                    | `/admin/finance/coin-packages`; finance admin integration                                  |
+| `SCR-ADMIN-PAYMENTS`   | `/admin/finance/payments`, `/:paymentNo`| Search/detail và payment commands.                                                      | `/admin/finance/payments*`; finance admin integration                                      |
+| `SCR-ADMIN-LEDGER`     | `/admin/finance/transactions`           | Filter/export ledger và wallet adjustment từ user detail.                               | `/admin/finance/transactions*`; finance admin integration                                 |
 
 ## API/data mapping
 
@@ -77,6 +85,12 @@ Chọn coin package + payment method
 | `API-WALLET-TRANSACTIONS`   | `GET /wallet/transactions`                | Auth / `IMPLEMENTED`        | History/filter/paging.                                      |
 | `API-WALLET-EXPORT`         | `GET /wallet/transactions/export`         | Auth / `IMPLEMENTED`        | CSV export có limit.                                        |
 | `API-WALLET-DETAIL`         | `GET /wallet/transactions/:transactionNo` | Auth / `IMPLEMENTED`        | Transaction detail theo user ownership.                     |
+| `API-ADMIN-FINANCE-DASHBOARD` | `GET /admin/finance/dashboard` | SUPER_ADMIN / `IMPLEMENTED` | Finance KPI, package counts và payment status counts. |
+| `API-ADMIN-COIN-PACKAGES`   | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` | SUPER_ADMIN / `IMPLEMENTED` | CRUD package; delete chỉ package inactive chưa có payment. |
+| `API-ADMIN-FINANCE-PAYMENTS` | `GET /admin/finance/payments`, `GET /admin/finance/payments/:paymentNo` | SUPER_ADMIN / `IMPLEMENTED` | Search/filter/list/detail với sanitized provider payload. |
+| `API-ADMIN-PAYMENT-COMMAND` | `POST /admin/finance/payments/:paymentNo/{confirm-success,fail,expire,cancel,refund}` | SUPER_ADMIN / `IMPLEMENTED` | Transition nghiệp vụ và cập nhật wallet atomic. |
+| `API-ADMIN-FINANCE-LEDGER`  | `GET /admin/finance/transactions`, `GET /admin/finance/transactions/export` | SUPER_ADMIN / `IMPLEMENTED` | Ledger toàn hệ thống, filter và CSV tối đa 10.000 dòng. |
+| `API-ADMIN-WALLET-ADJUSTMENT` | `POST /admin/finance/users/:userId/wallet/{credit,debit}` | SUPER_ADMIN / `IMPLEMENTED` | Manual credit/debit, client request idempotency, debit không âm. |
 
 ## Test evidence
 
@@ -85,4 +99,6 @@ Chọn coin package + payment method
 - Unit: `apps/api/src/payment/payment.provider.spec.ts` kiểm tra mock callback signature và payload.
 - `apps/web/e2e/vertical-slice.spec.ts`: wallet/payment flow và transaction detail.
 - `apps/web/e2e/sepay-ui.spec.ts`: payment UI/provider states.
+- `apps/web/e2e/finance-admin.spec.ts`: SUPER_ADMIN package/payment commands và wallet adjustment UI.
+- `apps/api/test/integration/finance-admin.integration.spec.ts`: package lifecycle, SUPER_ADMIN boundary, payment success/refund atomicity, wallet adjustment idempotency và CSV export.
 - Test gap: payment provider thật ngoài mock/SePay seam và payout/withdrawal chưa có trong source.

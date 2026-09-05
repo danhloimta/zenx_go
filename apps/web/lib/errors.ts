@@ -56,6 +56,15 @@ const messages: Record<string, string> = {
   CONTENT_SLUG_EXISTS: 'Slug hoặc mã nội dung đã tồn tại.',
   CONTENT_INVALID_URL: 'URL nội dung không hợp lệ.',
   CONTENT_INVALID_STATE: 'Trạng thái hoặc dữ liệu nội dung không hợp lệ.',
+  COIN_PACKAGE_CODE_EXISTS: 'Mã gói nạp đã tồn tại.',
+  COIN_PACKAGE_NOT_FOUND: 'Không tìm thấy gói nạp.',
+  COIN_PACKAGE_IN_USE: 'Gói nạp đã có lịch sử thanh toán và không thể xóa.',
+  COIN_PACKAGE_MUST_BE_INACTIVE: 'Hãy ngừng bán gói nạp trước khi xóa.',
+  FINANCE_STALE_UPDATE: 'Dữ liệu tài chính đã thay đổi. Hãy tải lại trang rồi thử lại.',
+  FINANCE_PAYMENT_TRANSITION_INVALID: 'Payment không thể chuyển sang trạng thái này.',
+  FINANCE_PROVIDER_TRANSACTION_EXISTS: 'Mã giao dịch provider đã được liên kết hoặc còn thiếu.',
+  FINANCE_INVALID_AMOUNT: 'Số tiền phải là số nguyên dương hợp lệ.',
+  INSUFFICIENT_BALANCE: 'Số dư Coin không đủ để thực hiện hoàn/trừ.',
 };
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {

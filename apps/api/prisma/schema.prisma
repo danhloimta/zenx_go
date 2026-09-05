@@ -358,7 +358,7 @@ model WalletTransaction {
   status         String    @default("SUCCESS") @db.VarChar(16)
   referenceType  String    @map("reference_type") @db.VarChar(64)
   referenceId    String    @map("reference_id") @db.VarChar(255)
-  idempotencyKey String?   @map("idempotency_key") @db.VarChar(255)
+  idempotencyKey String    @default(uuid()) @map("idempotency_key") @db.VarChar(255)
   description    String?   @db.NVarChar(500)
   createdAt      DateTime  @default(now()) @map("created_at")
   completedAt    DateTime? @map("completed_at")
@@ -368,7 +368,7 @@ model WalletTransaction {
 
   @@index([walletId, createdAt])
   @@index([userId, createdAt])
-  @@index([userId, idempotencyKey])
+  @@unique([userId, idempotencyKey])
   @@map("wallet_transactions")
 }
 

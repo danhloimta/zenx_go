@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { WalletTransactionStatus, WalletTransactionType } from '../common/domain';
-import { randomInt } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
 
@@ -76,28 +76,29 @@ export class WalletService {
   }
 
   async credit(userId: string, input: { amount: bigint; referenceType: string; referenceId: string; description?: string; idempotencyKey?: string; type?: WalletTransactionType }, prisma = this.prisma) {
-    return this.withTransactionRetry(() => prisma.$transaction((tx) => this.creditInTransaction(tx, userId, input), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+    const idempotencyKey = this.ensureIdempotencyKey(input.idempotencyKey);
+    try {
+      return await this.withTransactionRetry(() => prisma.$transaction((tx) => this.creditInTransaction(tx, userId, { ...input, idempotencyKey }), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+    } catch (error) {
+      if (this.isPrismaCode(error, 'P2002')) {
+        const existing = await prisma.walletTransaction.findFirst({ where: { userId, idempotencyKey } });
+        if (existing) return existing;
+      }
+      throw error;
+    }
   }
 
   async debit(userId: string, input: { amount: bigint; referenceType: string; referenceId: string; description?: string; idempotencyKey?: string }) {
-    return this.withTransactionRetry(() => this.prisma.$transaction(async (tx) => {
-      if (input.idempotencyKey) {
-        const existing = await tx.walletTransaction.findFirst({ where: { userId, idempotencyKey: input.idempotencyKey } });
+    const idempotencyKey = this.ensureIdempotencyKey(input.idempotencyKey);
+    try {
+      return await this.withTransactionRetry(() => this.prisma.$transaction((tx) => this.debitInTransaction(tx, userId, { ...input, idempotencyKey }), { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+    } catch (error) {
+      if (this.isPrismaCode(error, 'P2002')) {
+        const existing = await this.prisma.walletTransaction.findFirst({ where: { userId, idempotencyKey } });
         if (existing) return existing;
       }
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet) throw new DomainError(ErrorCode.WALLET_NOT_FOUND, 'Wallet not found', 404);
-      if (input.amount <= 0n) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Amount must be positive', 400);
-      if (wallet.balance < input.amount) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance', 409);
-      const updated = await tx.wallet.updateMany({ where: { id: wallet.id, balance: { gte: input.amount } }, data: { balance: { decrement: input.amount } } });
-      if (updated.count !== 1) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance', 409);
-      return tx.walletTransaction.create({ data: {
-        transactionNo: this.transactionNo('DEBIT'), walletId: wallet.id, userId, type: WalletTransactionType.DEBIT,
-        amount: input.amount, balanceBefore: wallet.balance, balanceAfter: wallet.balance - input.amount,
-        status: WalletTransactionStatus.SUCCESS, referenceType: input.referenceType, referenceId: input.referenceId,
-        description: input.description, idempotencyKey: input.idempotencyKey, completedAt: new Date(),
-      } });
-    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }));
+      throw error;
+    }
   }
 
   async refund(userId: string, input: { amount: bigint; referenceType: string; referenceId: string; description?: string; idempotencyKey?: string }) {
@@ -106,10 +107,9 @@ export class WalletService {
 
   async creditInTransaction(tx: Tx, userId: string, input: { amount: bigint; referenceType: string; referenceId: string; description?: string; idempotencyKey?: string; type?: WalletTransactionType }) {
     if (input.amount <= 0n) throw new DomainError(ErrorCode.DUPLICATE_WALLET_TRANSACTION, 'Amount must be positive', 400);
-    if (input.idempotencyKey) {
-      const existing = await tx.walletTransaction.findFirst({ where: { userId, idempotencyKey: input.idempotencyKey } });
-      if (existing) return existing;
-    }
+    const idempotencyKey = this.ensureIdempotencyKey(input.idempotencyKey);
+    const existing = await tx.walletTransaction.findFirst({ where: { userId, idempotencyKey } });
+    if (existing) return existing;
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     if (!wallet) throw new DomainError(ErrorCode.WALLET_NOT_FOUND, 'Wallet not found', 404);
     await tx.wallet.update({ where: { id: wallet.id }, data: { balance: { increment: input.amount } } });
@@ -117,12 +117,38 @@ export class WalletService {
       transactionNo: this.transactionNo(input.type ?? WalletTransactionType.CREDIT), walletId: wallet.id, userId,
       type: input.type ?? WalletTransactionType.CREDIT, amount: input.amount, balanceBefore: wallet.balance,
       balanceAfter: wallet.balance + input.amount, status: WalletTransactionStatus.SUCCESS,
-      referenceType: input.referenceType, referenceId: input.referenceId, idempotencyKey: input.idempotencyKey,
+      referenceType: input.referenceType, referenceId: input.referenceId, idempotencyKey,
       description: input.description, completedAt: new Date(),
     } });
   }
 
+  async debitInTransaction(tx: Tx, userId: string, input: { amount: bigint; referenceType: string; referenceId: string; description?: string; idempotencyKey?: string }) {
+    if (input.amount <= 0n) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Amount must be positive', 400);
+    const idempotencyKey = this.ensureIdempotencyKey(input.idempotencyKey);
+    const existing = await tx.walletTransaction.findFirst({ where: { userId, idempotencyKey } });
+    if (existing) return existing;
+    const wallet = await tx.wallet.findUnique({ where: { userId } });
+    if (!wallet) throw new DomainError(ErrorCode.WALLET_NOT_FOUND, 'Wallet not found', 404);
+    if (wallet.balance < input.amount) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance', 409);
+    const updated = await tx.wallet.updateMany({
+      where: { id: wallet.id, balance: { gte: input.amount } },
+      data: { balance: { decrement: input.amount } },
+    });
+    if (updated.count !== 1) throw new DomainError(ErrorCode.INSUFFICIENT_BALANCE, 'Insufficient balance', 409);
+    return tx.walletTransaction.create({ data: {
+      transactionNo: this.transactionNo('DEBIT'), walletId: wallet.id, userId, type: WalletTransactionType.DEBIT,
+      amount: input.amount, balanceBefore: wallet.balance, balanceAfter: wallet.balance - input.amount,
+      status: WalletTransactionStatus.SUCCESS, referenceType: input.referenceType, referenceId: input.referenceId,
+      description: input.description, idempotencyKey, completedAt: new Date(),
+    } });
+  }
+
   private transactionNo(prefix: string) { return `ZTX-${prefix}-${Date.now()}-${randomInt(1000, 10000)}`; }
+
+  private ensureIdempotencyKey(value?: string) {
+    const normalized = value?.trim();
+    return normalized || randomUUID();
+  }
 
   private transactionWhere(userId: string, query: TransactionFilters): Prisma.WalletTransactionWhereInput {
     const where: Prisma.WalletTransactionWhereInput = {
@@ -206,5 +232,9 @@ export class WalletService {
       }
     }
     throw new Error('Transaction retry exhausted');
+  }
+
+  private isPrismaCode(error: unknown, code: string) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
   }
 }

@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical API/data inventory
 >
-> Last verified: 2026-09-03
+> Last verified: 2026-09-06
 >
 > Verified commit: `788f781`
 
@@ -12,7 +12,7 @@
 - JSON responses dùng `{ data, error }`; HTTP status vẫn phản ánh success/failure. SePay webhook là exception có response `{ success: true }`.
 - Browser mutation chịu `OriginGuard`; signed payment/webhook callback đánh dấu skip origin.
 - `AuthGuard` dùng HttpOnly `zenx_access` cookie, chỉ nhận JWT `type: access`, kiểm tra account status, `authVersion` và user ownership.
-- `/admin/*` dùng `AuthGuard` + live database `AdminGuard`; Phase 1 chỉ cấp role `SUPER_ADMIN`.
+- `/admin/*` dùng `AuthGuard` + live database `AdminGuard`; finance routes chỉ cấp role `SUPER_ADMIN`.
 - Refresh cookie là `zenx_refresh`, path `/api/v1/auth`; access cookie path `/`.
 - DTO validation chạy global với `whitelist`, `transform`, `forbidUnknownValues`.
 - API public không trả password hash, OTP/code hash, secret answer/hash, ciphertext identity hoặc storage IDs không cần thiết.
@@ -128,6 +128,17 @@
 | `API-ADMIN-CONTENT-EVENT-MUTATION` | `POST /admin/content/events`, `PATCH /admin/content/events/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update event, date range and publish state. |
 | `API-ADMIN-CONTENT-ANNOUNCEMENTS` | `GET /admin/content/announcements` | SUPER_ADMIN | `IMPLEMENTED` | Announcement list including draft. |
 | `API-ADMIN-CONTENT-ANNOUNCEMENT-MUTATION` | `POST /admin/content/announcements`, `PATCH /admin/content/announcements/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update announcement and time window. |
+
+## Admin Finance API (Phase 4)
+
+| ID | Method/path | Auth | Status | Purpose |
+| --- | --- | --- | --- | --- |
+| `API-ADMIN-FINANCE-DASHBOARD` | `GET /admin/finance/dashboard` | SUPER_ADMIN | `IMPLEMENTED` | Payment status/KPI, successful/refunded totals và package counts. |
+| `API-ADMIN-FINANCE-PACKAGES` | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` | SUPER_ADMIN | `IMPLEMENTED` | CRUD gói nạp; delete chỉ inactive package chưa có payment. |
+| `API-ADMIN-FINANCE-PAYMENTS` | `GET /admin/finance/payments`, `GET /admin/finance/payments/:paymentNo` | SUPER_ADMIN | `IMPLEMENTED` | Search/filter/pagination/detail với provider payload đã lọc. |
+| `API-ADMIN-FINANCE-PAYMENT-COMMAND` | `POST /admin/finance/payments/:paymentNo/{confirm-success,fail,expire,cancel,refund}` | SUPER_ADMIN | `IMPLEMENTED` | Transition payment và cập nhật wallet ledger atomic. |
+| `API-ADMIN-FINANCE-TRANSACTIONS` | `GET /admin/finance/transactions`, `GET /admin/finance/transactions/export` | SUPER_ADMIN | `IMPLEMENTED` | Ledger toàn hệ thống, filter và CSV giới hạn 10.000 dòng. |
+| `API-ADMIN-FINANCE-WALLET` | `POST /admin/finance/users/:userId/wallet/{credit,debit}` | SUPER_ADMIN | `IMPLEMENTED` | Manual credit/debit với client request idempotency, debit không âm. |
 
 ## Game and portal API
 

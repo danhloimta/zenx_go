@@ -23,6 +23,16 @@ if (!databaseName.toLowerCase().endsWith('_test')) {
 const env = { ...process.env, NODE_ENV: 'test', DATABASE_URL: databaseUrl };
 const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 
+const testCoinPackages = [
+  { code: 'ZENX_1000', name: 'ZENX 1,000', priceVnd: 20_000n, coinAmount: 1_000n, sortOrder: 1 },
+  { code: 'ZENX_2500', name: 'ZENX 2,500', priceVnd: 50_000n, coinAmount: 2_500n, sortOrder: 2 },
+  { code: 'ZENX_5000', name: 'ZENX 5,000', priceVnd: 100_000n, coinAmount: 5_000n, sortOrder: 3 },
+  { code: 'ZENX_12500', name: 'ZENX 12,500', priceVnd: 200_000n, coinAmount: 12_500n, sortOrder: 4 },
+  { code: 'ZENX_25000', name: 'ZENX 25,000', priceVnd: 500_000n, coinAmount: 25_000n, sortOrder: 5 },
+  { code: 'ZENX_50000', name: 'ZENX 50,000', priceVnd: 1_000_000n, coinAmount: 50_000n, sortOrder: 6 },
+  { code: 'ZENX_100000', name: 'ZENX 100,000', priceVnd: 2_000_000n, coinAmount: 100_000n, sortOrder: 7 },
+] as const;
+
 async function prepare() {
   execFileSync('prisma', ['migrate', 'deploy'], { stdio: 'inherit', env });
   execFileSync('tsx', ['prisma/seed.ts'], { stdio: 'inherit', env });
@@ -30,7 +40,8 @@ async function prepare() {
 
 async function reset() {
   await prisma.$connect();
-  // Delete children before parents; coin_packages intentionally remains as a fixture table.
+  // Delete children before parents. Finance fixtures are reset explicitly so
+  // E2E-created packages cannot change the assumptions of integration tests.
   for (const table of [
     'support_ticket_read_states',
     'support_ticket_messages',
@@ -49,6 +60,8 @@ async function reset() {
   ]) {
     await prisma.$executeRawUnsafe(`DELETE FROM [dbo].[${table}]`);
   }
+  await prisma.coinPackage.deleteMany();
+  await prisma.coinPackage.createMany({ data: testCoinPackages });
 }
 
 async function main() {

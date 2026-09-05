@@ -30,6 +30,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminUserDetail } from '@zenx-go/api-client';
 import { useAdminUser } from '@/hooks/use-admin';
+import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatAmount, formatDate, formatDateOnly, transactionTypeLabel } from '@/lib/utils';
@@ -761,6 +762,23 @@ function InfoRow({
 }
 
 function WalletSection({ user }: { user: AdminUserDetail }) {
+  const adjustment = useAdminFinanceWalletAdjustment(user.id);
+  const [kind, setKind] = useState<'credit' | 'debit' | null>(null);
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const pending = adjustment.credit.isPending || adjustment.debit.isPending;
+  const submitAdjustment = () => {
+    if (!kind || !/^\d+$/.test(amount) || BigInt(amount || '0') <= BigInt(0)) {
+      toast.error('Số Coin phải là số nguyên dương.');
+      return;
+    }
+    const input = { clientRequestId: createClientRequestId(), amount, note: note.trim() || undefined };
+    const mutation = kind === 'credit' ? adjustment.credit : adjustment.debit;
+    mutation.mutate(input, {
+      onSuccess: () => { toast.success(kind === 'credit' ? 'Đã cộng Coin vào ví.' : 'Đã trừ Coin khỏi ví.'); setKind(null); setAmount(''); setNote(''); },
+      onError: (error) => toast.error(getErrorMessage(error)),
+    });
+  };
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7">
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -768,8 +786,10 @@ function WalletSection({ user }: { user: AdminUserDetail }) {
           <h3 className="font-bold text-slate-900">Ví ZENX · Chế độ xem</h3>
           <p className="text-xs text-slate-500">Số dư hiện tại & lịch sử biến động Coin</p>
         </div>
-        <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]">
-          <WalletCards className="size-4.5" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setKind('credit')}>Cộng Coin</Button>
+          <Button variant="outline" size="sm" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => setKind('debit')}>Trừ Coin</Button>
+          <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]"><WalletCards className="size-4.5" /></div>
         </div>
       </div>
 
@@ -817,8 +837,18 @@ function WalletSection({ user }: { user: AdminUserDetail }) {
           )}
         </div>
       </div>
+      {kind ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h4 className="text-lg font-black text-slate-900">{kind === 'credit' ? 'Cộng Coin vào ví' : 'Trừ Coin khỏi ví'}</h4><p className="mt-1 text-xs text-slate-500">Số dư hiện tại: <strong>{formatAmount(user.wallet?.balance)} ZENX</strong></p></div><Button variant="ghost" size="icon" onClick={() => setKind(null)}><X className="size-4" /></Button></div><div className="mt-5 space-y-4"><label className="block text-xs font-bold text-slate-600">Số Coin<Input className="mt-1.5" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} placeholder="1000" /></label><label className="block text-xs font-bold text-slate-600">Ghi chú tùy chọn<Input className="mt-1.5" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Điều chỉnh số dư…" /></label><div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">{amount && /^\d+$/.test(amount) ? <>Số dư dự kiến: <strong className={kind === 'credit' ? 'text-emerald-700' : 'text-red-700'}>{formatAmount(kind === 'credit' ? BigInt(String(user.wallet?.balance ?? 0)) + BigInt(amount) : BigInt(String(user.wallet?.balance ?? 0)) - BigInt(amount))} ZENX</strong></> : 'Nhập số Coin để xem số dư dự kiến.'}</div></div><div className="mt-6 flex justify-end gap-2"><Button variant="outline" onClick={() => setKind(null)}>Hủy</Button><Button variant={kind === 'debit' ? 'destructive' : 'default'} onClick={submitAdjustment} disabled={pending}>{pending ? 'Đang xử lý…' : 'Xác nhận'}</Button></div></div></div> : null}
     </section>
   );
+}
+
+function createClientRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.random() * 16 | 0;
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
 }
 
 function PasswordDialog({
@@ -1226,5 +1256,3 @@ function DeleteUserDialog({
     </div>
   );
 }
-
-

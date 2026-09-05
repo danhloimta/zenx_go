@@ -18,6 +18,8 @@ import {
   CalendarDays,
   Megaphone,
   Layers,
+  Coins,
+  ReceiptText,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -60,6 +62,15 @@ const allNavSections: NavSection[] = [
       { href: '/admin/content/articles', label: 'Bài viết & Tin tức', icon: FileText },
       { href: '/admin/content/events', label: 'Sự kiện Game', icon: CalendarDays },
       { href: '/admin/content/announcements', label: 'Thông báo Portal', icon: Megaphone },
+    ],
+  },
+  {
+    title: 'Tài chính',
+    items: [
+      { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Coins, exact: true },
+      { href: '/admin/finance/packages', label: 'Gói nạp ZENX Coin', icon: Coins },
+      { href: '/admin/finance/payments', label: 'Payment operations', icon: ReceiptText },
+      { href: '/admin/finance/transactions', label: 'Sổ cái Coin', icon: ReceiptText },
     ],
   },
   {
@@ -116,7 +127,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   }, [admin.data, isSuperAdmin, pathname, router]);
 
   useEffect(() => {
-    if (admin.data && !isSuperAdmin && pathname.startsWith('/admin/content')) {
+    if (admin.data && !isSuperAdmin && (pathname.startsWith('/admin/content') || pathname.startsWith('/admin/finance'))) {
       router.replace('/admin/support');
     }
   }, [admin.data, isSuperAdmin, pathname, router]);

@@ -1,18 +1,18 @@
-# Admin — Phase 1, Phase 2 & Phase 3
+# Admin — Phase 1, Phase 2, Phase 3 & Finance Operations
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-04
+> Last verified: 2026-09-06
 >
 > Verified commit: `788f781`
 >
-> Phạm vi: Account operations (Phase 1), Support operations (Phase 2) và Content CMS (Phase 3)
+> Phạm vi: Account operations (Phase 1), Support operations (Phase 2), Content CMS (Phase 3) và Finance Operations (Phase 4)
 
 ## Mục đích
 
 Tài liệu này là source of truth cho khu vực quản trị Phase 1/2 của ZENX GO. Nó mô tả hành vi đang có trong source, ranh giới bảo mật, contract API, màn hình, cách bootstrap và các known gaps cần xử lý trước production.
 
-Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành support; Phase 3 bổ sung CMS game/content cơ bản. Payment operations và điều chỉnh số dư Coin chưa nằm trong phạm vi.
+Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành support; Phase 3 bổ sung CMS game/content cơ bản; Phase 4 bổ sung quản trị gói nạp, payment và wallet adjustment cho `SUPER_ADMIN`.
 
 ## Trạng thái hiện tại
 
@@ -28,16 +28,17 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Multi-role permission UI          | `NOT IMPLEMENTED` | Chưa có màn hình cấp/gỡ role.                                                              |
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
 | Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game cơ bản, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
+| Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
 
 ## Access model
 
 ### Role
 
-Phase 1/2/3 có các role được hỗ trợ:
+Phase 1/2/3/4 có các role được hỗ trợ:
 
 | Role          | Ý nghĩa                                                                                 | Cách cấp                    |
 | ------------- | --------------------------------------------------------------------------------------- | --------------------------- |
-| `SUPER_ADMIN` | Toàn quyền trên các endpoint admin Phase 1/2/3.                                           | CLI idempotent, chưa có UI. |
+| `SUPER_ADMIN` | Toàn quyền trên các endpoint admin Phase 1/2/3/4, gồm finance.                            | CLI idempotent, chưa có UI. |
 | `SUPPORT`     | Chỉ support queue, conversation và FAQ; không user-management/CCCD/wallet.               | CLI idempotent, chưa có UI. |
 
 Role được đọc trực tiếp từ database bởi `AdminGuard` cho mỗi request. Không lưu role trong access JWT để tránh quyền cũ tồn tại sau khi bị gỡ.
@@ -69,8 +70,12 @@ Khi admin đặt mật khẩu tạm:
 | --------------------- | ----------------------- | ------------------------------------------------------------------------ | --------------------------------------------- |
 | `SCR-ADMIN-HOME`      | `/admin`                | KPI user và user mới.                                                     | `GET /admin/me`, `GET /admin/dashboard`       |
 | `SCR-ADMIN-USERS`     | `/admin/users`          | Search, filter status, pagination.                                       | `GET /admin/users`                            |
-| `SCR-ADMIN-USER`      | `/admin/users/[userId]` | Hồ sơ, status, session, password, CCCD summary/reveal, wallet read-only. | `GET /admin/users/:userId`, các mutation user |
+| `SCR-ADMIN-USER`      | `/admin/users/[userId]` | Hồ sơ, status, session, password, CCCD summary/reveal, wallet view và adjustment cho `SUPER_ADMIN`. | `GET /admin/users/:userId`, các mutation user/finance |
 | `SCR-ADMIN-CONTENT`   | `/admin/content/*`      | CMS game, article, event và announcement; chỉ `SUPER_ADMIN`.            | `GET/PATCH /admin/content/*`                 |
+| `SCR-ADMIN-FINANCE`   | `/admin/finance`        | KPI payment, doanh thu/refund và payment pending lâu nhất.              | `GET /admin/finance/dashboard`               |
+| `SCR-ADMIN-PACKAGES`  | `/admin/finance/packages` | CRUD gói nạp, active/inactive và xóa gói chưa từng dùng.              | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` |
+| `SCR-ADMIN-PAYMENTS`  | `/admin/finance/payments*` | Search/detail và command success/fail/expire/cancel/refund.            | `GET /admin/finance/payments*`, payment commands |
+| `SCR-ADMIN-LEDGER`    | `/admin/finance/transactions` | Ledger toàn hệ thống, filter và CSV export.                            | `GET /admin/finance/transactions*`            |
 
 `AdminShell` là layout riêng, không dùng player `AppShell`. Mọi screen có loading/error/empty state và mutation pending state cơ bản.
 
@@ -147,6 +152,20 @@ Base path: `/api/v1`.
 
 All JSON responses follow `{ data, error }`. Browser mutations remain protected by `OriginGuard`.
 
+## Finance operations — Phase 4
+
+Finance routes chỉ yêu cầu `SUPER_ADMIN`; `SUPPORT` nhận `403 ADMIN_ACCESS_REQUIRED`. Payment và wallet transaction không có API sửa field trực tiếp hoặc xóa.
+
+| Nhóm | Route | Hành vi |
+| --- | --- | --- |
+| Packages | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` | Quản lý giá VND, Coin, trạng thái và thứ tự; xóa chỉ khi `INACTIVE` và chưa có payment. |
+| Payment read | `GET /admin/finance/dashboard`, `/payments`, `/payments/:paymentNo` | KPI, tìm kiếm/lọc/phân trang, detail user/package/provider payload đã lọc. |
+| Payment commands | `POST .../confirm-success`, `/fail`, `/expire`, `/cancel`, `/refund` | Transition hợp lệ, optimistic concurrency; success/refund cập nhật payment và ledger trong cùng transaction. |
+| Ledger | `GET /admin/finance/transactions`, `/transactions/export` | Tra cứu/export tối đa 10.000 dòng; provider transaction trong list/CSV được mask. |
+| Wallet adjustment | `POST /admin/finance/users/:userId/wallet/credit`, `/debit` | Tạo bút toán `CREDIT`/`DEBIT` với `clientRequestId`; debit không cho số dư âm và request lặp idempotent. |
+
+Manual success yêu cầu provider transaction ID nếu payment chưa có. Refund chỉ áp dụng payment `SUCCESS`, thu hồi đúng số Coin và từ chối khi ví không đủ số dư. Các thao tác dùng xác nhận UI đơn giản, không yêu cầu re-auth hoặc reason bắt buộc.
+
 Admin content API, UI và các giới hạn CMS được canonical hóa trong [Game Hub & Content](./05-game-hub-content.md). `SUPER_ADMIN` dùng chung session/RBAC với Phase 1; `SUPPORT` không được truy cập content routes.
 
 ## Support operations — Phase 2
@@ -177,7 +196,7 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 
 `user_roles` stores `(user_id, role)` with a unique compound key and role index. Phase 1 dùng `SUPER_ADMIN`, Phase 2 dùng thêm `SUPPORT`; user deletion cascades to assignments.
 
-Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `202609030005_support_opening_messages`, `202609040001_remove_admin_audit`.
+Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `202609030005_support_opening_messages`, `202609040001_remove_admin_audit`, `202609050004_finance_operations`.
 
 ### Support data model
 
@@ -214,7 +233,7 @@ Operational checklist:
 2. Confirm the target user has a valid password and intended account status.
 3. Grant `SUPER_ADMIN` to the smallest possible number of users.
 4. Open `/admin`, verify dashboard and user search.
-5. Keep wallet actions read-only until finance controls are implemented.
+5. Verify finance package/payment/ledger controls after applying `202609050004_finance_operations`; wallet mutations are available only to `SUPER_ADMIN` through the finance routes.
 
 ## Error codes
 
@@ -228,6 +247,13 @@ Operational checklist:
 | `ADMIN_CONTACT_VERIFICATION_REQUIRED` | New email/phone lacks explicit verified choice.             |
 | `ADMIN_NO_CHANGES`                    | Profile request contains no changes.                        |
 | `ADMIN_STATUS_TRANSITION_INVALID`     | Status is not editable by Phase 1 admin flow.               |
+| `COIN_PACKAGE_CODE_EXISTS`             | Mã gói nạp đã tồn tại.                                      |
+| `COIN_PACKAGE_IN_USE`                  | Gói nạp đã có payment history.                             |
+| `COIN_PACKAGE_MUST_BE_INACTIVE`        | Phải ngừng bán trước khi xóa gói.                           |
+| `FINANCE_STALE_UPDATE`                 | Payment/package đã thay đổi bởi request khác.               |
+| `FINANCE_PAYMENT_TRANSITION_INVALID`   | Payment không thể chuyển sang trạng thái đích.             |
+| `FINANCE_PROVIDER_TRANSACTION_EXISTS`  | Provider transaction ID thiếu hoặc đã được dùng.            |
+| `FINANCE_INVALID_AMOUNT`               | Amount phải là số nguyên dương.                             |
 | `CONTENT_NOT_FOUND`                    | Game/article/event/announcement không tồn tại.               |
 | `CONTENT_SLUG_EXISTS`                  | Slug hoặc announcement code đã tồn tại.                     |
 | `CONTENT_INVALID_URL`                  | Asset hoặc CTA URL không nằm trong allowlist.                |
@@ -238,8 +264,8 @@ Operational checklist:
 | Layer       | Coverage                                                                                                                                                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, content Markdown/URL validation specs. |
-| Integration | `apps/api/test/integration/admin.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`: access boundaries, queue/workflow, CMS draft/publish, visibility và conflict. |
-| Browser     | `apps/web/e2e/admin.spec.ts`, `support-admin.spec.ts`, `content-admin.spec.ts`: admin/support và CMS flows trên desktop/mobile. |
+| Integration | `apps/api/test/integration/admin.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`, `finance-admin.integration.spec.ts`: access boundaries, queue/workflow, CMS draft/publish, payment transitions, refund, ledger idempotency và conflict. |
+| Browser     | `apps/web/e2e/admin.spec.ts`, `support-admin.spec.ts`, `content-admin.spec.ts`, `finance-admin.spec.ts`: admin/support/CMS/finance flows trên Chromium. |
 | Regression  | Existing auth/account/support/payment/game integration and browser suites.                                                                                                                                         |
 
 ## Known gaps before production
@@ -255,7 +281,6 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 ## Out of scope
 
 - CMS nâng cao: role editor/game-admin, media library, WYSIWYG, scheduled publish, revision/approval, theme/feature builder, genre/platform/roadmap editor và tạo/xóa game.
-- Payment reconciliation, refund hoặc cộng/trừ Coin.
 - Role management UI và permission matrix nhiều role.
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.

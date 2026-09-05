@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { CoinPackageStatus, SecurityQuestionCode, SupportStatus } from '../src/common/domain';
+import { SecurityQuestionCode, SupportStatus } from '../src/common/domain';
 import { createPageConfig } from '../src/admin/content/game-templates';
 
 const prisma = new PrismaClient();
@@ -20,15 +20,12 @@ async function main() {
     ['ZENX_100000', 'ZENX 100,000', 2000000n, 100000n, 7],
   ] as const;
 
-  await prisma.coinPackage.updateMany({
-    where: { code: { notIn: packages.map(([code]) => code) } },
-    data: { status: CoinPackageStatus.INACTIVE },
-  });
-
   for (const [code, name, priceVnd, coinAmount, sortOrder] of packages) {
     await prisma.coinPackage.upsert({
       where: { code },
-      update: { name, priceVnd, coinAmount, sortOrder, status: CoinPackageStatus.ACTIVE },
+      // Keep finance configuration changes made in admin. Defaults are only
+      // applied when a package does not exist yet.
+      update: {},
       create: { code, name, priceVnd, coinAmount, sortOrder },
     });
   }

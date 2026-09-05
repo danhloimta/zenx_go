@@ -85,6 +85,7 @@ export const PaymentMethod = {
 } as const;
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod];
 export const CoinPackageStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
+export type CoinPackageStatus = (typeof CoinPackageStatus)[keyof typeof CoinPackageStatus];
 export const SupportStatus = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' } as const;
 export const SupportTicketStatus = {
   NEW: 'NEW',

@@ -6,9 +6,10 @@ import { AdminGuard } from './admin.guard';
 import { AdminService } from './admin.service';
 import { ContentAdminController } from './content/content.controller';
 import { ContentAdminService } from './content/content.service';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
-  imports: [AuthModule, AccountModule],
+  imports: [AuthModule, AccountModule, FinanceModule],
   controllers: [AdminController, ContentAdminController],
   providers: [AdminService, AdminGuard, ContentAdminService],
   exports: [AdminGuard],

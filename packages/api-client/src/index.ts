@@ -247,6 +247,7 @@ export type WalletTransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERS
 export type PaymentStatus =
   'CREATED' | 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED' | 'REFUNDED';
 export type PaymentMethod = 'MOMO' | 'ZALOPAY' | 'BANK_TRANSFER' | 'CARD' | 'VIETQR';
+export type CoinPackageStatus = 'ACTIVE' | 'INACTIVE';
 /** @deprecated Accepted by older API deployments; new requests should use PaymentMethod. */
 export type LegacyPaymentMethod = 'QR' | 'REDIRECT';
 export type SupportTicketStatus = 'NEW' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED';
@@ -548,6 +549,18 @@ export interface CoinPackage {
   name: string;
   priceVnd: number | string;
   coinAmount: number | string;
+  status?: CoinPackageStatus;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminFinanceCoinPackage extends CoinPackage {
+  code: string;
+  status: CoinPackageStatus;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Payment {
@@ -582,6 +595,82 @@ export interface PaymentConfig {
   methods: PaymentMethod[];
   isDemo: boolean;
   allowMockCompletion: boolean;
+}
+
+export interface AdminFinanceUserRef {
+  id: string;
+  username: string;
+  email: string;
+  phone?: string | null;
+  status?: AccountStatus | string;
+  profile?: { fullName?: string | null; avatarUrl?: string | null } | null;
+}
+
+export interface AdminFinancePayment extends Payment {
+  providerTransactionId?: string | null;
+  updatedAt: string;
+  user: AdminFinanceUserRef;
+  coinPackage: AdminFinanceCoinPackage | { id: string; code: string; name: string };
+  providerPayload?: Record<string, unknown> | null;
+}
+
+export interface AdminFinanceTransaction extends WalletTransaction {
+  userId: string;
+  user?: AdminFinanceUserRef;
+}
+
+export interface AdminFinanceDashboard {
+  payments: {
+    total: number;
+    byStatus: Record<PaymentStatus, number>;
+    successful: { count: number; amountVnd: number | string; coinAmount: number | string };
+    refunded: { count: number; amountVnd: number | string; coinAmount: number | string };
+    oldestPending: { paymentNo: string; status: PaymentStatus; createdAt: string } | null;
+  };
+  packages: { active: number; inactive: number };
+  ledger: { successfulTransactionAmount: number | string };
+}
+
+export interface AdminFinancePage<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  statusCounts?: Record<string, number>;
+}
+
+export interface AdminFinanceCoinPackageCreateRequest {
+  code: string;
+  name: string;
+  priceVnd: string;
+  coinAmount: string;
+  status?: CoinPackageStatus;
+  sortOrder?: number;
+}
+
+export interface AdminFinanceCoinPackageUpdateRequest {
+  expectedUpdatedAt: string;
+  name?: string;
+  priceVnd?: string;
+  coinAmount?: string;
+  status?: CoinPackageStatus;
+  sortOrder?: number;
+}
+
+export interface AdminFinancePaymentActionRequest {
+  expectedUpdatedAt: string;
+}
+
+export interface AdminFinanceConfirmPaymentRequest extends AdminFinancePaymentActionRequest {
+  providerTransactionId?: string;
+  paidAt?: string;
+}
+
+export interface AdminFinanceWalletAdjustmentRequest {
+  clientRequestId: string;
+  amount: string;
+  note?: string;
 }
 
 export interface SupportFaq {
@@ -1247,6 +1336,91 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/identity`,
           input,
         ),
+
+      finance: {
+        dashboard: () => client.get<AdminFinanceDashboard>('/admin/finance/dashboard'),
+        packages: (query: { status?: CoinPackageStatus } = {}) =>
+          client.get<AdminFinanceCoinPackage[]>('/admin/finance/coin-packages', query),
+        createPackage: (input: AdminFinanceCoinPackageCreateRequest) =>
+          client.post<AdminFinanceCoinPackage>('/admin/finance/coin-packages', input),
+        updatePackage: (packageId: string, input: AdminFinanceCoinPackageUpdateRequest) =>
+          client.patch<AdminFinanceCoinPackage>(
+            `/admin/finance/coin-packages/${encodeURIComponent(packageId)}`,
+            input,
+          ),
+        deletePackage: (packageId: string) =>
+          client.delete<{ deleted: boolean; id: string }>(
+            `/admin/finance/coin-packages/${encodeURIComponent(packageId)}`,
+          ),
+        payments: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            status?: PaymentStatus;
+            provider?: string;
+            paymentMethod?: PaymentMethod;
+            from?: string;
+            to?: string;
+          } = {},
+        ) => client.get<AdminFinancePage<AdminFinancePayment>>('/admin/finance/payments', query),
+        payment: (paymentNo: string) =>
+          client.get<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}`,
+          ),
+        confirmSuccess: (paymentNo: string, input: AdminFinanceConfirmPaymentRequest) =>
+          client.post<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}/confirm-success`,
+            input,
+          ),
+        failPayment: (paymentNo: string, input: AdminFinancePaymentActionRequest) =>
+          client.post<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}/fail`, input,
+          ),
+        expirePayment: (paymentNo: string, input: AdminFinancePaymentActionRequest) =>
+          client.post<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}/expire`, input,
+          ),
+        cancelPayment: (paymentNo: string, input: AdminFinancePaymentActionRequest) =>
+          client.post<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}/cancel`, input,
+          ),
+        refundPayment: (paymentNo: string, input: AdminFinancePaymentActionRequest) =>
+          client.post<AdminFinancePayment & { walletTransactions: AdminFinanceTransaction[] }>(
+            `/admin/finance/payments/${encodeURIComponent(paymentNo)}/refund`, input,
+          ),
+        transactions: (
+          query: {
+            page?: number;
+            pageSize?: number;
+            search?: string;
+            type?: WalletTransactionType;
+            status?: WalletTransactionStatus;
+            from?: string;
+            to?: string;
+          } = {},
+        ) => client.get<AdminFinancePage<AdminFinanceTransaction>>('/admin/finance/transactions', query),
+        exportTransactions: async (
+          query: {
+            search?: string;
+            type?: WalletTransactionType;
+            status?: WalletTransactionStatus;
+            from?: string;
+            to?: string;
+          } = {},
+        ) => {
+          const csv = await client.get<string>('/admin/finance/transactions/export', query);
+          return new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        },
+        creditWallet: (userId: string, input: AdminFinanceWalletAdjustmentRequest) =>
+          client.post<AdminFinanceTransaction>(
+            `/admin/finance/users/${encodeURIComponent(userId)}/wallet/credit`, input,
+          ),
+        debitWallet: (userId: string, input: AdminFinanceWalletAdjustmentRequest) =>
+          client.post<AdminFinanceTransaction>(
+            `/admin/finance/users/${encodeURIComponent(userId)}/wallet/debit`, input,
+          ),
+      },
 
       support: {
         dashboard: () => client.get<SupportAdminDashboard>('/admin/support/dashboard'),
