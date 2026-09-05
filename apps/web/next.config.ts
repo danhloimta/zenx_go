@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
       { source: '/uploads/:path*', destination: `${proxyOrigin}/uploads/:path*` },
     ];
   },
+  async redirects() {
+    return [
+      { source: '/su-kien', destination: '/events', permanent: false },
+      { source: '/su-kien/:slug', destination: '/events/:slug', permanent: false },
+    ];
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days

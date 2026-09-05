@@ -47,6 +47,35 @@ export function useAdminContentGame(gameId: string, enabled = true) {
   });
 }
 
+export function useAdminContentGameOptions(enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'content', 'game-options'],
+    queryFn: api.admin.content.gameOptions,
+    enabled,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAdminContentGameTemplates(enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'content', 'game-templates'],
+    queryFn: api.admin.content.gameTemplates,
+    enabled,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAdminContentGameReadiness(gameId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['admin', 'content', 'game-readiness', gameId],
+    queryFn: () => api.admin.content.gameReadiness(gameId),
+    enabled: enabled && Boolean(gameId),
+    retry: false,
+  });
+}
+
 export function useAdminContentArticles(
   query: {
     page?: number;

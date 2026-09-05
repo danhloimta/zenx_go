@@ -25,6 +25,8 @@ import {
   AdminContentEventCreateDto,
   AdminContentEventUpdateDto,
   AdminContentEventsQueryDto,
+  AdminContentGameCreateDto,
+  AdminContentGamePresentationUpdateDto,
   AdminContentGameUpdateDto,
   AdminContentGamesQueryDto,
 } from './content.dto';
@@ -54,9 +56,44 @@ export class ContentAdminController {
     return this.content.listGames(query);
   }
 
+  @Get('game-templates')
+  gameTemplates() {
+    return this.content.listGameTemplates();
+  }
+
+  @Post('games')
+  createGame(@Body() dto: AdminContentGameCreateDto) {
+    return this.content.createGame(dto);
+  }
+
   @Get('games/:gameId')
   game(@Param('gameId') gameId: string) {
     return this.content.getGame(gameId);
+  }
+
+  @Get('games/:gameId/readiness')
+  gameReadiness(@Param('gameId') gameId: string) {
+    return this.content.gameReadiness(gameId);
+  }
+
+  @Get('games/:gameId/preview')
+  previewGame(@Param('gameId') gameId: string) {
+    return this.content.previewGame(gameId);
+  }
+
+  @Post('games/:gameId/publish')
+  publishGame(@Param('gameId') gameId: string) {
+    return this.content.publishGame(gameId);
+  }
+
+  @Post('games/:gameId/unpublish')
+  unpublishGame(@Param('gameId') gameId: string) {
+    return this.content.unpublishGame(gameId);
+  }
+
+  @Get('game-options')
+  gameOptions() {
+    return this.content.gameOptions();
   }
 
   @Patch('games/:gameId')
@@ -65,6 +102,14 @@ export class ContentAdminController {
     @Body() dto: AdminContentGameUpdateDto,
   ) {
     return this.content.updateGame(gameId, dto);
+  }
+
+  @Patch('games/:gameId/presentation')
+  updateGamePresentation(
+    @Param('gameId') gameId: string,
+    @Body() dto: AdminContentGamePresentationUpdateDto,
+  ) {
+    return this.content.updateGamePresentation(gameId, dto);
   }
 
   @Get('articles')

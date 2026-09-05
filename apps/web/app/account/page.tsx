@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  Check,
   Coins,
   CreditCard,
   KeyRound,
@@ -142,13 +143,28 @@ export default function AccountOverviewPage() {
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
-                  <Mail className="size-2.5 text-[#00873E]" /> Email {securityChecks[0] ? '✓' : '—'}
+                  <Mail className="size-2.5 text-[#00873E]" /> Email{' '}
+                  {securityChecks[0] ? (
+                    <Check className="size-2.5 text-[#00873E]" />
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
-                  <Phone className="size-2.5 text-[#00873E]" /> SĐT {securityChecks[1] ? '✓' : '—'}
+                  <Phone className="size-2.5 text-[#00873E]" /> SĐT{' '}
+                  {securityChecks[1] ? (
+                    <Check className="size-2.5 text-[#00873E]" />
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200">
-                  <Lock className="size-2.5 text-[#00873E]" /> Mật khẩu {securityChecks[2] ? '✓' : '—'}
+                  <Lock className="size-2.5 text-[#00873E]" /> Mật khẩu{' '}
+                  {securityChecks[2] ? (
+                    <Check className="size-2.5 text-[#00873E]" />
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </span>
               </div>
             </div>

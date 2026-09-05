@@ -13,7 +13,10 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { SensitiveIdentityDto } from '../account/dto';
 
 function trimOrUndefined(value: unknown) {
   if (typeof value !== 'string') return value;
@@ -74,8 +77,8 @@ export class AdminProfileUpdateDto extends AdminExpectedUpdateDto {
 }
 
 export class AdminStatusUpdateDto extends AdminExpectedUpdateDto {
-  @IsIn([AccountStatus.ACTIVE, AccountStatus.SUSPENDED]) status!:
-    typeof AccountStatus.ACTIVE | typeof AccountStatus.SUSPENDED;
+  @IsIn([AccountStatus.ACTIVE, AccountStatus.SUSPENDED, AccountStatus.DELETED]) status!:
+    typeof AccountStatus.ACTIVE | typeof AccountStatus.SUSPENDED | typeof AccountStatus.DELETED;
 }
 
 export class AdminResetPasswordDto extends AdminExpectedUpdateDto {
@@ -92,3 +95,12 @@ export class AdminResetPasswordDto extends AdminExpectedUpdateDto {
   @MaxLength(128)
   temporaryPasswordConfirmation!: string;
 }
+
+export class AdminUpdateSensitiveIdentityDto extends AdminExpectedUpdateDto {
+  @ValidateIf((_, value) => value !== undefined && value !== null)
+  @ValidateNested()
+  @Type(() => SensitiveIdentityDto)
+  @IsOptional()
+  identity?: SensitiveIdentityDto | null;
+}
+

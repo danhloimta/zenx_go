@@ -3,6 +3,7 @@ export const AccountStatus = {
   ACTIVE: 'ACTIVE',
   LOCKED: 'LOCKED',
   SUSPENDED: 'SUSPENDED',
+  DELETED: 'DELETED',
 } as const;
 export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
 export const AdminRole = { SUPER_ADMIN: 'SUPER_ADMIN', SUPPORT: 'SUPPORT' } as const;

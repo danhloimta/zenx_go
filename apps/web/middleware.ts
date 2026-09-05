@@ -41,8 +41,16 @@ export async function middleware(request: NextRequest) {
 
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
   const requestHost = forwardedHost ?? request.headers.get('host') ?? request.nextUrl.host;
-  const host = classifyWebHost(requestHost, baseDomain());
-  const localhostPortalAlias = process.env.NODE_ENV !== 'production' && normalizeHostname(requestHost) === 'localhost';
+  let host = classifyWebHost(requestHost, baseDomain());
+  if (host.kind === 'UNKNOWN' && process.env.NODE_ENV !== 'production') {
+    const norm = normalizeHostname(requestHost);
+    if (norm.endsWith('.localhost')) {
+      host = classifyWebHost(requestHost, 'localhost');
+    } else if (norm.endsWith('.lvh.me') || norm === 'lvh.me') {
+      host = classifyWebHost(requestHost, 'lvh.me');
+    }
+  }
+  const localhostPortalAlias = process.env.NODE_ENV !== 'production' && (normalizeHostname(requestHost) === 'localhost' || normalizeHostname(requestHost) === 'lvh.me');
   if (pathname.startsWith('/game-site')) {
     return host.kind === 'GAME' ? NextResponse.next() : NextResponse.rewrite(new URL('/_host-error', request.url));
   }

@@ -1,6 +1,6 @@
 import type { AccountStatus } from '@zenx-go/api-client';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Clock3, Ban, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, Clock3, Ban, ShieldAlert, Trash2 } from 'lucide-react';
 
 export interface AccountStatusBadgeProps {
   status?: AccountStatus | string | null;
@@ -51,6 +51,14 @@ const statusConfig: Record<
     text: 'text-rose-700',
     border: 'border-rose-200/80',
     icon: ShieldAlert,
+  },
+  DELETED: {
+    label: 'Đã xóa',
+    dot: 'bg-rose-600',
+    bg: 'bg-rose-50',
+    text: 'text-rose-700',
+    border: 'border-rose-200/80',
+    icon: Trash2,
   },
 };
 

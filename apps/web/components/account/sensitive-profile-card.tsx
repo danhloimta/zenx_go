@@ -24,6 +24,7 @@ import type {
 } from '@zenx-go/api-client';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { formatDateOnly } from '@/lib/utils';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -607,7 +608,7 @@ export function SensitiveProfileCard() {
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Ngày cấp</dt>
-                <dd className="mt-1 font-semibold text-slate-900">{revealedIdentity.issuedAt}</dd>
+                <dd className="mt-1 font-semibold text-slate-900">{formatDateOnly(revealedIdentity.issuedAt)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Nơi cấp</dt>

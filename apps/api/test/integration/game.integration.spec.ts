@@ -55,6 +55,7 @@ describe('Game catalog API (SQL Server)', () => {
     const game = await http().get('/api/v1/games/by-subdomain/lucdia');
     expect(game.status).toBe(200);
     expect(game.body.data).toMatchObject({ slug: 'luc-dia-dam-me', subdomain: 'lucdia', themePreset: 'EDITORIAL_FANTASY' });
+    expect(game.body.data.pageConfig).toMatchObject({ schemaVersion: 1, preset: 'EDITORIAL_FANTASY' });
     expect(game.body.data.theme.primary).toBe('#54796f');
     expect(game.body.data.featureConfig.sections).toContain('ROADMAP_PREVIEW');
 

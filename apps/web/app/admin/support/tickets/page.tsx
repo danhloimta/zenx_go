@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   ArrowRight,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -14,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { SupportTicketPriority, SupportTicketStatus } from '@zenx-go/api-client';
 import { useSupportAdminTickets } from '@/hooks/use-support';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,7 @@ const priorityOptions: Array<{ value: '' | SupportTicketPriority; label: string 
 ];
 
 export default function SupportAdminTicketsPage() {
+  const router = useRouter();
   const params = useSearchParams();
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -292,48 +294,44 @@ export default function SupportAdminTicketsPage() {
             {/* Desktop Table View */}
             <div className="hidden overflow-x-auto lg:block">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
+                <thead className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold tracking-wider text-slate-500 uppercase">
                   <tr>
-                    <th className="px-6 py-4">Mã & Nội dung yêu cầu</th>
-                    <th className="px-5 py-4">Khách hàng</th>
-                    <th className="px-5 py-4">Chuyên mục</th>
-                    <th className="px-5 py-4">Mức ưu tiên</th>
-                    <th className="px-5 py-4">Trạng thái</th>
-                    <th className="px-5 py-4">Chuyên viên</th>
-                    <th className="px-6 py-4 text-right">Hoạt động cuối</th>
+                    <th className="px-6 py-3.5">Mã & Nội dung yêu cầu</th>
+                    <th className="px-4 py-3.5">Khách hàng</th>
+                    <th className="px-4 py-3.5">Chuyên mục</th>
+                    <th className="px-4 py-3.5">Mức ưu tiên</th>
+                    <th className="px-4 py-3.5">Trạng thái</th>
+                    <th className="px-4 py-3.5">Chuyên viên</th>
+                    <th className="px-6 py-3.5 text-right">Hoạt động cuối</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {tickets.data.items.map((ticket) => (
                     <tr
                       key={ticket.ticketNo}
-                      className="group transition-colors hover:bg-slate-50/80"
+                      onClick={() => router.push(`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`)}
+                      className="group cursor-pointer transition-colors hover:bg-emerald-50/20"
                     >
                       {/* Ticket Code & Subject */}
-                      <td className="px-6 py-4.5">
-                        <Link
-                          href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
-                          className="block max-w-md"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-black text-[#00873E]">
-                              {ticket.ticketNo}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 group-hover:bg-[#00873E]/10 group-hover:text-[#00873E] transition-colors">
+                            {ticket.ticketNo}
+                          </span>
+                          {ticket.unread ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                              <span className="size-1.5 rounded-full bg-rose-500 animate-ping" />
+                              Mới
                             </span>
-                            {ticket.unread ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                                <span className="size-1.5 rounded-full bg-rose-500 animate-pulse" />
-                                Mới
-                              </span>
-                            ) : null}
-                          </div>
-                          <h4 className="mt-1 line-clamp-1 font-bold text-slate-900 group-hover:text-[#00873E]">
-                            {ticket.subject}
-                          </h4>
-                        </Link>
+                          ) : null}
+                        </div>
+                        <h4 className="mt-1 text-sm font-bold text-slate-900 group-hover:text-[#00873E] transition-colors line-clamp-1">
+                          {ticket.subject}
+                        </h4>
                       </td>
 
                       {/* Customer Info */}
-                      <td className="px-5 py-4.5">
+                      <td className="px-4 py-4">
                         <div className="flex items-center gap-2.5">
                           <UserAvatar
                             id={ticket.user.id}
@@ -342,50 +340,38 @@ export default function SupportAdminTicketsPage() {
                             email={ticket.user.email}
                             avatarUrl={ticket.user.profile?.avatarUrl}
                             size="sm"
+                            className="ring-1 ring-slate-200 shrink-0"
                           />
-                          <div className="min-w-0 max-w-[140px]">
-                            <p className="truncate text-xs font-bold text-slate-900">
+                          <div className="min-w-0 max-w-[150px]">
+                            <p className="truncate text-xs font-semibold text-slate-900">
                               {ticket.user.profile?.fullName || ticket.user.username}
                             </p>
                             <p className="truncate text-[11px] text-slate-400">
-                              @{ticket.user.username}
+                              {ticket.user.email || `@${ticket.user.username}`}
                             </p>
                           </div>
                         </div>
                       </td>
 
                       {/* Category */}
-                      <td className="px-5 py-4.5">
-                        <span className="inline-block rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {ticket.category.name}
                         </span>
                       </td>
 
                       {/* Priority */}
-                      <td className="px-5 py-4.5">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${supportPriorityClass(
-                            ticket.priority,
-                          )}`}
-                        >
-                          {ticket.priority === 'URGENT' && <Flame className="size-3 text-red-600" />}
-                          {supportPriorityLabel(ticket.priority)}
-                        </span>
+                      <td className="px-4 py-4">
+                        <PriorityBadge priority={ticket.priority} />
                       </td>
 
                       {/* Status */}
-                      <td className="px-5 py-4.5">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${supportStatusClass(
-                            ticket.status,
-                          )}`}
-                        >
-                          {supportStatusLabel(ticket.status)}
-                        </span>
+                      <td className="px-4 py-4">
+                        <StatusBadge status={ticket.status} />
                       </td>
 
                       {/* Assignee */}
-                      <td className="px-5 py-4.5">
+                      <td className="px-4 py-4">
                         {ticket.assignee ? (
                           <div className="flex items-center gap-2">
                             <UserAvatar
@@ -393,29 +379,30 @@ export default function SupportAdminTicketsPage() {
                               name={ticket.assignee.fullName}
                               username={ticket.assignee.username}
                               size="xs"
+                              className="ring-1 ring-slate-200 shrink-0"
                             />
-                            <span className="truncate text-xs font-bold text-slate-800">
+                            <span className="truncate text-xs font-medium text-slate-800">
                               {ticket.assignee.fullName || ticket.assignee.username}
                             </span>
                           </div>
                         ) : (
-                          <span className="inline-block rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                            Chưa nhận
+                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 italic">
+                            <span className="size-1.5 rounded-full bg-slate-300" />
+                            Chưa phân công
                           </span>
                         )}
                       </td>
 
                       {/* Last Activity */}
-                      <td className="px-6 py-4.5 text-right">
-                        <div className="text-xs font-semibold text-slate-700">
-                          {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="font-mono text-xs text-slate-600">
+                            {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
+                          </span>
+                          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg text-slate-300 group-hover:bg-[#00873E]/10 group-hover:text-[#00873E] transition-all">
+                            <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
                         </div>
-                        <Link
-                          href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
-                          className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#00873E] hover:underline"
-                        >
-                          Chi tiết <ArrowRight className="size-3" />
-                        </Link>
                       </td>
                     </tr>
                   ))}
@@ -429,46 +416,48 @@ export default function SupportAdminTicketsPage() {
                 <Link
                   key={ticket.ticketNo}
                   href={`/admin/support/tickets/${encodeURIComponent(ticket.ticketNo)}`}
-                  className="block p-4 transition hover:bg-slate-50"
+                  className="block p-4 transition-colors hover:bg-slate-50"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-black text-[#00873E]">
-                      {ticket.ticketNo}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${supportStatusClass(
-                        ticket.status,
-                      )}`}
-                    >
-                      {supportStatusLabel(ticket.status)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                        {ticket.ticketNo}
+                      </span>
+                      {ticket.unread ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                          <span className="size-1.5 rounded-full bg-rose-500 animate-ping" />
+                          Mới
+                        </span>
+                      ) : null}
+                    </div>
+                    <StatusBadge status={ticket.status} />
                   </div>
 
-                  <h4 className="mt-1.5 font-bold text-slate-900">{ticket.subject}</h4>
+                  <h4 className="mt-2 text-sm font-bold text-slate-900 line-clamp-1">{ticket.subject}</h4>
 
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${supportPriorityClass(
-                        ticket.priority,
-                      )}`}
-                    >
-                      {supportPriorityLabel(ticket.priority)}
-                    </span>
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600">
+                    <PriorityBadge priority={ticket.priority} />
+                    <span className="rounded-md border border-slate-200/80 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
                       {ticket.category.name}
                     </span>
-                    {ticket.unread && (
-                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                        Chưa đọc
-                      </span>
-                    )}
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
-                    <span>
-                      {ticket.assignee?.fullName || ticket.assignee?.username || 'Chưa nhận'}
+                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <UserAvatar
+                        id={ticket.user.id}
+                        name={ticket.user.profile?.fullName}
+                        username={ticket.user.username}
+                        avatarUrl={ticket.user.profile?.avatarUrl}
+                        size="xs"
+                      />
+                      <span className="truncate font-medium text-slate-700">
+                        {ticket.user.profile?.fullName || ticket.user.username}
+                      </span>
+                    </div>
+                    <span className="font-mono text-[11px] text-slate-400 shrink-0">
+                      {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
                     </span>
-                    <span>{formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}</span>
                   </div>
                 </Link>
               ))}
@@ -528,5 +517,78 @@ function TicketListSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'NEW') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200/80 px-2.5 py-0.5 text-xs font-semibold text-sky-700">
+        <span className="size-1.5 rounded-full bg-sky-500" />
+        Mới tiếp nhận
+      </span>
+    );
+  }
+  if (status === 'IN_PROGRESS') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+        Đang xử lý
+      </span>
+    );
+  }
+  if (status === 'WAITING_USER') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
+        <span className="size-1.5 rounded-full bg-purple-500" />
+        Chờ phản hồi
+      </span>
+    );
+  }
+  if (status === 'RESOLVED') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+        <CheckCircle2 className="size-3 text-emerald-600" />
+        Đã giải quyết
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+      Đã đóng
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority?: string | null }) {
+  if (priority === 'URGENT') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200/80 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+        <Flame className="size-3 text-rose-600 fill-rose-500" />
+        Khẩn cấp
+      </span>
+    );
+  }
+  if (priority === 'HIGH') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+        <span className="size-1.5 rounded-full bg-amber-500" />
+        Cao
+      </span>
+    );
+  }
+  if (priority === 'LOW') {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400">
+        <span className="size-1.5 rounded-full bg-slate-200" />
+        Thấp
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+      <span className="size-1.5 rounded-full bg-slate-300" />
+      Bình thường
+    </span>
   );
 }

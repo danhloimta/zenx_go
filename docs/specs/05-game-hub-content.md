@@ -47,7 +47,7 @@
 
 CMS dùng `AdminShell` và chỉ `SUPER_ADMIN` được truy cập. `SUPPORT` không được xem hoặc sửa content.
 
-- Game cho phép sửa code/slug/subdomain cùng nội dung, media, CTA và trạng thái cơ bản; record type, primary, taxonomy và theme/feature config là read-only.
+- Game cho phép sửa code/slug/subdomain cùng nội dung, media, CTA, trạng thái cơ bản, primary game và taxonomy. Record type, theme preset và theme/feature config chỉ dùng nội bộ, không hiển thị trong editor; taxonomy chọn từ danh mục có sẵn và phải có ít nhất một thể loại cùng một nền tảng.
 - Đổi code/slug/subdomain không giữ alias URL cũ và được validate duy nhất/an toàn.
 - Article/event/announcement dùng `DRAFT/PUBLISHED`; publish đặt `publishedAt=now`, unpublish xoá `publishedAt`. Không hard-delete, schedule, approval hoặc revision.
 - Slug được normalize ở mỗi lần tạo/cập nhật. Asset/CTA chỉ nhận path nội bộ an toàn hoặc URL `http/https`.
@@ -58,7 +58,7 @@ CMS dùng `AdminShell` và chỉ `SUPER_ADMIN` được truy cập. `SUPPORT` kh
 | --- | --- | --- |
 | `SCR-ADMIN-CONTENT-HOME` | `/admin/content` | KPI game/article/event/announcement và link quản lý. |
 | `SCR-ADMIN-CONTENT-GAMES` | `/admin/content/games` | Search/filter/pagination game và public state. |
-| `SCR-ADMIN-CONTENT-GAME` | `/admin/content/games/[gameId]` | Sửa thông tin cơ bản và code/slug/subdomain; cấu hình nâng cao chỉ đọc. |
+| `SCR-ADMIN-CONTENT-GAME` | `/admin/content/games/[gameId]` | Sửa thông tin cơ bản, code/slug/subdomain, primary game, thể loại và nền tảng; record type/theme/config không hiển thị. |
 | `SCR-ADMIN-CONTENT-ARTICLES` | `/admin/content/articles` | Filter article theo game/category/status và mở editor. |
 | `SCR-ADMIN-CONTENT-ARTICLE` | `/admin/content/articles/new`, `/admin/content/articles/[articleId]` | Markdown editor, safe preview, draft/publish. |
 | `SCR-ADMIN-CONTENT-EVENTS` | `/admin/content/events` | Filter event và mở editor. |

@@ -11,9 +11,9 @@ export default function NewsPage() {
   const game = useGame();
   const [category, setCategory] = useState('ALL');
 
-  const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
-  const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
-  const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
+  const isOrion = game.themePreset === 'SCI_FI_SHOOTER';
+  const isHoaLong = game.themePreset === 'DARK_STRATEGY';
+  const isLucDiaDamMe = game.themePreset === 'EDITORIAL_FANTASY';
 
   const categories = useMemo(
     () => ['ALL', ...Array.from(new Set(game.articles.map((article) => article.category)))],

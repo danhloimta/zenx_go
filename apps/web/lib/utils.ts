@@ -71,6 +71,23 @@ export function formatDate(value?: string | null) {
   }).format(date);
 }
 
+export function formatDateOnly(value?: string | null) {
+  if (!value) return '—';
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) {
+    const [, year, month, day] = match;
+    return `${day}/${month}/${year}`;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
+}
+
+
 export function mediaUrl(value?: string | null) {
   if (!value) return undefined;
   if (/^https?:\/\//i.test(value)) return value;

@@ -5,11 +5,12 @@ import { AccountStatus, AdminRole } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { normalizeEmail, normalizePhone, normalizeUsername } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
-import { SensitiveProfileCrypto } from '../account/sensitive-profile.service';
+import { SensitiveProfileCrypto, validateCitizenIdentity } from '../account/sensitive-profile.service';
 import {
   AdminProfileUpdateDto,
   AdminResetPasswordDto,
   AdminStatusUpdateDto,
+  AdminUpdateSensitiveIdentityDto,
   AdminUsersQueryDto,
 } from './admin.dto';
 
@@ -56,14 +57,17 @@ export class AdminService {
   async dashboard() {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const [total, statusCounts, newUsers, recentUsers] = await Promise.all([
-      this.prisma.user.count(),
+      this.prisma.user.count({ where: { status: { not: AccountStatus.DELETED } } }),
       Promise.all(
         Object.values(AccountStatus).map(
           async (status) => [status, await this.prisma.user.count({ where: { status } })] as const,
         ),
       ),
-      this.prisma.user.count({ where: { createdAt: { gte: since } } }),
+      this.prisma.user.count({
+        where: { createdAt: { gte: since }, status: { not: AccountStatus.DELETED } },
+      }),
       this.prisma.user.findMany({
+        where: { status: { not: AccountStatus.DELETED } },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 10,
         include: USER_LIST_INCLUDE,
@@ -83,20 +87,24 @@ export class AdminService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
     const search = query.search?.trim();
+    const searchWhere: Prisma.UserWhereInput = search
+      ? {
+          OR: [
+            { username: { contains: search } },
+            { email: { contains: search } },
+            { phone: { contains: search } },
+            { profile: { is: { fullName: { contains: search } } } },
+          ],
+        }
+      : {};
+
     const where: Prisma.UserWhereInput = {
-      ...(query.status ? { status: query.status } : {}),
-      ...(search
-        ? {
-            OR: [
-              { username: { contains: search } },
-              { email: { contains: search } },
-              { phone: { contains: search } },
-              { profile: { is: { fullName: { contains: search } } } },
-            ],
-          }
-        : {}),
+      ...(query.status
+        ? { status: query.status }
+        : { status: { not: AccountStatus.DELETED } }),
+      ...searchWhere,
     };
-    const [items, total] = await this.prisma.$transaction([
+    const [items, total, countEntries] = await Promise.all([
       this.prisma.user.findMany({
         where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -105,13 +113,43 @@ export class AdminService {
         include: USER_LIST_INCLUDE,
       }),
       this.prisma.user.count({ where }),
+      Promise.all(
+        Object.values(AccountStatus).map(
+          async (status) =>
+            [
+              status,
+              await this.prisma.user.count({
+                where: { ...searchWhere, status },
+              }),
+            ] as const,
+        ),
+      ),
     ]);
+
+    const statusCounts: Record<AccountStatus | 'ALL', number> = {
+      ALL: 0,
+      ACTIVE: 0,
+      PENDING: 0,
+      SUSPENDED: 0,
+      LOCKED: 0,
+      DELETED: 0,
+    };
+    for (const [s, count] of countEntries) {
+      if (s in statusCounts) {
+        statusCounts[s] = count;
+        if (s !== AccountStatus.DELETED) {
+          statusCounts.ALL += count;
+        }
+      }
+    }
+
     return {
       items: items.map((user) => this.publicUser(user)),
       page,
       pageSize,
       total,
       totalPages: Math.ceil(total / pageSize),
+      statusCounts,
     };
   }
 
@@ -318,7 +356,7 @@ export class AdminService {
     if (userId === actorUserId)
       throw new DomainError(
         ErrorCode.ADMIN_SELF_ACTION_FORBIDDEN,
-        'An administrator cannot suspend their own account',
+        'An administrator cannot suspend or delete their own account',
         400,
       );
     const current = await this.prisma.user.findUnique({
@@ -327,7 +365,11 @@ export class AdminService {
     });
     if (!current) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     this.assertExpectedVersion(current.updatedAt, dto.expectedUpdatedAt);
-    if (current.status !== AccountStatus.ACTIVE && current.status !== AccountStatus.SUSPENDED) {
+    if (
+      current.status !== AccountStatus.ACTIVE &&
+      current.status !== AccountStatus.SUSPENDED &&
+      current.status !== AccountStatus.DELETED
+    ) {
       throw new DomainError(
         ErrorCode.ADMIN_STATUS_TRANSITION_INVALID,
         'This account status cannot be changed by an administrator',
@@ -337,7 +379,7 @@ export class AdminService {
     if (current.status === dto.status) return this.getUser(userId);
     await this.prisma.$transaction(async (tx) => {
       if (
-        dto.status === AccountStatus.SUSPENDED &&
+        (dto.status === AccountStatus.SUSPENDED || dto.status === AccountStatus.DELETED) &&
         current.roles.some(({ role }) => role === AdminRole.SUPER_ADMIN)
       ) {
         const activeAdmins = await tx.user.count({
@@ -346,7 +388,7 @@ export class AdminService {
         if (activeAdmins <= 1)
           throw new DomainError(
             ErrorCode.LAST_SUPER_ADMIN_PROTECTED,
-            'The last active super administrator cannot be suspended',
+            'The last active super administrator cannot be suspended or deleted',
             400,
           );
       }
@@ -441,6 +483,112 @@ export class AdminService {
         })
       : null;
     return { identity };
+  }
+
+  async updateSensitiveIdentity(userId: string, dto: AdminUpdateSensitiveIdentityDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, updatedAt: true },
+    });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    this.assertExpectedVersion(user.updatedAt, dto.expectedUpdatedAt);
+
+    const sensitiveProfile = await this.prisma.sensitiveProfile.findUnique({
+      where: { userId },
+    });
+
+    let encryptedIdentity = null;
+    if (dto.identity) {
+      validateCitizenIdentity(dto.identity);
+      encryptedIdentity = this.sensitiveCrypto.encrypt(dto.identity);
+      const duplicate = await this.prisma.sensitiveProfile.findFirst({
+        where: {
+          citizenIdLookupHash: encryptedIdentity.lookupHash,
+          ...(sensitiveProfile ? { NOT: { userId } } : {}),
+        },
+        select: { userId: true },
+      });
+      if (duplicate) {
+        throw new DomainError(
+          ErrorCode.CITIZEN_ID_ALREADY_EXISTS,
+          'This citizen ID cannot be used',
+          409,
+        );
+      }
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.user.updateMany({
+          where: { id: userId, updatedAt: user.updatedAt },
+          data: { updatedAt: new Date() },
+        });
+        if (updated.count !== 1) {
+          throw new DomainError(
+            ErrorCode.STALE_ADMIN_UPDATE,
+            'The account was changed by another operator',
+            409,
+          );
+        }
+
+        if (dto.identity && encryptedIdentity) {
+          if (sensitiveProfile) {
+            await tx.sensitiveProfile.update({
+              where: { id: sensitiveProfile.id },
+              data: {
+                citizenIdCiphertext: encryptedIdentity.ciphertext,
+                citizenIdIv: encryptedIdentity.iv,
+                citizenIdAuthTag: encryptedIdentity.authTag,
+                citizenIdLookupHash: encryptedIdentity.lookupHash,
+                citizenIdLast4: encryptedIdentity.last4,
+                securityVersion: { increment: 1 },
+              },
+            });
+          } else {
+            await tx.sensitiveProfile.create({
+              data: {
+                userId,
+                citizenIdCiphertext: encryptedIdentity.ciphertext,
+                citizenIdIv: encryptedIdentity.iv,
+                citizenIdAuthTag: encryptedIdentity.authTag,
+                citizenIdLookupHash: encryptedIdentity.lookupHash,
+                citizenIdLast4: encryptedIdentity.last4,
+                securityVersion: 1,
+              },
+            });
+          }
+        } else {
+          if (sensitiveProfile) {
+            if (!sensitiveProfile.secretCodeHash && !sensitiveProfile.securityQuestionCode) {
+              await tx.sensitiveProfile.delete({ where: { id: sensitiveProfile.id } });
+            } else {
+              await tx.sensitiveProfile.update({
+                where: { id: sensitiveProfile.id },
+                data: {
+                  citizenIdCiphertext: null,
+                  citizenIdIv: null,
+                  citizenIdAuthTag: null,
+                  citizenIdLookupHash: null,
+                  citizenIdLast4: null,
+                  securityVersion: { increment: 1 },
+                },
+              });
+            }
+          }
+        }
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new DomainError(
+          ErrorCode.CITIZEN_ID_ALREADY_EXISTS,
+          'This citizen ID cannot be used',
+          409,
+        );
+      }
+      throw error;
+    }
+
+    return this.getUser(userId);
   }
 
   private assertExpectedVersion(current: Date, expected: string) {

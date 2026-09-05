@@ -3,19 +3,32 @@
 import Link from 'next/link';
 import {
   ArrowLeft,
+  Calendar,
   CalendarDays,
+  Check,
+  Clock,
+  Copy,
+  ExternalLink,
   Eye,
+  FileText,
   Globe,
+  Maximize2,
+  Minimize2,
+  PenLine,
+  RefreshCw,
   Save,
+  Sparkles,
+  SplitSquareVertical,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminContentEvent, ContentPublishStatus } from '@zenx-go/api-client';
 import { useAdminContentEvent, useAdminContentGames } from '@/hooks/use-content';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { SupportMarkdown } from '@/components/support-markdown';
+import { portalUrl } from '@/lib/domain';
+import { formatDate } from '@/lib/utils';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +36,8 @@ import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ImageUploadField } from '@/components/image-upload-field';
+import { ArticleMarkdownPreview } from './article-markdown-preview';
+import { MarkdownToolbar } from './markdown-toolbar';
 import { toast } from 'sonner';
 
 type EventForm = {
@@ -39,6 +54,8 @@ type EventForm = {
   status: ContentPublishStatus;
 };
 
+type ViewMode = 'write' | 'preview' | 'split';
+
 export function EventEditor({ eventId }: { eventId?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -46,9 +63,16 @@ export function EventEditor({ eventId }: { eventId?: string }) {
   const eventQuery = useAdminContentEvent(eventId ?? '', editing);
   const games = useAdminContentGames({ page: 1, pageSize: 50 });
   const event = eventQuery.data;
+
   const [form, setForm] = useState<EventForm>(() => defaultForm());
   const [initialized, setInitialized] = useState(false);
   const [autoSlug, setAutoSlug] = useState(!editing);
+  const [viewMode, setViewMode] = useState<ViewMode>('write');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (event && !initialized) {
@@ -105,14 +129,91 @@ export function EventEditor({ eventId }: { eventId?: string }) {
 
   const pending = create.isPending || update.isPending;
 
+  const canSubmit =
+    form.title.trim().length >= 3 &&
+    form.slug.trim().length >= 3 &&
+    form.excerpt.trim().length >= 3 &&
+    form.content.trim().length > 0 &&
+    Boolean(form.startsAt);
+
+  // Unsaved changes detection
+  const isDirty = useMemo(() => {
+    if (!initialized && editing) return false;
+    const initial = editing && event ? toForm(event) : defaultForm();
+    return JSON.stringify(form) !== JSON.stringify(initial);
+  }, [form, initialized, editing, event]);
+
+  // Keyboard shortcut Ctrl+S / Cmd+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (canSubmit && !pending) {
+          if (editing) update.mutate();
+          else create.mutate();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canSubmit, pending, editing, update, create]);
+
+  // Statistics
+  const stats = useMemo(() => {
+    const text = form.content.trim();
+    const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const chars = text.length;
+    const minutes = Math.max(1, Math.ceil(words / 200));
+    return { words, chars, minutes };
+  }, [form.content]);
+
+  // Find linked game
+  const selectedGame = useMemo(() => {
+    return (games.data?.items ?? []).find((g) => g.id === form.gameId);
+  }, [games.data?.items, form.gameId]);
+
+  // Public live URL (all events are hosted on the portal at /events/:slug)
+  const publicEventUrl = useMemo(() => {
+    if (!form.slug) return null;
+    return portalUrl(`/events/${form.slug}`);
+  }, [form.slug]);
+
+  const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const copySlugToClipboard = () => {
+    if (!form.slug) return;
+    navigator.clipboard.writeText(publicEventUrl || `/events/${form.slug}`);
+    setCopiedSlug(true);
+    toast.success('Đã sao chép đường dẫn sự kiện');
+    setTimeout(() => setCopiedSlug(false), 2000);
+  };
+
+  const copyIdToClipboard = () => {
+    if (!eventId) return;
+    navigator.clipboard.writeText(eventId);
+    setCopiedId(true);
+    toast.success('Đã sao chép ID sự kiện');
+    setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  // Date validation notice
+  const isDateInvalid = useMemo(() => {
+    if (!form.startsAt || !form.endsAt) return false;
+    return new Date(form.endsAt).getTime() <= new Date(form.startsAt).getTime();
+  }, [form.startsAt, form.endsAt]);
+
   if (editing && eventQuery.isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-6 w-36 rounded-lg" />
-        <Skeleton className="h-20 w-full rounded-3xl" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
         <div className="grid gap-6 lg:grid-cols-3">
-          <Skeleton className="h-96 rounded-3xl lg:col-span-2" />
-          <Skeleton className="h-96 rounded-3xl" />
+          <Skeleton className="h-[600px] rounded-2xl lg:col-span-2" />
+          <div className="space-y-6">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
         </div>
       </div>
     );
@@ -127,58 +228,84 @@ export function EventEditor({ eventId }: { eventId?: string }) {
     );
   }
 
-  const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
-
-  const canSubmit =
-    form.title.trim().length >= 3 &&
-    form.slug.trim().length >= 3 &&
-    form.excerpt.trim().length >= 3 &&
-    form.content.trim().length > 0 &&
-    Boolean(form.startsAt);
-
   return (
     <div className="space-y-6">
-      <BackLink />
+      {/* 1. Sticky Action Bar */}
+      <header className="sticky top-0 z-30 -mx-4 -mt-6 border-b border-slate-200/90 bg-white/95 px-4 py-3.5 shadow-2xs backdrop-blur-md sm:-mx-6 sm:px-6">
+        <div className="mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left: Breadcrumb & Title */}
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/admin/content/events"
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              title="Quay lại danh sách sự kiện"
+            >
+              <ArrowLeft className="size-4" />
+            </Link>
 
-      {/* Top Header Card */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-7">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <CalendarDays className="size-3.5" /> {editing ? 'Biên tập sự kiện' : 'Tạo sự kiện mới'}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  form.status === 'PUBLISHED'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                {form.status === 'PUBLISHED' ? 'Đã xuất bản' : 'Bản nháp'}
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500">Sự kiện</span>
+                <span className="text-slate-300">/</span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                    form.status === 'PUBLISHED'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  <span
+                    className={`size-1.5 rounded-full ${
+                      form.status === 'PUBLISHED' ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
+                  />
+                  {form.status === 'PUBLISHED' ? 'Đã xuất bản' : 'Bản nháp'}
+                </span>
+
+                {isDirty ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                    <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    Chưa lưu
+                  </span>
+                ) : editing ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                    <Check className="size-3 text-emerald-500" />
+                    Đã lưu
+                  </span>
+                ) : null}
+              </div>
+
+              <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
+                {form.title.trim() || (editing ? 'Chỉnh sửa sự kiện' : 'Tạo sự kiện mới')}
+              </h1>
             </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-              {editing ? form.title || 'Chỉnh sửa sự kiện' : 'Tạo sự kiện mới'}
-            </h1>
-            <p className="mt-1 text-xs text-slate-500">
-              {editing
-                ? 'Cập nhật thời gian diễn ra, ảnh bìa banner và nội dung chi tiết sự kiện.'
-                : 'Thiết lập sự kiện áp dụng cho từng game hoặc toàn hệ thống portal.'}
-            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {publicEventUrl && form.status === 'PUBLISHED' ? (
+              <a
+                href={publicEventUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                title="Mở trang sự kiện trên website"
+              >
+                <ExternalLink className="size-3.5 text-slate-400" />
+                <span>Xem trên web</span>
+              </a>
+            ) : null}
+
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => router.push('/admin/content/events')}
-              className="bg-white text-xs"
+              className="border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
-              Hủy
+              Thoát
             </Button>
+
             <Button
               type="button"
               size="sm"
@@ -187,254 +314,613 @@ export function EventEditor({ eventId }: { eventId?: string }) {
                 if (editing) update.mutate();
                 else create.mutate();
               }}
-              className="gap-1.5 bg-[#00873E] text-xs font-bold text-white hover:bg-[#007033]"
+              className="gap-2 bg-[#00873E] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#007033] disabled:opacity-50"
             >
-              <Save className="size-3.5" />
-              {pending ? 'Đang lưu…' : editing ? 'Lưu sự kiện' : 'Tạo sự kiện ngay'}
+              {pending ? (
+                <>
+                  <RefreshCw className="size-3.5 animate-spin" />
+                  <span>Đang lưu…</span>
+                </>
+              ) : (
+                <>
+                  <Save className="size-3.5" />
+                  <span>{editing ? 'Lưu thay đổi' : 'Tạo sự kiện ngay'}</span>
+                  <kbd className="hidden sm:inline-flex rounded bg-black/15 px-1 py-0.5 text-[10px] font-mono text-white/90">
+                    ⌘S
+                  </kbd>
+                </>
+              )}
             </Button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Form Layout */}
+      {/* 2. Main Form Grid */}
       <form
         className="space-y-6"
-        onSubmit={(submitEvent) => {
-          submitEvent.preventDefault();
+        onSubmit={(e) => {
+          e.preventDefault();
           if (!canSubmit) return;
           if (editing) update.mutate();
           else create.mutate();
         }}
       >
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left 2 Cols */}
+          {/* LEFT 2 COLUMNS: Content & Editor */}
           <div className="space-y-6 lg:col-span-2">
-            {/* General Info */}
-            <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
-              <h2 className="text-base font-black text-slate-900">Thông tin sự kiện</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Tiêu đề hiển thị, đường dẫn slug và mô tả tóm tắt.
-              </p>
+            {/* Card A: Basic Information */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                    1. Thông tin sự kiện
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Tiêu đề hiển thị, đường dẫn định danh URL và tóm tắt giới thiệu
+                  </p>
+                </div>
+                <PenLine className="size-4 text-slate-400" />
+              </div>
 
-              <div className="mt-5 space-y-4">
-                <Field label="Tiêu đề sự kiện (*)">
+              <div className="mt-4 space-y-4">
+                {/* Title */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="event-title" className="text-xs font-bold text-slate-700">
+                      Tiêu đề sự kiện <span className="text-rose-500">*</span>
+                    </label>
+                    <span
+                      className={`text-[11px] font-mono ${
+                        form.title.length > 220 ? 'text-amber-600 font-bold' : 'text-slate-400'
+                      }`}
+                    >
+                      {form.title.length}/240
+                    </span>
+                  </div>
                   <Input
+                    id="event-title"
                     value={form.title}
-                    onChange={(input) => handleTitleChange(input.target.value)}
-                    placeholder="Ví dụ: Đua Top Lực Chiến Mùa Hè Rực Lửa 2026"
+                    onChange={(event) => handleTitleChange(event.target.value)}
+                    placeholder="Ví dụ: Đua Top Lực Chiến Mùa Hè Rực Lửa 2026..."
                     maxLength={240}
-                    className="h-11 font-semibold text-slate-900"
+                    className="h-11 text-base font-semibold text-slate-900 placeholder:text-slate-400"
                   />
-                </Field>
+                </div>
 
-                <Field
-                  label="URL Slug (*)"
-                  hint={
-                    editing
-                      ? 'Slug được gán cố định khi tạo để bảo toàn liên kết SEO.'
-                      : 'Định danh thân thiện trên đường dẫn web.'
-                  }
-                >
-                  <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-slate-400">
+                {/* Slug */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="event-slug" className="text-xs font-bold text-slate-700">
+                      Đường dẫn định danh (URL Slug) <span className="text-rose-500">*</span>
+                    </label>
+                    {editing ? (
+                      <span className="text-[11px] text-slate-400">
+                        (Cố định để bảo vệ liên kết sự kiện)
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="relative flex items-center">
+                    <span className="pointer-events-none absolute left-3 text-xs font-mono text-slate-400 truncate max-w-[140px] sm:max-w-none">
                       /events/
                     </span>
                     <Input
+                      id="event-slug"
                       value={form.slug}
-                      onChange={(input) => {
+                      onChange={(event) => {
                         setAutoSlug(false);
-                        set('slug', input.target.value);
+                        set('slug', event.target.value);
                       }}
                       disabled={editing}
                       placeholder="dua-top-luc-chien-2026"
                       maxLength={180}
-                      className="h-10 pl-18 font-mono text-xs disabled:bg-slate-50 disabled:text-slate-500"
+                      className="h-10 pl-20 pr-10 font-mono text-xs text-slate-700 disabled:bg-slate-50 disabled:text-slate-500"
                     />
+                    <button
+                      type="button"
+                      onClick={copySlugToClipboard}
+                      className="absolute right-2.5 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                      title="Sao chép đường dẫn"
+                    >
+                      {copiedSlug ? (
+                        <Check className="size-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="size-3.5" />
+                      )}
+                    </button>
                   </div>
-                </Field>
+                </div>
 
-                <Field
-                  label="Tóm tắt ngắn (Excerpt) (*)"
-                  hint="Hiển thị trên banner sự kiện và danh sách tổng quan."
-                >
+                {/* Excerpt */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="event-excerpt" className="text-xs font-bold text-slate-700">
+                      Tóm tắt ngắn (Excerpt) <span className="text-rose-500">*</span>
+                    </label>
+                    <span
+                      className={`text-[11px] font-mono ${
+                        form.excerpt.length > 900 ? 'text-amber-600 font-bold' : 'text-slate-400'
+                      }`}
+                    >
+                      {form.excerpt.length}/1000
+                    </span>
+                  </div>
                   <Textarea
+                    id="event-excerpt"
                     value={form.excerpt}
-                    onChange={(input) => set('excerpt', input.target.value)}
-                    placeholder="Tóm tắt nội dung sự kiện, phần thưởng hấp dẫn..."
-                    className="min-h-24 text-sm"
+                    onChange={(event) => set('excerpt', event.target.value)}
+                    placeholder="Tóm tắt ngắn gọn nội dung sự kiện, đối tượng áp dụng và phần thưởng nổi bật..."
+                    className="min-h-20 text-sm leading-relaxed"
                     maxLength={1000}
                   />
-                </Field>
-              </div>
-            </section>
-
-            {/* Markdown Content & Preview */}
-            <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Eye className="size-4 text-[#00873E]" />
-                    <h2 className="text-base font-black text-slate-900">Chi tiết thể lệ & Nội dung Markdown (*)</h2>
-                  </div>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Trình bày thể lệ tham gia, mốc phần thưởng, hướng dẫn nhận quà.
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Phần tóm tắt hiển thị trên banner trang chủ, danh sách sự kiện và thẻ xem trước mạng xã hội.
                   </p>
                 </div>
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-mono text-slate-600">
-                  {form.content.length} ký tự
-                </span>
-              </div>
-
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div>
-                  <span className="mb-2 block text-xs font-bold text-slate-700">Trình soạn thảo</span>
-                  <Textarea
-                    aria-label="Nội dung Markdown"
-                    value={form.content}
-                    onChange={(input) => set('content', input.target.value)}
-                    className="min-h-[480px] font-mono text-sm leading-relaxed"
-                    placeholder={`# Thể Lệ Sự Kiện\n\n### 1. Thời gian diễn ra\nTừ ngày... đến ngày...\n\n### 2. Thể lệ chi tiết\n- Đối tượng tham gia...\n- Điều kiện nhận thưởng...\n\n### 3. Cơ cấu giải thưởng\n- Top 1: ...\n- Top 2-5: ...`}
-                    maxLength={50000}
-                  />
-                </div>
-
-                <div>
-                  <span className="mb-2 block text-xs font-bold text-slate-700">Xem trước (Live Preview)</span>
-                  <div className="min-h-[480px] max-h-[550px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/70 p-5 text-sm leading-7 shadow-2xs">
-                    {form.content ? (
-                      <SupportMarkdown>{form.content}</SupportMarkdown>
-                    ) : (
-                      <p className="text-xs italic text-slate-400">
-                        Chưa có nội dung xem trước. Hãy nhập Markdown ở khung bên trái.
-                      </p>
-                    )}
-                  </div>
-                </div>
               </div>
             </section>
 
-            {/* SEO Section */}
-            <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
-              <div className="flex items-center gap-2">
-                <Globe className="size-4 text-[#00873E]" />
-                <h2 className="text-base font-black text-slate-900">Cấu hình SEO (Tùy chọn)</h2>
+            {/* Card B: Markdown Studio & Live Preview */}
+            <section
+              className={`rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-all ${
+                isFullscreen
+                  ? 'fixed inset-0 z-50 rounded-none border-0 p-4 sm:p-6 flex flex-col overflow-hidden bg-white'
+                  : 'p-5 sm:p-6'
+              }`}
+            >
+              {/* Studio Header Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-4 text-[#00873E]" />
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                    2. Chi tiết thể lệ & Nội dung sự kiện (Markdown Studio) <span className="text-rose-500">*</span>
+                  </h2>
+                </div>
+
+                {/* View Mode Switcher & Stats */}
+                <div className="flex items-center gap-2.5">
+                  {/* Word / Reading Stats */}
+                  <div className="hidden sm:flex items-center gap-2 rounded-lg bg-slate-100/80 px-2.5 py-1 text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">{stats.words} từ</span>
+                    <span className="text-slate-300">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="size-3" />
+                      ~{stats.minutes} phút đọc
+                    </span>
+                  </div>
+
+                  {/* Mode Tabs */}
+                  <div className="flex items-center rounded-xl bg-slate-100 p-0.5 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('write')}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all ${
+                        viewMode === 'write'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <PenLine className="size-3" />
+                      <span>Soạn thảo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('preview')}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all ${
+                        viewMode === 'preview'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Eye className="size-3" />
+                      <span>Xem trước</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('split')}
+                      className={`hidden md:inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 transition-all ${
+                        viewMode === 'split'
+                          ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <SplitSquareVertical className="size-3" />
+                      <span>Chia đôi</span>
+                    </button>
+                  </div>
+
+                  {/* Fullscreen Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                    className="flex size-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                    title={isFullscreen ? 'Thoát toàn màn hình' : 'Mở rộng toàn màn hình'}
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="size-4" />
+                    ) : (
+                      <Maximize2 className="size-4" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Tối ưu hóa thẻ chia sẻ và công cụ tìm kiếm.
-              </p>
 
-              <div className="mt-5 space-y-4">
-                <Field label="SEO Title">
-                  <Input
-                    value={form.seoTitle}
-                    onChange={(input) => set('seoTitle', input.target.value)}
-                    placeholder="Mặc định lấy theo tiêu đề sự kiện nếu để trống"
-                    maxLength={240}
+              {/* Toolbar & Editor Content */}
+              <div
+                className={`mt-4 rounded-xl border border-slate-200 overflow-hidden bg-white shadow-2xs ${
+                  isFullscreen ? 'flex-1 flex flex-col min-h-0' : ''
+                }`}
+              >
+                {/* Markdown Toolbar (Visible in write and split modes) */}
+                {viewMode !== 'preview' ? (
+                  <MarkdownToolbar
+                    textareaRef={textareaRef}
+                    value={form.content}
+                    onChange={(val) => set('content', val)}
                   />
-                </Field>
+                ) : null}
 
-                <Field label="SEO Description">
+                {/* Editor & Preview Area */}
+                <div
+                  className={`grid ${
+                    viewMode === 'split'
+                      ? 'md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200'
+                      : 'grid-cols-1'
+                  } ${isFullscreen ? 'flex-1 min-h-0' : ''}`}
+                >
+                  {/* Write Pane */}
+                  {viewMode === 'write' || viewMode === 'split' ? (
+                    <div className={`p-3 sm:p-4 ${isFullscreen ? 'h-full flex flex-col' : ''}`}>
+                      <textarea
+                        ref={textareaRef}
+                        aria-label="Nội dung Markdown"
+                        value={form.content}
+                        onChange={(event) => set('content', event.target.value)}
+                        placeholder={`# Thể Lệ Sự Kiện\n\n### 1. Thời gian diễn ra\n- Bắt đầu: ...\n- Kết thúc: ...\n\n### 2. Thể lệ chi tiết\n- Đối tượng tham gia: Tất cả game thủ tại máy chủ...\n- Điều kiện nhận thưởng: ...\n\n### 3. Cơ cấu giải thưởng\n| Thứ hạng | Phần thưởng | Giá trị |\n| --- | --- | --- |\n| Top 1 | Thần Binh Huyền Thoại | 10.000 KNB |\n| Top 2-5 | Rương Trang Bị Tinh Anh | 5.000 KNB |`}
+                        className={`w-full border-0 outline-none focus:outline-none focus:ring-0 resize-none font-mono text-sm leading-relaxed p-2 text-slate-800 placeholder:text-slate-400 ${
+                          isFullscreen ? 'flex-1 min-h-0 h-full' : 'min-h-[500px]'
+                        }`}
+                        maxLength={50000}
+                      />
+                    </div>
+                  ) : null}
+
+                  {/* Preview Pane */}
+                  {viewMode === 'preview' || viewMode === 'split' ? (
+                    <div
+                      className={`overflow-y-auto bg-slate-50/60 p-5 sm:p-7 ${
+                        isFullscreen ? 'flex-1 min-h-0' : 'min-h-[500px] max-h-[750px]'
+                      }`}
+                    >
+                      <ArticleMarkdownPreview content={form.content} />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-slate-400">
+                <span>Hỗ trợ Markdown đầy đủ: # Tiêu đề, **In đậm**, [Link](url), ![Ảnh](url), Bảng biểu.</span>
+                <span>{form.content.length.toLocaleString('vi-VN')} / 50.000 ký tự</span>
+              </div>
+            </section>
+
+            {/* Card C: SEO Optimization & Google SERP Preview */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-2">
+                  <Globe className="size-4 text-[#00873E]" />
+                  <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                      3. Tối ưu SEO & Hiển thị Google (Tùy chọn)
+                    </h2>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Tùy chỉnh tiêu đề và mô tả xuất hiện trên công cụ tìm kiếm
+                    </p>
+                  </div>
+                </div>
+                <Sparkles className="size-4 text-amber-500" />
+              </div>
+
+              {/* Google SERP Preview Card Mockup */}
+              <div className="mt-4 rounded-xl border border-slate-200/90 bg-slate-50/70 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  Mô phỏng kết quả tìm kiếm Google (Google SERP Snippet)
+                </p>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs font-sans">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="flex size-4.5 items-center justify-center rounded-full bg-[#00873E] text-[10px] font-black text-white">
+                      Z
+                    </div>
+                    <div className="flex flex-col min-w-0 leading-tight">
+                      <span className="text-xs font-medium text-slate-800">ZenX Gaming Portal</span>
+                      <span className="text-[11px] text-slate-400 truncate">
+                        {publicEventUrl || `https://zenxgo.io.vn/events/${form.slug || 'slug-su-kien'}`}
+                      </span>
+                    </div>
+                  </div>
+                  <h3 className="mt-1.5 text-base font-semibold text-[#1a0dab] hover:underline cursor-pointer line-clamp-1">
+                    {form.seoTitle.trim() || form.title.trim() || 'Tiêu đề sự kiện xuất hiện trên kết quả Google'}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-[#4d5156] line-clamp-2">
+                    {form.seoDescription.trim() ||
+                      form.excerpt.trim() ||
+                      'Mô tả chi tiết sự kiện, thời gian diễn ra và phần thưởng hấp dẫn giúp thu hút game thủ tham gia...'}
+                  </p>
+                </div>
+              </div>
+
+              {/* SEO Inputs */}
+              <div className="mt-4 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="seo-title" className="text-xs font-bold text-slate-700">
+                      SEO Title
+                    </label>
+                    <span
+                      className={`text-[11px] font-mono ${
+                        form.seoTitle.length >= 40 && form.seoTitle.length <= 65
+                          ? 'text-emerald-600 font-bold'
+                          : form.seoTitle.length > 65
+                          ? 'text-rose-500 font-bold'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {form.seoTitle.length}/60 ký tự khuyến nghị
+                    </span>
+                  </div>
+                  <Input
+                    id="seo-title"
+                    value={form.seoTitle}
+                    onChange={(event) => set('seoTitle', event.target.value)}
+                    placeholder="Mặc định lấy theo Tiêu đề sự kiện nếu để trống..."
+                    maxLength={240}
+                    className="h-10 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="seo-description" className="text-xs font-bold text-slate-700">
+                      SEO Meta Description
+                    </label>
+                    <span
+                      className={`text-[11px] font-mono ${
+                        form.seoDescription.length >= 120 && form.seoDescription.length <= 165
+                          ? 'text-emerald-600 font-bold'
+                          : form.seoDescription.length > 165
+                          ? 'text-rose-500 font-bold'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {form.seoDescription.length}/160 ký tự khuyến nghị
+                    </span>
+                  </div>
                   <Textarea
+                    id="seo-description"
                     value={form.seoDescription}
-                    onChange={(input) => set('seoDescription', input.target.value)}
-                    placeholder="Mặc định lấy theo tóm tắt Excerpt nếu để trống..."
-                    className="min-h-20 text-xs"
+                    onChange={(event) => set('seoDescription', event.target.value)}
+                    placeholder="Mặc định lấy theo Tóm tắt Excerpt nếu để trống..."
+                    className="min-h-20 text-xs leading-relaxed"
                     maxLength={500}
                   />
-                </Field>
+                </div>
               </div>
             </section>
           </div>
 
-          {/* Right Col: Scope, Timeline & Banner Upload */}
+          {/* RIGHT 1 COLUMN: Sidebar & Settings */}
           <div className="space-y-6">
-            {/* Timeline & Scope */}
-            <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
-              <h3 className="font-black text-slate-900">Thiết lập & Lịch trình</h3>
+            {/* Card 1: Publish Status & Scope */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-3">
+                Xuất bản & Phạm vi
+              </h2>
 
-              <div className="mt-5 space-y-4">
-                <Field label="Trạng thái sự kiện">
-                  <Select
-                    value={form.status}
-                    onChange={(input) => set('status', input.target.value as ContentPublishStatus)}
-                    className="h-10 text-sm font-semibold"
-                  >
-                    <option value="DRAFT">📝 Bản nháp (Chưa công khai)</option>
-                    <option value="PUBLISHED">🚀 Đã xuất bản (Công khai)</option>
-                  </Select>
-                </Field>
+              <div className="mt-4 space-y-4">
+                {/* Status Segmented Control */}
+                <div>
+                  <label className="mb-2 block text-xs font-bold text-slate-700">
+                    Trạng thái sự kiện
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => set('status', 'DRAFT')}
+                      className={`flex flex-col items-center justify-center rounded-xl p-3 text-center border transition-all ${
+                        form.status === 'DRAFT'
+                          ? 'border-amber-400 bg-amber-50/70 text-amber-900 shadow-2xs font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <FileText
+                        className={`size-4.5 ${
+                          form.status === 'DRAFT' ? 'text-amber-600' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="mt-1 text-xs">Bản nháp</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Chưa công khai</span>
+                    </button>
 
-                <Field
-                  label="Phạm vi áp dụng"
-                  hint="Chọn tựa game cụ thể hoặc để toàn portal"
-                >
+                    <button
+                      type="button"
+                      onClick={() => set('status', 'PUBLISHED')}
+                      className={`flex flex-col items-center justify-center rounded-xl p-3 text-center border transition-all ${
+                        form.status === 'PUBLISHED'
+                          ? 'border-emerald-500 bg-emerald-50/70 text-emerald-900 shadow-2xs font-bold'
+                          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Globe
+                        className={`size-4.5 ${
+                          form.status === 'PUBLISHED' ? 'text-emerald-600' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="mt-1 text-xs">Xuất bản</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Hiển thị công khai</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Linked Game / Portal Scope */}
+                <div>
+                  <label htmlFor="event-game" className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Phạm vi áp dụng
+                  </label>
                   <Select
+                    id="event-game"
                     value={form.gameId}
-                    onChange={(input) => set('gameId', input.target.value)}
-                    className="h-10 text-sm"
+                    onChange={(event) => set('gameId', event.target.value)}
+                    className="h-10 text-sm font-medium"
                   >
-                    <option value="">🌐 Áp dụng toàn Portal</option>
+                    <option value="">Áp dụng toàn Portal (Tất cả game)</option>
                     {(games.data?.items ?? []).map((game) => (
                       <option key={game.id} value={game.id}>
-                        🎮 {game.name} ({game.code})
+                        {game.name} ({game.code})
                       </option>
                     ))}
                   </Select>
-                </Field>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Thời gian bắt đầu (*)">
-                    <Input
-                      type="datetime-local"
-                      value={form.startsAt}
-                      onChange={(input) => set('startsAt', input.target.value)}
-                      className="h-10 text-xs"
-                    />
-                  </Field>
-
-                  <Field label="Thời gian kết thúc (Tùy chọn)">
-                    <Input
-                      type="datetime-local"
-                      value={form.endsAt}
-                      onChange={(input) => set('endsAt', input.target.value)}
-                      className="h-10 text-xs"
-                    />
-                  </Field>
-                </div>
-
-                {/* Banner Upload with 16:9 crop tool */}
-                <div className="border-t border-slate-100 pt-4">
-                  <ImageUploadField
-                    label="Ảnh banner sự kiện (Cover Image)"
-                    value={form.coverImageUrl}
-                    onChange={(val) => set('coverImageUrl', val)}
-                    aspectRatio="16:9"
-                    placeholder="/uploads/content/... hoặc https://..."
-                    hint="Tải lên máy chủ hoặc cắt theo tỷ lệ chuẩn 16:9."
-                    modalTitle="Cắt & Chỉnh sửa banner sự kiện"
-                  />
+                  {selectedGame ? (
+                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700">
+                        {selectedGame.subdomain}
+                      </span>
+                      <span>Subdomain cổng game</span>
+                    </div>
+                  ) : (
+                    <p className="mt-1.5 text-[11px] text-slate-400">
+                      Sự kiện sẽ hiển thị trên trang chủ chung của toàn hệ thống Portal.
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* Submit Card */}
-            <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-              <div className="space-y-3">
-                <Button
-                  type="submit"
-                  disabled={pending || !canSubmit}
-                  className="w-full h-11 gap-2 bg-[#00873E] font-bold text-white hover:bg-[#007033]"
-                >
-                  <Save className="size-4" />
-                  {pending ? 'Đang lưu sự kiện…' : editing ? 'Lưu thay đổi' : 'Tạo sự kiện ngay'}
-                </Button>
-
-                {!canSubmit && (
-                  <p className="text-center text-[11px] text-amber-600">
-                    * Vui lòng nhập Tiêu đề, Slug, Excerpt, Thời gian bắt đầu và Nội dung chi tiết.
-                  </p>
-                )}
+            {/* Card 2: Timeline Schedule */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+              <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <CalendarDays className="size-4 text-[#00873E]" />
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                  Lịch trình diễn ra
+                </h2>
               </div>
+
+              <div className="mt-4 space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="event-starts-at" className="text-xs font-bold text-slate-700">
+                      Thời gian bắt đầu <span className="text-rose-500">*</span>
+                    </label>
+                  </div>
+                  <Input
+                    id="event-starts-at"
+                    type="datetime-local"
+                    value={form.startsAt}
+                    onChange={(event) => set('startsAt', event.target.value)}
+                    className="h-10 text-xs font-mono"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Thời điểm sự kiện chính thức mở cổng tham gia.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="event-ends-at" className="text-xs font-bold text-slate-700">
+                      Thời gian kết thúc (Tùy chọn)
+                    </label>
+                  </div>
+                  <Input
+                    id="event-ends-at"
+                    type="datetime-local"
+                    value={form.endsAt}
+                    onChange={(event) => set('endsAt', event.target.value)}
+                    className="h-10 text-xs font-mono"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Để trống nếu là sự kiện vô thời hạn hoặc dài hạn.
+                  </p>
+                </div>
+
+                {isDateInvalid ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700">
+                    <span className="font-bold">Lưu ý:</span> Thời gian kết thúc đang diễn ra trước hoặc trùng thời gian bắt đầu sự kiện.
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            {/* Card 3: Cover Image */}
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-3">
+                Ảnh banner sự kiện (Cover Image)
+              </h2>
+              <div className="mt-4">
+                <ImageUploadField
+                  label="Tải lên banner tỷ lệ 16:9"
+                  value={form.coverImageUrl}
+                  onChange={(val) => set('coverImageUrl', val)}
+                  aspectRatio="16:9"
+                  placeholder="/uploads/content/... hoặc https://..."
+                  hint="Tỷ lệ khuyến nghị 16:9 (1280x720 hoặc 1920x1080). Tối đa 5MB."
+                  modalTitle="Cắt & Chỉnh sửa banner sự kiện"
+                />
+              </div>
+            </section>
+
+            {/* Card 4: Metadata & Timestamps */}
+            {editing && event ? (
+              <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-6">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-3">
+                  Thông tin lưu trữ
+                </h2>
+                <dl className="mt-3.5 space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-slate-500">Mã sự kiện (ID):</dt>
+                    <dd className="flex items-center gap-1 font-mono font-bold text-slate-700">
+                      <span>{event.id.slice(0, 8)}…</span>
+                      <button
+                        type="button"
+                        onClick={copyIdToClipboard}
+                        className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        title="Sao chép toàn bộ ID"
+                      >
+                        {copiedId ? (
+                          <Check className="size-3 text-emerald-600" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </button>
+                    </dd>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <dt className="text-slate-500">Ngày tạo:</dt>
+                    <dd className="flex items-center gap-1 font-medium text-slate-700">
+                      <Calendar className="size-3 text-slate-400" />
+                      {formatDate(event.createdAt)}
+                    </dd>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <dt className="text-slate-500">Cập nhật lần cuối:</dt>
+                    <dd className="flex items-center gap-1 font-medium text-slate-700">
+                      <Clock className="size-3 text-slate-400" />
+                      {formatDate(event.updatedAt)}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            ) : null}
+
+            {/* Save Card for Mobile */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:hidden">
+              <Button
+                type="submit"
+                disabled={pending || !canSubmit}
+                className="w-full h-11 gap-2 bg-[#00873E] font-bold text-white hover:bg-[#007033]"
+              >
+                <Save className="size-4" />
+                {pending ? 'Đang lưu sự kiện…' : editing ? 'Lưu thay đổi' : 'Tạo sự kiện ngay'}
+              </Button>
             </div>
           </div>
         </div>
@@ -526,23 +1012,5 @@ function BackLink() {
     >
       <ArrowLeft className="size-4" /> Quay lại danh sách sự kiện
     </Link>
-  );
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-bold text-slate-700">{label}</span>
-      {children}
-      {hint && <span className="block text-[11px] text-slate-400">{hint}</span>}
-    </label>
   );
 }

@@ -182,19 +182,36 @@ export default function SupportTicketDetailPage() {
                 messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`rounded-2xl p-4 ${message.authorType === 'STAFF' ? 'bg-emerald-50/70' : 'bg-slate-50'}`}
+                    className={`rounded-2xl p-4 sm:p-5 border transition ${
+                      message.authorType === 'STAFF'
+                        ? 'bg-emerald-50/50 border-emerald-200/70 shadow-xs'
+                        : 'bg-slate-50 border-slate-200/70'
+                    }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-slate-800">
-                        {message.author?.fullName ||
-                          message.author?.username ||
-                          (message.authorType === 'STAFF' ? 'Đội hỗ trợ' : 'Bạn')}
-                      </p>
-                      <span className="text-[10px] text-slate-400">
+                    <div className="flex items-center justify-between gap-2 border-b border-black/5 pb-2.5 mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-900">
+                          {message.author?.fullName ||
+                            message.author?.username ||
+                            (message.authorType === 'STAFF' ? 'Đội hỗ trợ' : 'Bạn')}
+                        </p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            message.authorType === 'STAFF'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                              : 'bg-slate-200/80 text-slate-700'
+                          }`}
+                        >
+                          {message.authorType === 'STAFF' ? 'CS Staff' : 'Bạn'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-400">
                         {formatDate(message.createdAt)}
                       </span>
                     </div>
-                    <SupportMessageText>{message.body}</SupportMessageText>
+                    <div className="text-sm leading-relaxed text-slate-800">
+                      <SupportMessageText>{message.body}</SupportMessageText>
+                    </div>
                   </div>
                 ))
               ) : (

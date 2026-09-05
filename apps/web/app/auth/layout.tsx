@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Globe2 } from 'lucide-react';
+import { ChevronDown, Globe2 } from 'lucide-react';
 import { BrandLogo } from '@/components/brand-logo';
 import { PageFooter } from '@/components/page-footer';
 
@@ -19,7 +19,7 @@ export default function AuthLayout({ children }: Readonly<{ children: React.Reac
             <button className="hidden items-center gap-1.5 font-medium text-slate-700 hover:text-slate-900 sm:flex">
               <Globe2 className="size-4 text-slate-500" />
               <span>VI</span>
-              <span className="text-xs text-slate-400">⌄</span>
+              <ChevronDown className="size-3 text-slate-400" />
             </button>
             <span className="hidden h-5 w-px bg-slate-200 sm:block" />
             <div className="flex items-center gap-2">

@@ -176,7 +176,7 @@ export function NewsSection({ news, dataUnavailable = false }: { news: NewsItem[
                 </div>
 
                 {/* Bottom Content Area */}
-                <div className="relative z-10 p-4 sm:p-4.5 flex flex-col justify-end">
+                <div className="relative z-10 p-4 sm:p-5 flex flex-col justify-end">
                   {/* Title */}
                   <h3 className="font-game-title text-sm sm:text-base font-black text-white uppercase tracking-tight leading-snug drop-shadow-md group-hover:text-emerald-300 transition-colors line-clamp-1">
                     {item.title}

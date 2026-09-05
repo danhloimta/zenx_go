@@ -9,6 +9,7 @@ import {
   EyeOff,
   Gamepad2,
   Layers,
+  Plus,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -113,6 +114,11 @@ export default function AdminContentGamesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
+              <Link href="/admin/content/games/new">
+                <Plus className="size-4" /> Thêm game
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -123,7 +129,7 @@ export default function AdminContentGamesPage() {
               <RefreshCw className={`size-3.5 ${games.isFetching ? 'animate-spin' : ''}`} />
               Làm mới
             </Button>
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
+            <Button asChild variant="outline" size="sm" className="gap-2 bg-white">
               <Link href="/admin/content">
                 <Layers className="size-4" /> Tổng quan CMS
               </Link>

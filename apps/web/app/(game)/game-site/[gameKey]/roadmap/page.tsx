@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, CircleDot, Map, Radio, Flame, Sparkles } from 'lucide-react';
+import { Check, CheckCircle2, CircleDot, Map, Radio, Flame, Sparkles } from 'lucide-react';
 import { useGame } from '@/components/game/game-context';
 import { formatMilestoneStatus } from '@/lib/games-data';
 
@@ -9,9 +9,9 @@ export default function RoadmapPage() {
   const completed = game.milestones.filter((milestone) => milestone.status === 'COMPLETED').length;
   const progress = game.milestones.length ? Math.round((completed / game.milestones.length) * 100) : 0;
 
-  const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
-  const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
-  const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
+  const isOrion = game.themePreset === 'SCI_FI_SHOOTER';
+  const isHoaLong = game.themePreset === 'DARK_STRATEGY';
+  const isLucDiaDamMe = game.themePreset === 'EDITORIAL_FANTASY';
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:py-16 sm:px-6">
@@ -174,7 +174,15 @@ export default function RoadmapPage() {
                       }`}>
                         {milestone.checklist.map((item) => (
                           <li key={item} className="flex items-center gap-1.5">
-                            <span className={isOrion ? 'text-cyan-400' : isHoaLong ? 'text-amber-400' : 'text-emerald-600'}>✓</span>
+                            <Check
+                              className={`size-3.5 shrink-0 ${
+                                isOrion
+                                  ? 'text-cyan-400'
+                                  : isHoaLong
+                                    ? 'text-amber-400'
+                                    : 'text-emerald-600'
+                              }`}
+                            />
                             <span>{item}</span>
                           </li>
                         ))}

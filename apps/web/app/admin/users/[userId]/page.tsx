@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
@@ -23,13 +23,16 @@ import {
   ChevronRight,
   Shield,
   CreditCard,
+  Pencil,
+  Trash2,
+  RotateCcw,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AdminUserDetail } from '@zenx-go/api-client';
 import { useAdminUser } from '@/hooks/use-admin';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatAmount, formatDate, transactionTypeLabel } from '@/lib/utils';
+import { formatAmount, formatDate, formatDateOnly, transactionTypeLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -39,9 +42,10 @@ import { UserAvatar } from '@/components/user-avatar';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { toast } from 'sonner';
 
-type Action = 'password' | null;
+type Action = 'password' | 'editIdentity' | 'deleteUser' | null;
 
 export default function AdminUserDetailPage() {
+  const router = useRouter();
   const params = useParams<{ userId: string }>();
   const userId = typeof params.userId === 'string' ? decodeURIComponent(params.userId) : '';
   const query = useAdminUser(userId);
@@ -51,6 +55,11 @@ export default function AdminUserDetailPage() {
   const [copiedId, setCopiedId] = useState(false);
   const [reveal, setReveal] = useState<{
     identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null;
+  } | null>(null);
+  const [editIdentityData, setEditIdentityData] = useState<{
+    citizenId: string;
+    issuedAt: string;
+    issuedPlace: string;
   } | null>(null);
   const [profile, setProfile] = useState<ProfileForm | null>(null);
 
@@ -95,10 +104,18 @@ export default function AdminUserDetailPage() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: (status: 'ACTIVE' | 'SUSPENDED') =>
+    mutationFn: (status: 'ACTIVE' | 'SUSPENDED' | 'DELETED') =>
       api.admin.updateStatus(userId, { status, expectedUpdatedAt: user!.updatedAt }),
-    onSuccess: () => {
-      toast.success('Đã cập nhật trạng thái tài khoản.');
+    onSuccess: (_, status) => {
+      if (status === 'DELETED') {
+        toast.success('Đã xóa người dùng thành công.');
+        router.push('/admin/users');
+      } else if (status === 'ACTIVE') {
+        toast.success('Đã kích hoạt / khôi phục tài khoản thành công.');
+      } else {
+        toast.success('Đã cập nhật trạng thái tài khoản.');
+      }
+      setAction(null);
       invalidate();
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -135,6 +152,42 @@ export default function AdminUserDetailPage() {
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
+
+  const updateIdentityMutation = useMutation({
+    mutationFn: (identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null) =>
+      api.admin.updateSensitiveIdentity(userId, {
+        expectedUpdatedAt: user!.updatedAt,
+        identity,
+      }),
+    onSuccess: (_, identity) => {
+      toast.success(identity ? 'Đã cập nhật thông tin CCCD thành công.' : 'Đã xóa thông tin CCCD.');
+      setAction(null);
+      if (identity) {
+        setReveal({ identity });
+      } else {
+        setReveal(null);
+      }
+      invalidate();
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const handleOpenEditIdentity = async () => {
+    if (user?.sensitiveProfile.identity.configured && !reveal?.identity) {
+      try {
+        const res = await revealMutation.mutateAsync();
+        setEditIdentityData(res.identity);
+      } catch {
+        setEditIdentityData(null);
+      }
+    } else if (reveal?.identity) {
+      setEditIdentityData(reveal.identity);
+    } else {
+      setEditIdentityData(null);
+    }
+    setAction('editIdentity');
+  };
+
 
   const copyUserId = () => {
     if (!userId) return;
@@ -175,6 +228,7 @@ export default function AdminUserDetailPage() {
   }
 
   const active = user.status === 'ACTIVE';
+  const isDeleted = user.status === 'DELETED';
   const canChangeStatus = user.status === 'ACTIVE' || user.status === 'SUSPENDED';
 
   return (
@@ -286,33 +340,59 @@ export default function AdminUserDetailPage() {
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 lg:border-t-0 lg:pt-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => revokeMutation.mutate()}
-              disabled={revokeMutation.isPending}
-              className="gap-1.5 border-slate-200 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-            >
-              <LogOut className="size-3.5" /> Thu hồi phiên
-            </Button>
+            {!isDeleted ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => revokeMutation.mutate()}
+                disabled={revokeMutation.isPending}
+                className="gap-1.5 border-slate-200 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+              >
+                <LogOut className="size-3.5" /> Thu hồi phiên
+              </Button>
+            ) : null}
 
-            <Button
-              size="sm"
-              variant={active ? 'destructive' : 'default'}
-              onClick={() => statusMutation.mutate(active ? 'SUSPENDED' : 'ACTIVE')}
-              disabled={!canChangeStatus || statusMutation.isPending}
-              className="gap-1.5 font-semibold shadow-2xs"
-            >
-              {active ? (
-                <>
-                  <Ban className="size-3.5" /> Tạm ngưng
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="size-3.5" /> Kích hoạt
-                </>
-              )}
-            </Button>
+            {isDeleted ? (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => statusMutation.mutate('ACTIVE')}
+                disabled={statusMutation.isPending}
+                className="gap-1.5 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+              >
+                <RotateCcw className="size-3.5" /> Khôi phục tài khoản
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant={active ? 'destructive' : 'default'}
+                  onClick={() => statusMutation.mutate(active ? 'SUSPENDED' : 'ACTIVE')}
+                  disabled={!canChangeStatus || statusMutation.isPending}
+                  className="gap-1.5 font-semibold shadow-2xs"
+                >
+                  {active ? (
+                    <>
+                      <Ban className="size-3.5" /> Tạm ngưng
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-3.5" /> Kích hoạt
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setAction('deleteUser')}
+                  disabled={statusMutation.isPending}
+                  className="gap-1.5 border-rose-200 font-semibold text-rose-600 shadow-2xs hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <Trash2 className="size-3.5" /> Xóa người dùng
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -487,7 +567,7 @@ export default function AdminUserDetailPage() {
 
             {/* CCCD (Citizen Identity) Section */}
             <div className="mt-5 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-1.5">
                     <CreditCard className="size-4 text-slate-500" />
@@ -495,19 +575,36 @@ export default function AdminUserDetailPage() {
                   </div>
                   <p className="mt-1 font-mono text-xs font-semibold text-slate-600">
                     {user.sensitiveProfile.identity.configured
-                      ? `•••• •••• ${user.sensitiveProfile.identity.last4 ?? '****'}`
+                      ? reveal?.identity?.citizenId
+                        ? reveal.identity.citizenId
+                        : `•••• •••• ${user.sensitiveProfile.identity.last4 ?? '****'}`
                       : 'Chưa cập nhật CCCD'}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => revealMutation.mutate()}
-                  disabled={!user.sensitiveProfile.identity.configured || revealMutation.isPending}
-                  className="h-8 gap-1 border-slate-200 bg-white px-2.5 text-xs font-semibold hover:bg-slate-50"
-                >
-                  <Eye className="size-3.5" /> Xem chi tiết
-                </Button>
+                <div className="flex items-center gap-2">
+                  {user.sensitiveProfile.identity.configured ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => revealMutation.mutate()}
+                      disabled={revealMutation.isPending}
+                      className="h-8 gap-1 border-slate-200 bg-white px-2.5 text-xs font-semibold hover:bg-slate-50"
+                    >
+                      <Eye className="size-3.5" />
+                      {revealMutation.isPending ? 'Đang giải mã…' : 'Xem chi tiết'}
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="sm"
+                    variant={user.sensitiveProfile.identity.configured ? 'outline' : 'default'}
+                    onClick={handleOpenEditIdentity}
+                    disabled={revealMutation.isPending}
+                    className="h-8 gap-1 px-2.5 text-xs font-semibold border-slate-200"
+                  >
+                    <Pencil className="size-3.5" />
+                    {user.sensitiveProfile.identity.configured ? 'Chỉnh sửa' : 'Thêm CCCD'}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -538,12 +635,36 @@ export default function AdminUserDetailPage() {
         />
       ) : null}
 
+      {action === 'editIdentity' ? (
+        <EditIdentityDialog
+          user={user}
+          initialIdentity={editIdentityData}
+          onClose={() => setAction(null)}
+          onSubmit={(identity) => updateIdentityMutation.mutate(identity)}
+          pending={updateIdentityMutation.isPending}
+        />
+      ) : null}
+
+      {action === 'deleteUser' ? (
+        <DeleteUserDialog
+          user={user}
+          onClose={() => setAction(null)}
+          onConfirm={() => statusMutation.mutate('DELETED')}
+          pending={statusMutation.isPending}
+        />
+      ) : null}
+
       {reveal ? (
         <RevealDialog
           identity={reveal.identity}
           onClose={() => {
             setReveal(null);
             revealMutation.reset();
+          }}
+          onEdit={() => {
+            setEditIdentityData(reveal.identity);
+            setReveal(null);
+            setAction('editIdentity');
           }}
         />
       ) : null}
@@ -784,9 +905,11 @@ function PasswordDialog({
 function RevealDialog({
   identity,
   onClose,
+  onEdit,
 }: {
   identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null;
   onClose: () => void;
+  onEdit?: () => void;
 }) {
   const [copiedCccd, setCopiedCccd] = useState(false);
 
@@ -838,7 +961,7 @@ function RevealDialog({
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-amber-200/60">
               <div>
                 <span className="text-[11px] font-medium text-amber-700">Ngày cấp</span>
-                <p className="mt-0.5 font-bold text-slate-800">{formatDate(identity.issuedAt)}</p>
+                <p className="mt-0.5 font-bold text-slate-800">{formatDateOnly(identity.issuedAt)}</p>
               </div>
               <div>
                 <span className="text-[11px] font-medium text-amber-700">Nơi cấp</span>
@@ -852,10 +975,256 @@ function RevealDialog({
           </p>
         )}
 
-        <Button className="mt-6 w-full font-semibold" onClick={onClose}>
-          Đóng thông tin
-        </Button>
+        <div className="mt-6 flex gap-2.5">
+          {identity && onEdit ? (
+            <Button
+              variant="outline"
+              className="flex-1 font-semibold border-slate-200 hover:bg-slate-50 gap-1.5"
+              onClick={onEdit}
+            >
+              <Pencil className="size-3.5" /> Chỉnh sửa
+            </Button>
+          ) : null}
+          <Button className="flex-1 font-semibold" onClick={onClose}>
+            Đóng thông tin
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
+
+function EditIdentityDialog({
+  user,
+  initialIdentity,
+  onClose,
+  onSubmit,
+  pending,
+}: {
+  user: AdminUserDetail;
+  initialIdentity: { citizenId: string; issuedAt: string; issuedPlace: string } | null;
+  onClose: () => void;
+  onSubmit: (identity: { citizenId: string; issuedAt: string; issuedPlace: string } | null) => void;
+  pending: boolean;
+}) {
+  const [citizenId, setCitizenId] = useState(initialIdentity?.citizenId ?? '');
+  const [issuedAt, setIssuedAt] = useState(initialIdentity?.issuedAt?.slice(0, 10) ?? '');
+  const [issuedPlace, setIssuedPlace] = useState(initialIdentity?.issuedPlace ?? 'Cục Cảnh sát QLHC về TTXH');
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  const isValidCitizenId = /^\d{12}$/.test(citizenId.trim());
+  const isValidDate = Boolean(issuedAt) && issuedAt <= new Date().toISOString().slice(0, 10);
+  const isValidPlace = Boolean(issuedPlace.trim());
+  const canSubmit = isValidCitizenId && isValidDate && isValidPlace;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    onSubmit({
+      citizenId: citizenId.trim(),
+      issuedAt,
+      issuedPlace: issuedPlace.trim(),
+    });
+  };
+
+  const handleDelete = () => {
+    onSubmit(null);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-slate-900">
+              {user.sensitiveProfile.identity.configured ? 'Chỉnh sửa thông tin CCCD' : 'Thêm mới số CCCD'}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Cập nhật thông tin Căn cước công dân cho tài khoản{' '}
+              <strong className="text-slate-800">@{user.username}</strong>.
+            </p>
+          </div>
+          <button
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            onClick={onClose}
+            aria-label="Đóng hộp thoại"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          <Field label="Số CCCD (12 chữ số)">
+            <div className="relative">
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={citizenId}
+                onChange={(e) => setCitizenId(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                placeholder="Ví dụ: 001201012345"
+                className="h-10 font-mono tracking-wider text-sm pr-14"
+                maxLength={12}
+                autoFocus
+              />
+              <span
+                className={`absolute right-3 top-2.5 text-[11px] font-mono font-semibold ${
+                  citizenId.length === 12 ? 'text-emerald-600' : 'text-slate-400'
+                }`}
+              >
+                {citizenId.length}/12
+              </span>
+            </div>
+          </Field>
+
+          <Field label="Ngày cấp">
+            <Input
+              type="date"
+              value={issuedAt}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setIssuedAt(e.target.value)}
+              className="h-10 text-sm"
+            />
+          </Field>
+
+          <Field label="Nơi cấp">
+            <Input
+              type="text"
+              value={issuedPlace}
+              onChange={(e) => setIssuedPlace(e.target.value)}
+              placeholder="Ví dụ: Cục Cảnh sát QLHC về TTXH"
+              maxLength={160}
+              className="h-10 text-sm"
+            />
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {['Cục Cảnh sát QLHC về TTXH', 'Cục Cảnh sát ĐKQL cư trú và DLQG về dân cư'].map((place) => (
+                <button
+                  key={place}
+                  type="button"
+                  onClick={() => setIssuedPlace(place)}
+                  className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  {place}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {showConfirmDelete ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs">
+              <p className="font-semibold text-rose-800">Xác nhận xóa thông tin CCCD của người dùng này?</p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={pending}
+                  className="h-7 px-2.5 text-xs font-semibold"
+                >
+                  {pending ? 'Đang xóa…' : 'Xóa ngay'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowConfirmDelete(false)}
+                  disabled={pending}
+                  className="h-7 px-2.5 text-xs"
+                >
+                  Hủy
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-6 flex items-center justify-between pt-2 border-t border-slate-100">
+            {user.sensitiveProfile.identity.configured && !showConfirmDelete ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowConfirmDelete(true)}
+                disabled={pending}
+                className="h-9 px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                <Trash2 className="size-3.5 mr-1" /> Xóa CCCD
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+                Hủy
+              </Button>
+              <Button type="submit" disabled={!canSubmit || pending}>
+                {pending ? 'Đang lưu…' : 'Lưu thông tin'}
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteUserDialog({
+  user,
+  onClose,
+  onConfirm,
+  pending,
+}: {
+  user: AdminUserDetail;
+  onClose: () => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-3xl border border-rose-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-start gap-3.5">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
+            <Trash2 className="size-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-slate-900">
+              Xác nhận xóa tài khoản?
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Bạn đang thực hiện xóa mềm tài khoản <strong className="text-slate-800">@{user.username}</strong> ({user.email}).
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-rose-50/70 border border-rose-200/80 p-3.5 text-xs text-rose-900 leading-relaxed">
+          <ul className="list-disc pl-4 space-y-1 text-slate-700">
+            <li>Tài khoản sẽ chuyển sang trạng thái <strong>Đã xóa (DELETED)</strong>.</li>
+            <li>Toàn bộ phiên đăng nhập của người dùng sẽ bị <strong>thu hồi ngay lập tức</strong>.</li>
+            <li>Lịch sử số dư ví, nạp tiền và ticket vẫn được bảo toàn để phục vụ đối soát.</li>
+            <li>Bạn có thể khôi phục lại tài khoản này bất cứ lúc nào khi cần.</li>
+          </ul>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2.5">
+          <Button variant="outline" onClick={onClose} disabled={pending}>
+            Hủy bỏ
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={onConfirm}
+            disabled={pending}
+            className="font-semibold gap-1.5"
+          >
+            {pending ? 'Đang xử lý…' : (
+              <>
+                <Trash2 className="size-4" /> Xác nhận xóa
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+

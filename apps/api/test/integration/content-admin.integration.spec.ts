@@ -22,6 +22,7 @@ describe('Content admin API (SQL Server)', () => {
   let articleId = '';
   let eventId = '';
   let announcementId = '';
+  let createdGameId = '';
   const suffix = `${Date.now()}${Math.floor(Math.random() * 10_000)}`;
   const adminEmail = `content-admin-${suffix}@example.com`;
   const supportEmail = `content-support-${suffix}@example.com`;
@@ -55,6 +56,7 @@ describe('Content admin API (SQL Server)', () => {
     if (articleId) await prisma.gameArticle.delete({ where: { id: articleId } });
     if (eventId) await prisma.gameEvent.delete({ where: { id: eventId } });
     if (announcementId) await prisma.portalAnnouncement.delete({ where: { id: announcementId } });
+    if (createdGameId) await prisma.game.delete({ where: { id: createdGameId } });
     if (gameId) await prisma.game.update({ where: { id: gameId }, data: { isPublic: true, tagline: originalTagline } });
     await app.close();
   });
@@ -74,9 +76,17 @@ describe('Content admin API (SQL Server)', () => {
     expect(list.body.data.items.some((item: { id: string }) => item.id === gameId)).toBe(true);
 
     expect((await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies)).status).toBe(200);
+    const options = await http().get('/admin/content/game-options').set('Cookie', adminCookies);
+    expect(options.status).toBe(200);
+    expect(options.body.data.genres.length).toBeGreaterThan(0);
+    expect(options.body.data.platforms).toEqual([
+      { code: 'PC', label: 'PC' },
+      { code: 'MOBILE', label: 'Mobile' },
+      { code: 'WEB', label: 'Web' },
+    ]);
   });
 
-  it('updates basic fields and identifiers while keeping advanced config read-only', async () => {
+  it('updates basic fields, taxonomy and primary status while keeping advanced config read-only', async () => {
     const current = await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies);
     expect(current.status).toBe(200);
     const original = current.body.data;
@@ -87,6 +97,9 @@ describe('Content admin API (SQL Server)', () => {
     const editedSlug = `cms-game-${suffixPart}`;
     const editedSubdomain = `cms-${suffixPart}`;
     const editedCode = `CMS${suffixPart}`.slice(0, 32).toUpperCase();
+    const options = await http().get('/admin/content/game-options').set('Cookie', adminCookies);
+    const genreCodes = options.body.data.genres.slice(0, 2).map((genre: { code: string }) => genre.code);
+    const platforms = ['PC', 'MOBILE'];
     let editedUpdatedAt = '';
     try {
       const changed = await http()
@@ -100,6 +113,8 @@ describe('Content admin API (SQL Server)', () => {
           tagline: 'Basic field updated',
           recordType: original.recordType === 'REAL' ? 'DEMO' : 'REAL',
           primaryGame: !original.primaryGame,
+          genreCodes,
+          platforms,
         });
       expect(changed.status).toBe(200);
       editedUpdatedAt = changed.body.data.updatedAt;
@@ -108,7 +123,12 @@ describe('Content admin API (SQL Server)', () => {
       expect(changed.body.data.subdomain).toBe(editedSubdomain);
       expect(changed.body.data.tagline).toBe('Basic field updated');
       expect(changed.body.data.recordType).toBe(original.recordType);
-      expect(changed.body.data.primaryGame).toBe(original.primaryGame);
+      expect(changed.body.data.themePreset).toBe(original.themePreset);
+      expect(changed.body.data.themeConfig).toBe(original.themeConfig);
+      expect(changed.body.data.featureConfig).toBe(original.featureConfig);
+      expect(changed.body.data.primaryGame).toBe(!original.primaryGame);
+      expect(changed.body.data.genres.map((genre: { code: string }) => genre.code)).toEqual(genreCodes);
+      expect(changed.body.data.platforms).toEqual(platforms);
       expect((await http().get(`/games/${gameSlug}`)).status).toBe(404);
       expect((await http().get(`/games/${editedSlug}`)).status).toBe(200);
 
@@ -141,9 +161,164 @@ describe('Content admin API (SQL Server)', () => {
             slug: original.slug,
             subdomain: original.subdomain,
             tagline: original.tagline,
+            primaryGame: original.primaryGame,
+            genreCodes: original.genres.map((genre: { code: string }) => genre.code),
+            platforms: original.platforms,
           });
       }
     }
+  });
+
+  it('allows more than one game to be marked as primary and rejects empty taxonomy', async () => {
+    const current = await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies);
+    const other = await prisma.game.findFirst({ where: { id: { not: gameId } }, select: { id: true } });
+    if (!other) throw new Error('A second seed game is required');
+    const otherResponse = await http().get(`/admin/content/games/${other.id}`).set('Cookie', adminCookies);
+    const original = current.body.data;
+    const otherOriginal = otherResponse.body.data;
+    let currentUpdatedAt = '';
+    let otherUpdatedAt = '';
+    try {
+      const currentChanged = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({
+          expectedUpdatedAt: original.updatedAt,
+          primaryGame: true,
+          genreCodes: original.genres.map((genre: { code: string }) => genre.code),
+          platforms: original.platforms,
+        });
+      expect(currentChanged.status).toBe(200);
+      currentUpdatedAt = currentChanged.body.data.updatedAt;
+
+      const otherChanged = await http()
+        .patch(`/admin/content/games/${other.id}`)
+        .set('Cookie', adminCookies)
+        .send({
+          expectedUpdatedAt: otherOriginal.updatedAt,
+          primaryGame: true,
+          genreCodes: otherOriginal.genres.map((genre: { code: string }) => genre.code),
+          platforms: otherOriginal.platforms,
+        });
+      expect(otherChanged.status).toBe(200);
+      otherUpdatedAt = otherChanged.body.data.updatedAt;
+      expect((await http().get(`/admin/content/games/${gameId}`).set('Cookie', adminCookies)).body.data.primaryGame).toBe(true);
+      expect((await http().get(`/admin/content/games/${other.id}`).set('Cookie', adminCookies)).body.data.primaryGame).toBe(true);
+
+      const emptyGenres = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: currentUpdatedAt, genreCodes: [], platforms: original.platforms });
+      expect(emptyGenres.status).toBe(400);
+
+      const emptyPlatforms = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: currentUpdatedAt, genreCodes: original.genres.map((genre: { code: string }) => genre.code), platforms: [] });
+      expect(emptyPlatforms.status).toBe(400);
+
+      const duplicateGenres = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: currentUpdatedAt, genreCodes: [original.genres[0].code, original.genres[0].code], platforms: original.platforms });
+      expect(duplicateGenres.status).toBe(400);
+
+      const unknownGenre = await http()
+        .patch(`/admin/content/games/${gameId}`)
+        .set('Cookie', adminCookies)
+        .send({ expectedUpdatedAt: currentUpdatedAt, genreCodes: ['NOT_A_GENRE'], platforms: original.platforms });
+      expect(unknownGenre.status).toBe(400);
+    } finally {
+      if (currentUpdatedAt) {
+        await http().patch(`/admin/content/games/${gameId}`).set('Cookie', adminCookies).send({
+          expectedUpdatedAt: currentUpdatedAt,
+          primaryGame: original.primaryGame,
+          genreCodes: original.genres.map((genre: { code: string }) => genre.code),
+          platforms: original.platforms,
+        });
+      }
+      if (otherUpdatedAt) {
+        await http().patch(`/admin/content/games/${other.id}`).set('Cookie', adminCookies).send({
+          expectedUpdatedAt: otherUpdatedAt,
+          primaryGame: otherOriginal.primaryGame,
+          genreCodes: otherOriginal.genres.map((genre: { code: string }) => genre.code),
+          platforms: otherOriginal.platforms,
+        });
+      }
+    }
+  });
+
+  it('creates a private game with safe defaults and rejects duplicate identities', async () => {
+    const suffixPart = suffix.slice(-12);
+    const response = await http()
+      .post('/admin/content/games')
+      .set('Cookie', adminCookies)
+      .send({
+        themePreset: 'EDITORIAL_FANTASY',
+        code: `NEW${suffixPart}`.slice(0, 32),
+        name: 'Game CMS mới',
+        slug: `Game CMS ${suffixPart}`,
+        subdomain: `new-${suffixPart}`,
+        tagline: 'Tạo từ CMS',
+        genreCodes: ['CASUAL'],
+        platforms: ['WEB'],
+      });
+    expect(response.status).toBe(201);
+    createdGameId = response.body.data.id;
+    expect(response.body.data.slug).toBe(`game-cms-${suffixPart}`);
+    expect(response.body.data.lifecycleStatus).toBe('CONCEPT');
+    expect(response.body.data.operationalStatus).toBe('UNAVAILABLE');
+    expect(response.body.data.isPublic).toBe(false);
+    expect(response.body.data.recordType).toBe('REAL');
+
+    const duplicate = await http()
+      .post('/admin/content/games')
+      .set('Cookie', adminCookies)
+      .send({ themePreset: 'EDITORIAL_FANTASY', code: response.body.data.code, name: 'Trùng game', slug: `duplicate-${suffixPart}`, subdomain: `dup-${suffixPart}`, genreCodes: ['CASUAL'], platforms: ['WEB'] });
+    expect(duplicate.status).toBe(409);
+
+    const reserved = await http()
+      .post('/admin/content/games')
+      .set('Cookie', adminCookies)
+      .send({ themePreset: 'EDITORIAL_FANTASY', code: `BAD${suffixPart}`.slice(0, 32), name: 'Game lỗi', slug: `bad-${suffixPart}`, subdomain: 'admin', genreCodes: ['CASUAL'], platforms: ['WEB'] });
+    expect(reserved.status).toBe(400);
+  });
+
+  it('serves template metadata, previews private games and gates publishing on readiness', async () => {
+    const templates = await http().get('/admin/content/game-templates').set('Cookie', adminCookies);
+    expect(templates.status).toBe(200);
+    expect(templates.body.data.map((template: { id: string }) => template.id)).toEqual([
+      'EDITORIAL_FANTASY',
+      'DARK_STRATEGY',
+      'PLAYFUL_CASUAL',
+      'SCI_FI_SHOOTER',
+    ]);
+
+    const preview = await http().get(`/admin/content/games/${createdGameId}/preview`).set('Cookie', adminCookies);
+    expect(preview.status).toBe(200);
+    expect(preview.body.data.isPublic).toBe(false);
+    expect(preview.body.data.pageConfig.preset).toBe('EDITORIAL_FANTASY');
+
+    const readiness = await http().get(`/admin/content/games/${createdGameId}/readiness`).set('Cookie', adminCookies);
+    expect(readiness.status).toBe(200);
+    expect(readiness.body.data.ready).toBe(false);
+    expect(readiness.body.data.errors.some((error: { field: string }) => error.field === 'longDescription')).toBe(true);
+
+    const current = await http().get(`/admin/content/games/${createdGameId}`).set('Cookie', adminCookies);
+    const invalidPresentation = await http()
+      .patch(`/admin/content/games/${createdGameId}/presentation`)
+      .set('Cookie', adminCookies)
+      .send({ expectedUpdatedAt: current.body.data.updatedAt, themeConfig: {}, featureConfig: {}, pageConfig: {} });
+    expect(invalidPresentation.status).toBe(400);
+
+    const directPublic = await http()
+      .patch(`/admin/content/games/${createdGameId}`)
+      .set('Cookie', adminCookies)
+      .send({ expectedUpdatedAt: current.body.data.updatedAt, isPublic: true });
+    expect(directPublic.status).toBe(400);
+
+    const publish = await http().post(`/admin/content/games/${createdGameId}/publish`).set('Cookie', adminCookies);
+    expect(publish.status).toBe(400);
   });
 
   it('keeps draft articles/events out of public API and publishes them safely', async () => {

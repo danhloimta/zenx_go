@@ -253,6 +253,45 @@ describe('Admin API (SQL Server)', () => {
       });
     expect(lastAdmin.status).toBe(400);
     expect(lastAdmin.body.error.code).toBe('ADMIN_SELF_ACTION_FORBIDDEN');
+
+    const memberDetailBeforeDelete = (await http().get(`/admin/users/${memberId}`).set('Cookie', adminCookies)).body.data;
+    const deleteRes = await http()
+      .delete(`/admin/users/${memberId}`)
+      .set('Cookie', adminCookies)
+      .send({ expectedUpdatedAt: memberDetailBeforeDelete.updatedAt });
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.data.status).toBe('DELETED');
+
+    const deletedLogin = await http()
+      .post('/auth/login')
+      .send({ username: memberEmail, password: 'MemberPassword123!' });
+    expect(deletedLogin.status).toBe(403);
+    expect(deletedLogin.body.error.code).toBe('ACCOUNT_DELETED');
+
+    const defaultListAfterDelete = await http()
+      .get('/admin/users')
+      .query({ search: memberEmail })
+      .set('Cookie', adminCookies);
+    expect(defaultListAfterDelete.status).toBe(200);
+    expect(defaultListAfterDelete.body.data.items).toHaveLength(0);
+
+    const deletedFilterList = await http()
+      .get('/admin/users')
+      .query({ search: memberEmail, status: 'DELETED' })
+      .set('Cookie', adminCookies);
+    expect(deletedFilterList.status).toBe(200);
+    expect(deletedFilterList.body.data.items).toHaveLength(1);
+    expect(deletedFilterList.body.data.items[0].id).toBe(memberId);
+
+    const restoreRes = await http()
+      .patch(`/admin/users/${memberId}/status`)
+      .set('Cookie', adminCookies)
+      .send({
+        expectedUpdatedAt: deleteRes.body.data.updatedAt,
+        status: 'ACTIVE',
+      });
+    expect(restoreRes.status).toBe(200);
+    expect(restoreRes.body.data.status).toBe('ACTIVE');
   });
 
   it('sets a temporary password, enforces password change, reveals CCCD, and keeps wallet read-only', async () => {
@@ -302,6 +341,35 @@ describe('Admin API (SQL Server)', () => {
       issuedAt: '2024-05-20',
       issuedPlace: 'Cục Cảnh sát',
     });
+
+    const updatedCccd = '079090000999';
+    const updateIdentity = await http()
+      .patch(`/admin/users/${memberId}/sensitive-profile/identity`)
+      .set('Cookie', adminCookies)
+      .send({
+        expectedUpdatedAt: detail.updatedAt,
+        identity: {
+          citizenId: updatedCccd,
+          issuedAt: '2025-01-15',
+          issuedPlace: 'Cục Cảnh sát QLHC về TTXH',
+        },
+      });
+    expect(updateIdentity.status).toBe(200);
+    expect(updateIdentity.body.data.sensitiveProfile.identity).toEqual({
+      configured: true,
+      last4: '0999',
+    });
+
+    const revealedUpdated = await http()
+      .post(`/admin/users/${memberId}/sensitive-profile/reveal`)
+      .set('Cookie', adminCookies);
+    expect(revealedUpdated.status).toBe(201);
+    expect(revealedUpdated.body.data.identity).toEqual({
+      citizenId: updatedCccd,
+      issuedAt: '2025-01-15',
+      issuedPlace: 'Cục Cảnh sát QLHC về TTXH',
+    });
+
     const auditRoute = await http().get('/admin/audit-logs').set('Cookie', adminCookies);
     expect(auditRoute.status).toBe(404);
     expect(detail.wallet.balance).toBe('1234');
@@ -315,6 +383,8 @@ describe('Admin API (SQL Server)', () => {
         request(app.getHttpServer()).post(`/api/v1${path}`).set('Origin', 'http://localhost:3000'),
       patch: (path: string) =>
         request(app.getHttpServer()).patch(`/api/v1${path}`).set('Origin', 'http://localhost:3000'),
+      delete: (path: string) =>
+        request(app.getHttpServer()).delete(`/api/v1${path}`).set('Origin', 'http://localhost:3000'),
     };
   }
 

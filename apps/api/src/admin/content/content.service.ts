@@ -18,10 +18,13 @@ import {
   AdminContentEventCreateDto,
   AdminContentEventUpdateDto,
   AdminContentEventsQueryDto,
+  AdminContentGameCreateDto,
+  AdminContentGamePresentationUpdateDto,
   AdminContentGameUpdateDto,
   AdminContentGamesQueryDto,
 } from './content.dto';
 import { assertAssetUrl, assertContentMarkdown, assertCtaPath, normalizeSlug } from './content-markdown';
+import { checkGameReadiness, createPageConfig, getGameTemplate, listGameTemplates, parseGamePageConfig, validateGameFeatureConfig, validateGamePageConfig, validateGameThemeConfig } from './game-templates';
 
 const ASSET_EXTENSIONS: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -34,6 +37,13 @@ const ASSET_EXTENSIONS: Record<string, string> = {
 const ASSET_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export type AssetUpload = { buffer: Buffer; mimetype: string; size?: number };
+
+const GAME_PLATFORM_OPTIONS = [
+  { code: 'PC', label: 'PC' },
+  { code: 'MOBILE', label: 'Mobile' },
+  { code: 'WEB', label: 'Web' },
+] as const;
+const GAME_PLATFORMS = GAME_PLATFORM_OPTIONS.map(({ code }) => code);
 
 const GAME_SELECT = {
   id: true,
@@ -49,8 +59,10 @@ const GAME_SELECT = {
   operationalStatus: true,
   releaseYear: true,
   themePreset: true,
+  templateVersion: true,
   themeConfig: true,
   featureConfig: true,
+  pageConfig: true,
   logoUrl: true,
   iconUrl: true,
   coverUrl: true,
@@ -216,6 +228,75 @@ export class ContentAdminService {
     return this.publicGame(game);
   }
 
+  listGameTemplates() {
+    return listGameTemplates();
+  }
+
+  async gameOptions() {
+    const genres = await this.prisma.genre.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { code: 'asc' }],
+      select: { code: true, name: true, slug: true },
+    });
+    return { genres, platforms: GAME_PLATFORM_OPTIONS };
+  }
+
+  async createGame(dto: AdminContentGameCreateDto) {
+    const template = getGameTemplate(dto.themePreset);
+    const code = dto.code.trim().toUpperCase();
+    const slug = normalizeGameSlug(dto.slug);
+    const subdomain = normalizeGameSubdomain(dto.subdomain);
+    assertGameSubdomain(subdomain);
+    const genreCodes = normalizeGameCodes(dto.genreCodes);
+    const platforms = normalizeGamePlatforms(dto.platforms);
+    const genreIds = await this.resolveGenreIds(genreCodes);
+    const assetFields = ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const;
+    for (const field of assetFields) assertAssetUrl(dto[field]);
+    assertCtaPath(dto.primaryCtaPath);
+    assertCtaPath(dto.secondaryCtaPath);
+
+    try {
+      const game = await this.prisma.game.create({
+        data: {
+          code,
+          slug,
+          subdomain,
+          name: dto.name,
+          tagline: dto.tagline ?? '',
+          shortDescription: dto.shortDescription ?? '',
+          longDescription: dto.longDescription,
+          lifecycleStatus: dto.lifecycleStatus ?? 'CONCEPT',
+          operationalStatus: dto.operationalStatus ?? 'UNAVAILABLE',
+          releaseYear: dto.releaseYear,
+          recordType: 'REAL',
+          themePreset: template.id,
+          templateVersion: 1,
+          themeConfig: JSON.stringify(template.theme),
+          featureConfig: JSON.stringify(template.featureConfig),
+          pageConfig: JSON.stringify(createPageConfig(template.id, dto.name, dto.tagline ?? '', dto.shortDescription ?? '')),
+          logoUrl: dto.logoUrl,
+          iconUrl: dto.iconUrl,
+          coverUrl: dto.coverUrl,
+          heroDesktopUrl: dto.heroDesktopUrl,
+          heroMobileUrl: dto.heroMobileUrl,
+          primaryCtaLabel: dto.primaryCtaLabel,
+          primaryCtaPath: dto.primaryCtaPath,
+          secondaryCtaLabel: dto.secondaryCtaLabel,
+          secondaryCtaPath: dto.secondaryCtaPath,
+          featured: dto.featured ?? false,
+          isPublic: false,
+          sortOrder: dto.sortOrder ?? 0,
+          genres: { create: genreIds.map((genreId) => ({ genreId })) },
+          platforms: { create: platforms.map((platform) => ({ platform })) },
+        },
+        select: { id: true },
+      });
+      return this.getGame(game.id);
+    } catch (error) {
+      this.rethrowUnique(error);
+      throw error;
+    }
+  }
+
   async updateGame(gameId: string, dto: AdminContentGameUpdateDto) {
     const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: GAME_SELECT });
     if (!current) throw this.notFound('Game not found');
@@ -225,6 +306,13 @@ export class ContentAdminService {
     const slug = dto.slug === undefined ? undefined : normalizeGameSlug(dto.slug);
     const subdomain = dto.subdomain === undefined ? undefined : normalizeGameSubdomain(dto.subdomain);
     if (subdomain !== undefined) assertGameSubdomain(subdomain);
+    const genreCodes = dto.genreCodes === undefined ? undefined : normalizeGameCodes(dto.genreCodes);
+    const platforms = dto.platforms === undefined ? undefined : normalizeGamePlatforms(dto.platforms);
+    const effectiveGenreCodes = genreCodes ?? current.genres.map(({ genre }) => genre.code);
+    const effectivePlatforms = platforms ?? current.platforms.map(({ platform }) => platform);
+    if (effectiveGenreCodes.length === 0) throw this.invalidState('At least one genre is required');
+    if (effectivePlatforms.length === 0) throw this.invalidState('At least one platform is required');
+    const genreIds = genreCodes === undefined ? undefined : await this.resolveGenreIds(genreCodes);
     const assetFields = ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const;
     for (const field of assetFields) assertAssetUrl(dto[field]);
     assertCtaPath(dto.primaryCtaPath);
@@ -251,8 +339,10 @@ export class ContentAdminService {
       'secondaryCtaLabel',
       'secondaryCtaPath',
       'featured',
-      'isPublic',
+      'primaryGame',
       'sortOrder',
+      'genreCodes',
+      'platforms',
     ].filter(
       (field) => dto[field as keyof AdminContentGameUpdateDto] !== undefined,
     );
@@ -279,14 +369,48 @@ export class ContentAdminService {
       ...(dto.secondaryCtaLabel !== undefined ? { secondaryCtaLabel: dto.secondaryCtaLabel } : {}),
       ...(dto.secondaryCtaPath !== undefined ? { secondaryCtaPath: dto.secondaryCtaPath } : {}),
       ...(dto.featured !== undefined ? { featured: dto.featured } : {}),
-      ...(dto.isPublic !== undefined ? { isPublic: dto.isPublic } : {}),
+      ...(dto.primaryGame !== undefined ? { primaryGame: dto.primaryGame } : {}),
       ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
       updatedAt: new Date(),
     };
     try {
+      await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.game.updateMany({
+          where: { id: gameId, updatedAt: current.updatedAt },
+          data,
+        });
+        if (updated.count !== 1) throw this.stale('The game was changed by another operator');
+        if (genreIds !== undefined) {
+          await tx.gameGenre.deleteMany({ where: { gameId } });
+          await tx.gameGenre.createMany({
+            data: genreIds.map((genreId) => ({ gameId, genreId })),
+          });
+        }
+        if (platforms !== undefined) {
+          await tx.gamePlatform.deleteMany({ where: { gameId } });
+          await tx.gamePlatform.createMany({
+            data: platforms.map((platform) => ({ gameId, platform })),
+          });
+        }
+      });
+    } catch (error) {
+      this.rethrowUnique(error);
+      throw error;
+    }
+    return this.getGame(gameId);
+  }
+
+  async updateGamePresentation(gameId: string, dto: AdminContentGamePresentationUpdateDto) {
+    const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: { id: true, themePreset: true, updatedAt: true } });
+    if (!current) throw this.notFound('Game not found');
+    this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
+    const themeConfig = validateGameThemeConfig(dto.themeConfig);
+    const featureConfig = validateGameFeatureConfig(dto.featureConfig);
+    const pageConfig = validateGamePageConfig(dto.pageConfig, current.themePreset);
+    try {
       const updated = await this.prisma.game.updateMany({
         where: { id: gameId, updatedAt: current.updatedAt },
-        data,
+        data: { themeConfig: JSON.stringify(themeConfig), featureConfig: JSON.stringify(featureConfig), pageConfig: JSON.stringify(pageConfig), updatedAt: new Date() },
       });
       if (updated.count !== 1) throw this.stale('The game was changed by another operator');
     } catch (error) {
@@ -294,6 +418,65 @@ export class ContentAdminService {
       throw error;
     }
     return this.getGame(gameId);
+  }
+
+  async gameReadiness(gameId: string) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: {
+        ...GAME_SELECT,
+        articles: { select: { status: true } },
+        milestones: { select: { id: true } },
+      },
+    });
+    if (!game) throw this.notFound('Game not found');
+    return checkGameReadiness(game);
+  }
+
+  async publishGame(gameId: string) {
+    const readiness = await this.gameReadiness(gameId);
+    if (!readiness.ready) throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game is not ready to publish', 400);
+    const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: { updatedAt: true } });
+    if (!current) throw this.notFound('Game not found');
+    try {
+      const updated = await this.prisma.game.updateMany({ where: { id: gameId, updatedAt: current.updatedAt }, data: { isPublic: true, updatedAt: new Date() } });
+      if (updated.count !== 1) throw this.stale('The game was changed by another operator');
+    } catch (error) {
+      this.rethrowUnique(error);
+      throw error;
+    }
+    return this.getGame(gameId);
+  }
+
+  async unpublishGame(gameId: string) {
+    const current = await this.prisma.game.findUnique({ where: { id: gameId }, select: { updatedAt: true } });
+    if (!current) throw this.notFound('Game not found');
+    const updated = await this.prisma.game.updateMany({ where: { id: gameId, updatedAt: current.updatedAt }, data: { isPublic: false, updatedAt: new Date() } });
+    if (updated.count !== 1) throw this.stale('The game was changed by another operator');
+    return this.getGame(gameId);
+  }
+
+  async previewGame(gameId: string) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: {
+        ...GAME_SELECT,
+        articles: { where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] },
+        milestones: { orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }] },
+      },
+    });
+    if (!game) throw this.notFound('Game not found');
+    const parsedTheme = JSON.parse(game.themeConfig);
+    const parsedFeatureConfig = JSON.parse(game.featureConfig);
+    const pageConfig = parseGamePageConfig(game.pageConfig, game.themePreset);
+    return {
+      ...this.publicGame(game),
+      theme: parsedTheme,
+      featureConfig: parsedFeatureConfig,
+      pageConfig,
+      articles: game.articles.map((article) => ({ title: article.title, slug: article.slug, excerpt: article.excerpt, coverImageUrl: article.coverImageUrl, category: article.category, publishedAt: article.publishedAt, seoTitle: article.seoTitle, seoDescription: article.seoDescription })),
+      milestones: game.milestones.map((milestone) => ({ title: milestone.title, description: milestone.description, displayPeriod: milestone.displayPeriod, status: milestone.status, checklist: parseChecklist(milestone.checklistConfig), sortOrder: milestone.sortOrder })),
+    };
   }
 
   async listArticles(query: AdminContentArticlesQueryDto) {
@@ -619,7 +802,9 @@ export class ContentAdminService {
     return {
       ...game,
       genres: game.genres.map(({ genre }) => genre),
-      platforms: game.platforms.map(({ platform }) => platform),
+      platforms: game.platforms
+        .map(({ platform }) => platform)
+        .sort((left, right) => GAME_PLATFORMS.indexOf(left as (typeof GAME_PLATFORMS)[number]) - GAME_PLATFORMS.indexOf(right as (typeof GAME_PLATFORMS)[number])),
     };
   }
 
@@ -724,6 +909,17 @@ export class ContentAdminService {
     return new DomainError(ErrorCode.CONTENT_INVALID_STATE, message, 400);
   }
 
+  private async resolveGenreIds(codes: string[]) {
+    const genres = await this.prisma.genre.findMany({
+      where: { code: { in: codes } },
+      select: { code: true, id: true },
+    });
+    const idsByCode = new Map(genres.map((genre) => [genre.code, genre.id]));
+    const missing = codes.filter((code) => !idsByCode.has(code));
+    if (missing.length) throw this.invalidState(`Unknown genre: ${missing.join(', ')}`);
+    return codes.map((code) => idsByCode.get(code)!);
+  }
+
   private stale(message: string) {
     return new DomainError(ErrorCode.STALE_ADMIN_UPDATE, message, 409);
   }
@@ -737,6 +933,34 @@ function normalizeGameSlug(value: string) {
 
 function normalizeGameSubdomain(value: string) {
   return value.trim().toLowerCase();
+}
+
+function normalizeGameCodes(values: string[]) {
+  const normalized = values.map((value) => value.trim().toUpperCase());
+  if (new Set(normalized).size !== normalized.length) {
+    throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game genres must be unique', 400);
+  }
+  return normalized;
+}
+
+function normalizeGamePlatforms(values: Array<'PC' | 'MOBILE' | 'WEB'>) {
+  const normalized = values.map((value) => value.trim().toUpperCase());
+  if (new Set(normalized).size !== normalized.length) {
+    throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game platforms must be unique', 400);
+  }
+  if (normalized.some((value) => !GAME_PLATFORMS.includes(value as (typeof GAME_PLATFORMS)[number]))) {
+    throw new DomainError(ErrorCode.CONTENT_INVALID_STATE, 'Game platform is invalid', 400);
+  }
+  return normalized as Array<'PC' | 'MOBILE' | 'WEB'>;
+}
+
+function parseChecklist(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) && parsed.every((item) => typeof item === 'string') ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function assertGameSubdomain(value: string) {

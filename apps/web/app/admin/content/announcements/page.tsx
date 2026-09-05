@@ -493,8 +493,8 @@ function AnnouncementDialog({
                 onChange={(event) => set('status', event.target.value as ContentPublishStatus)}
                 className="h-10 text-xs font-bold"
               >
-                <option value="DRAFT">📝 Bản nháp</option>
-                <option value="PUBLISHED">🚀 Đã xuất bản (Công khai)</option>
+                <option value="DRAFT">Bản nháp</option>
+                <option value="PUBLISHED">Đã xuất bản (Công khai)</option>
               </Select>
             </Field>
           </div>

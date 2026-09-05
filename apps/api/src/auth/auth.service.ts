@@ -96,6 +96,8 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
     if (user.status === AccountStatus.SUSPENDED)
       throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.DELETED)
+      throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
     const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo);
     return { ...(await this.issueTokens(user.id, user.username, user)), redirectTo };
   }
@@ -110,6 +112,8 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
     if (user.status === AccountStatus.SUSPENDED)
       throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.DELETED)
+      throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
     return this.issueTokens(user.id, user.username, user);
   }
 
@@ -138,6 +142,8 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_LOCKED, 'Account is locked', 403);
     if (user.status === AccountStatus.SUSPENDED)
       throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
+    if (user.status === AccountStatus.DELETED)
+      throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
     if ((payload.av ?? 0) !== user.authVersion)
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Authentication required', 401);
     return payload;
@@ -160,7 +166,10 @@ export class AuthService {
       !session ||
       session.expiresAt <= new Date() ||
       !(await argon2.verify(session.tokenHash, refreshToken)) ||
-      (payload.av ?? 0) !== session.user.authVersion
+      (payload.av ?? 0) !== session.user.authVersion ||
+      session.user.status === AccountStatus.DELETED ||
+      session.user.status === AccountStatus.SUSPENDED ||
+      session.user.status === AccountStatus.LOCKED
     ) {
       throw new DomainError(ErrorCode.INVALID_CREDENTIALS, 'Refresh session is invalid', 401);
     }

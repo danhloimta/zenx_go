@@ -104,7 +104,35 @@ export function normalizeSecurityAnswer(value: string) {
   return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase('vi-VN');
 }
 
+export function validateCitizenIdentity(identity: SensitiveIdentityDto) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(identity.issuedAt);
+  const issuedAt = match
+    ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+    : new Date(Number.NaN);
+  const validCalendarDate = Boolean(
+    match &&
+    issuedAt.getUTCFullYear() === Number(match[1]) &&
+    issuedAt.getUTCMonth() === Number(match[2]) - 1 &&
+    issuedAt.getUTCDate() === Number(match[3]),
+  );
+  if (!validCalendarDate || issuedAt > new Date()) {
+    throw new DomainError(
+      ErrorCode.INVALID_SENSITIVE_PROFILE,
+      'Citizen ID issue date is invalid',
+      400,
+    );
+  }
+  if (!identity.issuedPlace.trim()) {
+    throw new DomainError(
+      ErrorCode.INVALID_SENSITIVE_PROFILE,
+      'Citizen ID issue place is required',
+      400,
+    );
+  }
+}
+
 @Injectable()
+
 export class SensitiveProfileService {
   constructor(
     private readonly prisma: PrismaService,
@@ -405,31 +433,9 @@ export class SensitiveProfileService {
   }
 
   private validateIdentity(identity: SensitiveIdentityDto) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(identity.issuedAt);
-    const issuedAt = match
-      ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
-      : new Date(Number.NaN);
-    const validCalendarDate = Boolean(
-      match &&
-      issuedAt.getUTCFullYear() === Number(match[1]) &&
-      issuedAt.getUTCMonth() === Number(match[2]) - 1 &&
-      issuedAt.getUTCDate() === Number(match[3]),
-    );
-    if (!validCalendarDate || issuedAt > new Date()) {
-      throw new DomainError(
-        ErrorCode.INVALID_SENSITIVE_PROFILE,
-        'Citizen ID issue date is invalid',
-        400,
-      );
-    }
-    if (!identity.issuedPlace.trim()) {
-      throw new DomainError(
-        ErrorCode.INVALID_SENSITIVE_PROFILE,
-        'Citizen ID issue place is required',
-        400,
-      );
-    }
+    validateCitizenIdentity(identity);
   }
+
 
   private toSummary(
     profile: {

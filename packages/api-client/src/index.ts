@@ -241,7 +241,7 @@ export type SensitiveChallengeMethod = 'SECRET_CODE' | 'SECURITY_ANSWER';
 export type SecurityQuestionCode =
   'CHILDHOOD_NICKNAME' | 'FIRST_SCHOOL' | 'FIRST_PET' | 'FAVORITE_TEACHER' | 'MEMORABLE_PLACE';
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'UNSPECIFIED';
-export type AccountStatus = 'PENDING' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED';
+export type AccountStatus = 'PENDING' | 'ACTIVE' | 'LOCKED' | 'SUSPENDED' | 'DELETED';
 export type WalletTransactionType = 'TOPUP' | 'CREDIT' | 'DEBIT' | 'REFUND';
 export type WalletTransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERSED';
 export type PaymentStatus =
@@ -399,7 +399,7 @@ export interface AdminProfileUpdateRequest {
 
 export interface AdminStatusUpdateRequest {
   expectedUpdatedAt: string;
-  status: 'ACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
 }
 
 export interface AdminResetPasswordRequest {
@@ -407,6 +407,12 @@ export interface AdminResetPasswordRequest {
   temporaryPassword: string;
   temporaryPasswordConfirmation: string;
 }
+
+export interface AdminUpdateSensitiveIdentityRequest {
+  expectedUpdatedAt: string;
+  identity?: SensitiveProfileIdentity | null;
+}
+
 
 export interface UpdateAccountRequest extends Partial<UserProfile> {}
 
@@ -533,6 +539,7 @@ export interface Paginated<T> {
   pageSize: number;
   total: number;
   totalPages?: number;
+  statusCounts?: Record<AccountStatus | 'ALL', number>;
 }
 
 export interface CoinPackage {
@@ -769,6 +776,13 @@ export interface GameGenre {
   slug: string;
 }
 
+export type GamePlatform = 'PC' | 'MOBILE' | 'WEB';
+
+export interface AdminContentGameOptions {
+  genres: GameGenre[];
+  platforms: Array<{ code: GamePlatform; label: string }>;
+}
+
 export interface ThemeConfig {
   primary: string;
   secondary?: string;
@@ -789,6 +803,36 @@ export interface FeatureConfig {
   [key: string]: unknown;
 }
 
+export type GameTemplatePreset =
+  | 'EDITORIAL_FANTASY'
+  | 'DARK_STRATEGY'
+  | 'PLAYFUL_CASUAL'
+  | 'SCI_FI_SHOOTER';
+
+export interface GamePageItem {
+  title: string;
+  description?: string;
+  imageUrl?: string | null;
+  eyebrow?: string;
+  href?: string | null;
+  [key: string]: unknown;
+}
+
+export interface GamePageConfig {
+  schemaVersion: number;
+  preset: GameTemplatePreset;
+  legacyRenderer?: GameTemplatePreset;
+  hero: { eyebrow: string; title: string; description: string; imageUrl?: string | null; mobileImageUrl?: string | null };
+  intro: { eyebrow: string; title: string; description: string; imageUrl?: string | null };
+  featureCards: GamePageItem[];
+  gallery: GamePageItem[];
+  faqs: Array<{ question: string; answer: string }>;
+  roles: GamePageItem[];
+  locations: GamePageItem[];
+  equipment: GamePageItem[];
+  closing: { eyebrow: string; title: string; description: string; imageUrl?: string | null };
+}
+
 export interface GameSummary {
   code: string;
   name: string;
@@ -800,7 +844,7 @@ export interface GameSummary {
   lifecycleStatus: GameLifecycleStatus;
   operationalStatus: GameOperationalStatus;
   releaseYear?: number | null;
-  themePreset: string;
+  themePreset: GameTemplatePreset;
   logoUrl?: string | null;
   iconUrl?: string | null;
   coverUrl?: string | null;
@@ -853,6 +897,7 @@ export interface GameDetail extends GameSummary {
   longDescription?: string | null;
   theme: ThemeConfig;
   featureConfig: FeatureConfig;
+  pageConfig: GamePageConfig;
   articles: GameArticleSummary[];
   milestones: GameMilestone[];
 }
@@ -939,6 +984,8 @@ export interface AdminContentGame extends GameSummary {
   longDescription?: string | null;
   themeConfig: string;
   featureConfig: string;
+  templateVersion: number;
+  pageConfig: string;
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1010,8 +1057,60 @@ export interface AdminContentGameUpdateRequest {
   secondaryCtaLabel?: string | null;
   secondaryCtaPath?: string | null;
   featured?: boolean;
-  isPublic?: boolean;
+  primaryGame?: boolean;
   sortOrder?: number;
+  genreCodes?: string[];
+  platforms?: GamePlatform[];
+}
+
+export interface AdminContentGameCreateRequest {
+  themePreset: GameTemplatePreset;
+  code: string;
+  slug: string;
+  subdomain: string;
+  name: string;
+  tagline?: string;
+  shortDescription?: string;
+  longDescription?: string | null;
+  lifecycleStatus?: GameLifecycleStatus;
+  operationalStatus?: GameOperationalStatus;
+  releaseYear?: number | null;
+  logoUrl?: string | null;
+  iconUrl?: string | null;
+  coverUrl?: string | null;
+  heroDesktopUrl?: string | null;
+  heroMobileUrl?: string | null;
+  primaryCtaLabel?: string | null;
+  primaryCtaPath?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaPath?: string | null;
+  featured?: boolean;
+  sortOrder?: number;
+  genreCodes: string[];
+  platforms: GamePlatform[];
+}
+
+export interface AdminContentGameTemplate {
+  id: GameTemplatePreset;
+  name: string;
+  description: string;
+  thumbnailUrl: string;
+  theme: ThemeConfig;
+  featureConfig: FeatureConfig;
+  required: string[];
+}
+
+export interface AdminContentGamePresentationUpdateRequest {
+  expectedUpdatedAt: string;
+  themeConfig: ThemeConfig;
+  featureConfig: FeatureConfig;
+  pageConfig: GamePageConfig;
+}
+
+export interface AdminContentGameReadiness {
+  ready: boolean;
+  errors: Array<{ field: string; message: string }>;
+  warnings: Array<{ field: string; message: string }>;
 }
 
 export interface AdminContentArticleCreateRequest {
@@ -1125,6 +1224,11 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/profile`, input),
       updateStatus: (userId: string, input: AdminStatusUpdateRequest) =>
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, input),
+      deleteUser: (userId: string, input: { expectedUpdatedAt: string }) =>
+        client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, {
+          status: 'DELETED',
+          expectedUpdatedAt: input.expectedUpdatedAt,
+        }),
       revokeSessions: (userId: string) =>
         client.post<{ revoked: boolean }>(
           `/admin/users/${encodeURIComponent(userId)}/revoke-sessions`,
@@ -1138,6 +1242,12 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.post<SensitiveProfileRevealResponse>(
           `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/reveal`,
         ),
+      updateSensitiveIdentity: (userId: string, input: AdminUpdateSensitiveIdentityRequest) =>
+        client.patch<AdminUserDetail>(
+          `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/identity`,
+          input,
+        ),
+
       support: {
         dashboard: () => client.get<SupportAdminDashboard>('/admin/support/dashboard'),
         agents: () => client.get<SupportAdminAgent[]>('/admin/support/agents'),
@@ -1206,8 +1316,22 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
             isPublic?: boolean;
           } = {},
         ) => client.get<Paginated<AdminContentGame>>('/admin/content/games', query),
+        gameTemplates: () => client.get<AdminContentGameTemplate[]>('/admin/content/game-templates'),
         game: (gameId: string) =>
           client.get<AdminContentGame>(`/admin/content/games/${encodeURIComponent(gameId)}`),
+        gameOptions: () => client.get<AdminContentGameOptions>('/admin/content/game-options'),
+        createGame: (input: AdminContentGameCreateRequest) =>
+          client.post<AdminContentGame>('/admin/content/games', input),
+        gameReadiness: (gameId: string) =>
+          client.get<AdminContentGameReadiness>(`/admin/content/games/${encodeURIComponent(gameId)}/readiness`),
+        previewGame: (gameId: string) =>
+          client.get<GameDetail>(`/admin/content/games/${encodeURIComponent(gameId)}/preview`),
+        updateGamePresentation: (gameId: string, input: AdminContentGamePresentationUpdateRequest) =>
+          client.patch<AdminContentGame>(`/admin/content/games/${encodeURIComponent(gameId)}/presentation`, input),
+        publishGame: (gameId: string) =>
+          client.post<AdminContentGame>(`/admin/content/games/${encodeURIComponent(gameId)}/publish`),
+        unpublishGame: (gameId: string) =>
+          client.post<AdminContentGame>(`/admin/content/games/${encodeURIComponent(gameId)}/unpublish`),
         updateGame: (gameId: string, input: AdminContentGameUpdateRequest) =>
           client.patch<AdminContentGame>(
             `/admin/content/games/${encodeURIComponent(gameId)}`,

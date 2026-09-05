@@ -307,7 +307,7 @@ export default function SupportAdminTicketPage() {
               <span className="text-xs text-slate-400">{formatDate(ticket.createdAt)}</span>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-slate-50/70 p-4.5 text-sm leading-relaxed text-slate-800">
+            <div className="mt-4 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:p-5 text-sm leading-relaxed text-slate-800">
               <p className="whitespace-pre-wrap break-words">{ticket.description}</p>
             </div>
           </section>
@@ -357,15 +357,23 @@ export default function SupportAdminTicketPage() {
                     return (
                       <div
                         key={message.id}
-                        className={`rounded-2xl p-4.5 transition duration-150 ${
+                        className={`rounded-2xl p-4 sm:p-5 transition duration-150 shadow-xs ${
                           isInternal
-                            ? 'border border-amber-200/90 bg-amber-50/70'
+                            ? 'border border-amber-200/90 bg-amber-50/60'
                             : isStaff
-                              ? 'border border-emerald-100 bg-emerald-50/50'
-                              : 'border border-slate-100 bg-slate-50/80'
+                              ? 'border border-emerald-200/80 bg-emerald-50/40'
+                              : 'border border-slate-200/80 bg-slate-50/80'
                         }`}
                       >
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/40 pb-2.5">
+                        <div
+                          className={`flex flex-wrap items-center justify-between gap-2.5 border-b pb-3 mb-3 ${
+                            isInternal
+                              ? 'border-amber-200/70'
+                              : isStaff
+                                ? 'border-emerald-200/60'
+                                : 'border-slate-200/60'
+                          }`}
+                        >
                           <div className="flex items-center gap-2.5">
                             <UserAvatar
                               id={message.author?.username}
@@ -373,36 +381,41 @@ export default function SupportAdminTicketPage() {
                               username={message.author?.username}
                               size="xs"
                             />
-                            <div>
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs font-bold text-slate-900">
                                 {message.author?.fullName ||
                                   message.author?.username ||
                                   (isStaff ? 'Hỗ trợ viên' : 'Khách hàng')}
                               </span>
                               <span
-                                className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                                   isInternal
-                                    ? 'bg-amber-200/80 text-amber-900'
+                                    ? 'bg-amber-200/80 text-amber-900 border border-amber-300/60'
                                     : isStaff
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : 'bg-slate-200/80 text-slate-700'
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                                      : 'bg-slate-200/80 text-slate-700 border border-slate-300/50'
                                 }`}
                               >
-                                {isInternal
-                                  ? '🔒 Ghi chú nội bộ'
-                                  : isStaff
-                                    ? 'Chuyên viên CS'
-                                    : 'Người chơi'}
+                                {isInternal ? (
+                                  <>
+                                    <Lock className="size-2.5 shrink-0" />
+                                    Ghi chú nội bộ
+                                  </>
+                                ) : isStaff ? (
+                                  'Chuyên viên CS'
+                                ) : (
+                                  'Người chơi'
+                                )}
                               </span>
                             </div>
                           </div>
 
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] font-medium text-slate-400">
                             {formatDate(message.createdAt)}
                           </span>
                         </div>
 
-                        <div className="mt-3 text-sm leading-relaxed text-slate-800">
+                        <div className="text-sm leading-relaxed text-slate-800">
                           <SupportMessageText>{message.body}</SupportMessageText>
                         </div>
                       </div>
@@ -434,14 +447,14 @@ export default function SupportAdminTicketPage() {
                     <button
                       type="button"
                       onClick={() => setVisibility('INTERNAL')}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                         visibility === 'INTERNAL'
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                       disabled={isClosed}
                     >
-                      🔒 Ghi chú nội bộ (Staff only)
+                      <Lock className="size-3.5" /> Ghi chú nội bộ (Staff only)
                     </button>
                   </div>
 

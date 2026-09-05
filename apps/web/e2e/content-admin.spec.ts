@@ -24,6 +24,12 @@ test('SUPER_ADMIN manages game, article, event and announcement content', async 
   const gameDetailHref = await gameDetailLink.getAttribute('href');
   await gameDetailLink.click();
   await expect(page.getByRole('heading', { name: 'Lục Địa Đam Mê' })).toBeVisible();
+  await expect(page.getByText('Loại bản ghi', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Theme preset', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Xem theme/feature config', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Phân loại', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Primary game', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('PC', { exact: true })).toBeVisible();
   await expect(page.getByText('Lý do thay đổi', { exact: true })).toHaveCount(0);
   const originalTagline = await page.getByLabel('Tagline').inputValue();
   await page.getByLabel('Tagline').fill(`CMS E2E ${suffix}`);

@@ -39,11 +39,11 @@ export function getUserInitials(name?: string | null, fallback = 'U'): string {
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
 const sizeClasses: Record<AvatarSize, { container: string; text: string; dot: string }> = {
-  xs: { container: 'size-7', text: 'text-[10px]', dot: 'size-2 -bottom-0.5 -right-0.5 ring-1.5' },
-  sm: { container: 'size-8', text: 'text-xs', dot: 'size-2.5 -bottom-0.5 -right-0.5 ring-2' },
+  xs: { container: 'size-7', text: 'text-[10px]', dot: 'size-2 bottom-0 right-0 ring-1.5' },
+  sm: { container: 'size-8', text: 'text-xs', dot: 'size-2.5 bottom-0 right-0 ring-2' },
   md: { container: 'size-10', text: 'text-sm font-bold', dot: 'size-3 bottom-0 right-0 ring-2' },
-  lg: { container: 'size-12', text: 'text-base font-bold', dot: 'size-3.5 bottom-0 right-0 ring-2' },
-  xl: { container: 'size-16', text: 'text-xl font-black', dot: 'size-4 bottom-0.5 right-0.5 ring-2.5' },
+  lg: { container: 'size-12', text: 'text-base font-bold', dot: 'size-3.5 bottom-0.5 right-0.5 ring-2' },
+  xl: { container: 'size-16', text: 'text-xl font-black', dot: 'size-4 bottom-1 right-1 ring-2.5' },
 };
 
 const statusDotColors: Record<string, string> = {
@@ -51,6 +51,7 @@ const statusDotColors: Record<string, string> = {
   PENDING: 'bg-amber-400',
   SUSPENDED: 'bg-slate-400',
   LOCKED: 'bg-rose-500',
+  DELETED: 'bg-rose-600',
 };
 
 export interface UserAvatarProps {
@@ -61,7 +62,7 @@ export interface UserAvatarProps {
   avatarUrl?: string | null;
   size?: AvatarSize;
   className?: string;
-  status?: 'ACTIVE' | 'PENDING' | 'SUSPENDED' | 'LOCKED' | string | null;
+  status?: 'ACTIVE' | 'PENDING' | 'SUSPENDED' | 'LOCKED' | 'DELETED' | string | null;
   showStatusDot?: boolean;
 }
 
@@ -86,10 +87,10 @@ export function UserAvatar({
   const hasValidImage = Boolean(avatarUrl && !imageError);
 
   return (
-    <div className={cn('relative inline-flex shrink-0 select-none', sizeConfig.container, className)}>
+    <div className={cn('relative inline-flex shrink-0 select-none rounded-full', sizeConfig.container, className)}>
       <div
         className={cn(
-          'flex size-full items-center justify-center overflow-hidden rounded-xl font-semibold shadow-2xs transition duration-150',
+          'flex size-full items-center justify-center overflow-hidden rounded-full font-semibold shadow-2xs transition duration-150',
           hasValidImage
             ? 'bg-slate-100 ring-1 ring-slate-200/80'
             : cn('bg-gradient-to-tr text-white', gradient),
@@ -100,7 +101,7 @@ export function UserAvatar({
             src={avatarUrl!}
             alt={name || username || 'Avatar'}
             onError={() => setImageError(true)}
-            className="size-full object-cover"
+            className="size-full rounded-full object-cover"
           />
         ) : initials ? (
           <span className={sizeConfig.text}>{initials}</span>
@@ -113,7 +114,7 @@ export function UserAvatar({
         <span
           aria-hidden="true"
           className={cn(
-            'absolute rounded-full ring-white',
+            'absolute rounded-full ring-2 ring-white',
             sizeConfig.dot,
             statusDotColors[status],
           )}

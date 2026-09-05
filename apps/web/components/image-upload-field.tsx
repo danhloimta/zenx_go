@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Crop, ExternalLink, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Crop, ExternalLink, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ImageEditorModal, type AspectRatioPreset } from '@/components/image-editor-modal';
 import { mediaUrl } from '@/lib/utils';
 
@@ -21,7 +20,6 @@ export function ImageUploadField({
   label,
   value,
   onChange,
-  placeholder = '/images/... hoặc /uploads/... hoặc https://...',
   hint,
   aspectRatio = '16:9',
   modalTitle,
@@ -30,76 +28,97 @@ export function ImageUploadField({
   const [imgError, setImgError] = useState(false);
 
   const displayUrl = mediaUrl(value) || value;
+  const hasImage = Boolean(value && !imgError);
+
+  const aspectClass =
+    aspectRatio === '16:9'
+      ? 'aspect-[16/9]'
+      : aspectRatio === '1:1'
+      ? 'aspect-square max-w-[180px] mx-auto'
+      : aspectRatio === '9:16'
+      ? 'aspect-[9/16] max-w-[180px] mx-auto'
+      : 'min-h-[140px] max-h-[220px]';
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-slate-700">{label}</label>
-        <div className="flex items-center gap-2">
-          {value ? (
-            <a
-              href={displayUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#00873E] hover:underline"
-            >
-              <span>Xem ảnh gốc</span>
-              <ExternalLink className="size-3" />
-            </a>
-          ) : null}
-        </div>
+        {hasImage ? (
+          <a
+            href={displayUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#00873E] hover:underline"
+          >
+            <span>Xem ảnh gốc</span>
+            <ExternalLink className="size-3" />
+          </a>
+        ) : null}
       </div>
 
-      <div className="flex items-center gap-2.5">
-        {/* Live Thumbnail Preview */}
-        <div className="relative size-10 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center text-slate-400 shadow-2xs">
-          {value && !imgError ? (
+      {/* Image Preview & Actions Area */}
+      {hasImage ? (
+        <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-2xs">
+          {/* Image Container with Aspect Ratio */}
+          <div className={`relative w-full overflow-hidden bg-slate-900/5 ${aspectClass}`}>
             <img
               src={displayUrl}
               alt={label}
-              className="size-full object-cover"
+              className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               onError={() => setImgError(true)}
             />
-          ) : (
-            <ImageIcon className="size-4.5 text-slate-400" />
-          )}
-        </div>
+          </div>
 
-        {/* URL Input */}
-        <div className="relative flex-1">
-          <Input
-            value={value}
-            onChange={(e) => {
-              setImgError(false);
-              onChange(e.target.value);
-            }}
-            placeholder={placeholder}
-            className="pr-8 text-xs font-mono"
-          />
-          {value ? (
-            <button
-              type="button"
-              onClick={() => onChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              title="Xóa đường dẫn"
-            >
-              <X className="size-3.5" />
-            </button>
-          ) : null}
-        </div>
+          {/* Action Overlay / Bottom Bar */}
+          <div className="flex items-center justify-between border-t border-slate-200/80 bg-white p-2.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 truncate min-w-0">
+              <ImageIcon className="size-3.5 shrink-0 text-emerald-600" />
+              <span className="truncate font-medium text-slate-700">Ảnh đã tải lên</span>
+            </div>
 
-        {/* Upload & Crop Action Button */}
-        <Button
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditorOpen(true)}
+                className="h-8 gap-1.5 border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:border-[#00873E] hover:text-[#00873E]"
+              >
+                <Crop className="size-3.5" />
+                <span>Sửa ảnh</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange('')}
+                className="h-8 px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                title="Xóa ảnh"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Empty State Dropzone */
+        <button
           type="button"
-          variant="outline"
-          size="sm"
           onClick={() => setEditorOpen(true)}
-          className="shrink-0 gap-1.5 border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:border-[#00873E] hover:bg-[#E8F7EC]/30 hover:text-[#00873E] transition shadow-2xs"
+          className={`group flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-4 text-center hover:border-[#00873E] hover:bg-[#E8F7EC]/20 transition-all cursor-pointer ${aspectClass}`}
         >
-          {value ? <Crop className="size-3.5" /> : <Upload className="size-3.5" />}
-          <span>{value ? 'Sửa ảnh' : 'Tải & Cắt'}</span>
-        </Button>
-      </div>
+          <div className="flex size-11 items-center justify-center rounded-xl bg-white text-slate-400 shadow-2xs group-hover:bg-[#00873E] group-hover:text-white transition-all">
+            <Upload className="size-5" />
+          </div>
+          <span className="mt-2.5 text-xs font-bold text-slate-700 group-hover:text-[#00873E] transition-colors">
+            Tải lên & cắt ảnh ({aspectRatio})
+          </span>
+          <span className="mt-0.5 text-[11px] text-slate-400">
+            Hỗ trợ PNG, JPG, WebP. Tối đa 5MB.
+          </span>
+        </button>
+      )}
 
       {hint ? <p className="text-[11px] text-slate-400">{hint}</p> : null}
 

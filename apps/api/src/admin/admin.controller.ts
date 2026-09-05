@@ -1,15 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { AdminGuard, AdminRequest } from './admin.guard';
 import {
+  AdminExpectedUpdateDto,
   AdminProfileUpdateDto,
   AdminResetPasswordDto,
   AdminStatusUpdateDto,
+  AdminUpdateSensitiveIdentityDto,
   AdminUsersQueryDto,
 } from './admin.dto';
 import { AdminService } from './admin.service';
 import { RequireAdminRoles } from './admin-roles.decorator';
-import { AdminRole } from '../common/domain';
+import { AccountStatus, AdminRole } from '../common/domain';
 
 @Controller('admin')
 @UseGuards(AuthGuard, AdminGuard)
@@ -54,6 +56,19 @@ export class AdminController {
     return this.admin.updateStatus(userId, dto, request.user.sub);
   }
 
+  @Delete('users/:userId')
+  deleteUser(
+    @Param('userId') userId: string,
+    @Req() request: AdminRequest,
+    @Body() dto: AdminExpectedUpdateDto,
+  ) {
+    return this.admin.updateStatus(
+      userId,
+      { status: AccountStatus.DELETED, expectedUpdatedAt: dto.expectedUpdatedAt },
+      request.user.sub,
+    );
+  }
+
   @Post('users/:userId/revoke-sessions')
   revokeSessions(@Param('userId') userId: string) {
     return this.admin.revokeSessions(userId);
@@ -72,5 +87,13 @@ export class AdminController {
     @Param('userId') userId: string,
   ) {
     return this.admin.revealSensitiveProfile(userId);
+  }
+
+  @Patch('users/:userId/sensitive-profile/identity')
+  updateSensitiveIdentity(
+    @Param('userId') userId: string,
+    @Body() dto: AdminUpdateSensitiveIdentityDto,
+  ) {
+    return this.admin.updateSensitiveIdentity(userId, dto);
   }
 }

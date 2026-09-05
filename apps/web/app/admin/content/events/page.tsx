@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   FileEdit,
+  Flag,
   Gamepad2,
   Globe,
   Plus,
@@ -220,9 +221,9 @@ export default function AdminContentEventsPage() {
               aria-label="Lọc tiến độ thời gian"
             >
               <option value="">Tất cả tiến độ</option>
-              <option value="HAPPENING">⚡ Đang diễn ra</option>
-              <option value="UPCOMING">⏳ Sắp diễn ra</option>
-              <option value="ENDED">🏁 Đã kết thúc</option>
+              <option value="HAPPENING">Đang diễn ra</option>
+              <option value="UPCOMING">Sắp diễn ra</option>
+              <option value="ENDED">Đã kết thúc</option>
             </Select>
 
             <Select
@@ -538,7 +539,7 @@ function EventTimelineBadge({ startsAt, endsAt }: { startsAt: string; endsAt?: s
   if (end !== null && end < now) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-        🏁 Đã kết thúc
+        <Flag className="size-3" /> Đã kết thúc
       </span>
     );
   }

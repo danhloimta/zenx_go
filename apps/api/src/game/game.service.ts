@@ -4,6 +4,7 @@ import { GameArticleStatus } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
 import { GamesQueryDto } from './game.dto';
+import { parseGamePageConfig } from '../admin/content/game-templates';
 
 const GAME_INCLUDE = {
   genres: { include: { genre: true } },
@@ -123,6 +124,7 @@ export class GameService {
       longDescription: game.longDescription,
       theme: parseThemeConfig(game.themeConfig),
       featureConfig: parseFeatureConfig(game.featureConfig),
+      pageConfig: parseGamePageConfig(game.pageConfig, game.themePreset),
       articles: game.articles.map((article: any) => this.publicArticleSummary(article)),
       milestones: game.milestones.map((milestone: any) => this.publicMilestone(milestone)),
     };

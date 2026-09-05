@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
+  Feather,
   User,
   X,
 } from 'lucide-react';
@@ -486,7 +487,7 @@ export function LucDiaDamMeHome() {
               className="inline-flex min-h-11 sm:min-h-12 items-center justify-center gap-2 rounded-xl border border-[#cbb37e] bg-[#50603c] px-8 text-xs sm:text-sm font-medium text-white shadow-md transition-all hover:bg-[#435231] active:scale-[0.98] cursor-pointer"
             >
               <span>Xem tin tức</span>
-              <span className="text-sm">🪶</span>
+              <Feather className="size-4 text-[#cbb37e]" />
             </Link>
             <Link
               href={portalUrl('/auth/register')}

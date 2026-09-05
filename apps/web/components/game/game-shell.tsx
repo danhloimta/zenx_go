@@ -26,45 +26,15 @@ function GameFrame({ children }: { children: React.ReactNode }) {
   currentUrl.search = searchParams.toString();
   const loginUrl = `${portalUrl('/auth/login')}?returnTo=${encodeURIComponent(currentUrl.toString())}`;
   const theme = game.theme;
-  const isThiTranMay = game.slug === 'thi-tran-may';
-  const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
-  const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
-  const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
+  const isThiTranMay = game.themePreset === 'PLAYFUL_CASUAL';
+  const isLucDiaDamMe = game.themePreset === 'EDITORIAL_FANTASY';
+  const isHoaLong = game.themePreset === 'DARK_STRATEGY';
+  const isOrion = game.themePreset === 'SCI_FI_SHOOTER';
   const routeEnabled = (route: 'ABOUT' | 'NEWS' | 'ROADMAP' | 'DOWNLOAD', section: string) => {
     if (!game.featureConfig.sections.includes(section)) return false;
     const configuredRoutes = game.featureConfig.routes;
     return configuredRoutes ? configuredRoutes.includes(route) : game.recordType !== 'DEMO';
   };
-
-  const thiTranMayNav = [
-    ['#gioi-thieu', 'Giới thiệu'],
-    ['#thi-tran', 'Thị trấn'],
-    ['#y-tuong', 'Ý tưởng trải nghiệm'],
-    ['#nen-tang', 'Nền tảng'],
-    ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
-    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
-  ];
-
-  const lucDiaDamMeNav = [
-    ['#gioi-thieu', 'Giới thiệu'],
-    ['#the-gioi', 'Thế giới'],
-    ['#nhat-ky', 'Nhật ký'],
-    ['#roadmap', 'Roadmap'],
-  ];
-
-  const hoaLongNav = [
-    ['#gioi-thieu', 'Giới thiệu'],
-    ['#chien-truong', 'Chiến trường'],
-    ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
-    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
-  ];
-
-  const orionNav = [
-    ['#binh-chung', 'Binh chủng'],
-    ['#chien-dia', 'Chiến địa'],
-    ...(routeEnabled('NEWS', 'ARTICLE_GRID') ? [['/tin-tuc', 'Tin tức']] : []),
-    ...(routeEnabled('ROADMAP', 'ROADMAP_PREVIEW') ? [['/roadmap', 'Roadmap']] : []),
-  ];
 
   const standardNavItems = [
     ['/', 'Trang chủ', true],
@@ -176,98 +146,20 @@ function GameFrame({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <Link href={gameUrl(game.subdomain, '/')} className="flex items-center gap-2.5">
-              {isThiTranMay ? (
-                <span className="text-xl sm:text-2xl font-black font-serif tracking-tight text-[#123b63]">
-                  THỊ TRẤN MÂY
-                </span>
-              ) : isLucDiaDamMe ? (
-                <span className="text-xl sm:text-2xl font-medium font-serif tracking-wide text-[#152238]">
-                  LỤC ĐỊA ĐAM MÊ
-                </span>
-              ) : isHoaLong ? (
-                <div className="flex items-center gap-2.5">
-                  {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-amber-500/30" /> : null}
-                  <span className="text-base sm:text-xl font-bold font-serif tracking-wide text-white">VƯƠNG TRIỀU HỎA LONG</span>
-                  <span className="rounded-full bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 text-[10px] uppercase font-sans font-bold text-amber-300">Đang hoạt động</span>
-                </div>
-              ) : isOrion ? (
-                <div className="flex items-center gap-2.5">
-                  {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover border border-cyan-500/30" /> : null}
-                  <span className="text-base sm:text-lg font-black tracking-wider text-white uppercase font-mono">CHIẾN TUYẾN ORION</span>
-                  <span className="rounded-full bg-cyan-950/90 border border-cyan-500/40 px-2 py-0.5 text-[10px] uppercase font-mono font-bold text-cyan-300">Đang hoạt động</span>
-                </div>
-              ) : (
-                <>
-                  {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover" /> : null}
-                  <span className="text-base sm:text-lg font-black tracking-tight">{game.name}</span>
-                  {game.lifecycleStatus === 'LIVE' ? <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wider">Đang hoạt động</span> : null}
-                </>
-              )}
+              {game.iconUrl ? <img src={game.iconUrl} alt="" className="size-8 rounded-lg object-cover" /> : null}
+              <span className="text-base sm:text-lg font-black tracking-tight">{game.name}</span>
+              {game.lifecycleStatus === 'LIVE' ? <span className="rounded-full bg-black/10 px-2 py-0.5 text-[10px] uppercase tracking-wider">Đang hoạt động</span> : null}
             </Link>
           </div>
 
-          {/* Desktop Nav */}
-          {isThiTranMay ? (
-            <nav className="hidden items-center gap-8 text-sm font-bold text-[#123b63] md:flex">
-              {thiTranMayNav.map(([href, label]) => (
-                <button
-                  key={href}
-                  type="button"
-                  onClick={() => handleScroll(href)}
-                  className="hover:text-[#118a94] transition-colors"
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : isLucDiaDamMe ? (
-            <nav className="hidden items-center gap-10 text-sm font-medium text-[#152238] md:flex font-serif">
-              {lucDiaDamMeNav.map(([href, label]) => (
-                <button
-                  key={href}
-                  type="button"
-                  onClick={() => handleScroll(href)}
-                  className="hover:text-[#9d7d47] transition-colors"
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : isHoaLong ? (
-            <nav className="hidden items-center gap-8 text-sm font-semibold text-[#ead8b5] md:flex font-serif">
-              {hoaLongNav.map(([href, label]) => (
-                <button
-                  key={href}
-                  type="button"
-                  onClick={() => handleScroll(href)}
-                  className="hover:text-amber-300 transition-colors cursor-pointer"
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : isOrion ? (
-            <nav className="hidden items-center gap-8 text-sm font-bold text-slate-300 md:flex font-mono">
-              {orionNav.map(([href, label]) => (
-                <button
-                  key={href}
-                  type="button"
-                  onClick={() => handleScroll(href)}
-                  className="hover:text-cyan-400 transition-colors cursor-pointer"
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : (
-            <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
-              {standardNavItems.map(([href, label]) => (
-                <Link key={href} href={gameUrl(game.subdomain, href)} className="hover:text-[var(--game-primary)]">
-                  {label}
-                </Link>
-              ))}
-            </nav>
-          )}
+          {/* Desktop Nav: every template uses the same feature-configured routes. */}
+          <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
+            {standardNavItems.map(([href, label]) => (
+              <Link key={href} href={gameUrl(game.subdomain, href)} className="hover:text-[var(--game-primary)]">
+                {label}
+              </Link>
+            ))}
+          </nav>
 
           {/* Right Header Action */}
           <div className="flex items-center gap-3">
@@ -371,55 +263,11 @@ function GameFrame({ children }: { children: React.ReactNode }) {
               : 'border-white/10 bg-slate-950 text-white'
           }`}>
             <div className="mx-auto flex max-w-7xl flex-col gap-1 text-sm font-semibold">
-              {isThiTranMay
-                ? thiTranMayNav.map(([href, label]) => (
-                    <button
-                      key={href}
-                      type="button"
-                      onClick={() => handleScroll(href)}
-                      className="text-left rounded-lg px-3 py-3 hover:bg-[#123b63]/10 text-[#123b63]"
-                    >
-                      {label}
-                    </button>
-                  ))
-                : isLucDiaDamMe
-                ? lucDiaDamMeNav.map(([href, label]) => (
-                    <button
-                      key={href}
-                      type="button"
-                      onClick={() => handleScroll(href)}
-                      className="text-left rounded-lg px-3 py-3 hover:bg-black/5 text-[#12243d]"
-                    >
-                      {label}
-                    </button>
-                  ))
-                : isHoaLong
-                ? hoaLongNav.map(([href, label]) => (
-                    <button
-                      key={href}
-                      type="button"
-                      onClick={() => handleScroll(href)}
-                      className="text-left rounded-lg px-3 py-3 hover:bg-amber-950/40 text-[#ead8b5] font-serif"
-                    >
-                      {label}
-                    </button>
-                  ))
-                : isOrion
-                ? orionNav.map(([href, label]) => (
-                    <button
-                      key={href}
-                      type="button"
-                      onClick={() => handleScroll(href)}
-                      className="text-left rounded-lg px-3 py-3 hover:bg-slate-800/80 text-cyan-200"
-                    >
-                      {label}
-                    </button>
-                  ))
-                : standardNavItems.map(([href, label]) => (
-                    <Link key={href} href={gameUrl(game.subdomain, href)} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 hover:bg-white/10">
-                      {label}
-                    </Link>
-                  ))}
+              {standardNavItems.map(([href, label]) => (
+                <Link key={href} href={gameUrl(game.subdomain, href)} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 hover:bg-white/10">
+                  {label}
+                </Link>
+              ))}
             </div>
           </nav>
         ) : null}
@@ -429,108 +277,16 @@ function GameFrame({ children }: { children: React.ReactNode }) {
 
       <main>{children}</main>
 
-      {/* Footer */}
-      {isThiTranMay ? (
-        <footer className="border-t border-slate-900 bg-[#0c1c2e] text-white px-4 py-12 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-xl font-black tracking-tight text-white">{game.name}</h3>
-              <p className="mt-1 text-xs text-slate-400">Website chính thức đang hoạt động trong hệ sinh thái ZENX GO</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
-              <Link href={portalUrl('/games')} className="hover:text-white transition-colors">Game Hub</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/support')} className="hover:text-white transition-colors">Hỗ trợ</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/terms')} className="hover:text-white transition-colors">Điều khoản</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/privacy')} className="hover:text-white transition-colors">Bảo mật</Link>
-            </div>
+      <footer className="border-t border-black/10 bg-black/[0.03] px-4 py-10 sm:px-6">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm opacity-75 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} {game.name}. Một sản phẩm trong hệ sinh thái ZENX GO.</p>
+          <div className="flex gap-4">
+            <Link href={portalUrl('/terms')} className="hover:opacity-100">Điều khoản</Link>
+            <Link href={portalUrl('/privacy')} className="hover:opacity-100">Bảo mật</Link>
+            <Link href={portalUrl('/support')} className="hover:opacity-100">Hỗ trợ</Link>
           </div>
-          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 gap-2">
-            <p>© {new Date().getFullYear()} ZENX GO</p>
-            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
-          </div>
-        </footer>
-      ) : isLucDiaDamMe ? (
-        <footer className="border-t border-amber-500/20 bg-[#0c1b2c] text-white px-4 py-12 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-2xl font-black tracking-tight text-white font-serif">{game.name}</h3>
-              <p className="mt-1 text-xs text-[#c6a365] flex items-center gap-1.5 font-medium">
-                <span>✦</span> Một dự án của DAMMe Interactive <span>→</span>
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300">
-              <Link href={portalUrl('/games')} className="hover:text-white transition-colors">Về Game Hub</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/support')} className="hover:text-white transition-colors">Hỗ trợ</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/terms')} className="hover:text-white transition-colors">Điều khoản</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/privacy')} className="hover:text-white transition-colors">Bảo mật</Link>
-            </div>
-          </div>
-          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
-            <p>© 2026</p>
-          </div>
-        </footer>
-      ) : isHoaLong ? (
-        <footer className="border-t border-[#251b14] bg-[#060605] text-[#ead8b5] px-4 py-12 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-2xl font-black tracking-tight text-white font-serif">{game.name}</h3>
-              <p className="mt-1 text-xs text-amber-500/80">Chiến thuật mô phỏng thế giới rồng thiêng — ZENX GO</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-[#baa98a]">
-              <Link href={portalUrl('/games')} className="hover:text-amber-300 transition-colors">Game Hub</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/support')} className="hover:text-amber-300 transition-colors">Hỗ trợ</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/terms')} className="hover:text-amber-300 transition-colors">Điều khoản</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/privacy')} className="hover:text-amber-300 transition-colors">Bảo mật</Link>
-            </div>
-          </div>
-          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-[#251b14] flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-[#7d6f58] gap-2">
-            <p>© {new Date().getFullYear()} ZENX GO • Vương Triều Hỏa Long</p>
-            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
-          </div>
-        </footer>
-      ) : isOrion ? (
-        <footer className="border-t border-slate-800 bg-[#070b14] text-slate-400 px-4 py-12 sm:px-6 lg:px-8 font-mono text-xs">
-          <div className="mx-auto max-w-7xl flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="text-xl font-black tracking-tight text-white font-sans">{game.name}</h3>
-              <p className="mt-1 text-xs text-cyan-500/80">Game bắn súng chiến thuật không gian — ZENX GO</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 text-sm text-slate-300 font-sans">
-              <Link href={portalUrl('/games')} className="hover:text-cyan-400 transition-colors">Game Hub</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/support')} className="hover:text-cyan-400 transition-colors">Hỗ trợ</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/terms')} className="hover:text-cyan-400 transition-colors">Điều khoản</Link>
-              <span className="opacity-20">|</span>
-              <Link href={portalUrl('/privacy')} className="hover:text-cyan-400 transition-colors">Bảo mật</Link>
-            </div>
-          </div>
-          <div className="mx-auto max-w-7xl mt-8 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-slate-500 gap-2">
-            <p>© {new Date().getFullYear()} ZENX GO • CHIẾN TUYẾN ORION</p>
-            <p>Đang hoạt động • Cập nhật nội dung định kỳ.</p>
-          </div>
-        </footer>
-      ) : (
-        <footer className="border-t border-black/10 bg-black/[0.03] px-4 py-10 sm:px-6">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm opacity-75 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} {game.name}. Một sản phẩm trong hệ sinh thái ZENX GO.</p>
-            <div className="flex gap-4">
-              <Link href={portalUrl('/terms')} className="hover:opacity-100">Điều khoản</Link>
-              <Link href={portalUrl('/privacy')} className="hover:opacity-100">Bảo mật</Link>
-              <Link href={portalUrl('/support')} className="hover:opacity-100">Hỗ trợ</Link>
-            </div>
-          </div>
-        </footer>
-      )}
+        </div>
+      </footer>
     </div>
   );
 }

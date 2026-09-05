@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { CoinPackageStatus, SecurityQuestionCode, SupportStatus } from '../src/common/domain';
+import { createPageConfig } from '../src/admin/content/game-templates';
 
 const prisma = new PrismaClient();
 
@@ -778,8 +779,10 @@ async function seedGames() {
         operationalStatus: gameData.operationalStatus,
         releaseYear: gameData.releaseYear,
         themePreset: gameData.themePreset,
+        templateVersion: 1,
         themeConfig: JSON.stringify(gameData.theme),
         featureConfig: JSON.stringify(gameData.features),
+        pageConfig: JSON.stringify(seedPageConfig(gameData)),
         logoUrl: gameData.logoUrl,
         iconUrl: gameData.iconUrl,
         coverUrl: gameData.coverUrl,
@@ -807,8 +810,10 @@ async function seedGames() {
         operationalStatus: gameData.operationalStatus,
         releaseYear: gameData.releaseYear,
         themePreset: gameData.themePreset,
+        templateVersion: 1,
         themeConfig: JSON.stringify(gameData.theme),
         featureConfig: JSON.stringify(gameData.features),
+        pageConfig: JSON.stringify(seedPageConfig(gameData)),
         logoUrl: gameData.logoUrl,
         iconUrl: gameData.iconUrl,
         coverUrl: gameData.coverUrl,
@@ -859,6 +864,23 @@ async function seedGames() {
         ),
       });
   }
+}
+
+function seedPageConfig(gameData: {
+  themePreset: 'EDITORIAL_FANTASY' | 'DARK_STRATEGY' | 'PLAYFUL_CASUAL' | 'SCI_FI_SHOOTER';
+  name: string;
+  tagline: string;
+  shortDescription: string;
+  heroDesktopUrl: string;
+  heroMobileUrl: string;
+  coverUrl: string;
+}) {
+  const pageConfig = createPageConfig(gameData.themePreset, gameData.name, gameData.tagline, gameData.shortDescription);
+  pageConfig.legacyRenderer = gameData.themePreset;
+  pageConfig.hero.imageUrl = gameData.heroDesktopUrl;
+  pageConfig.hero.mobileImageUrl = gameData.heroMobileUrl;
+  pageConfig.intro.imageUrl = gameData.coverUrl;
+  return pageConfig;
 }
 
 async function seedPortalContent() {

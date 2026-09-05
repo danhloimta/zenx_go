@@ -12,9 +12,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ gameKe
   const article = await getGameArticle(game.slug, decodeURIComponent(articleSlug));
   if (!article) notFound();
 
-  const isOrion = game.slug === 'chien-tuyen-orion' || game.subdomain === 'orion';
-  const isHoaLong = game.slug === 'vuong-trieu-hoa-long' || game.subdomain === 'hoalong';
-  const isLucDiaDamMe = game.slug === 'luc-dia-dam-me' || game.subdomain === 'lucdia';
+  const isOrion = game.themePreset === 'SCI_FI_SHOOTER';
+  const isHoaLong = game.themePreset === 'DARK_STRATEGY';
+  const isLucDiaDamMe = game.themePreset === 'EDITORIAL_FANTASY';
 
   return (
     <article className="mx-auto max-w-4xl px-4 py-12 sm:py-16 sm:px-6">

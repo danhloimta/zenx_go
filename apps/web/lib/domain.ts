@@ -8,10 +8,23 @@ import {
 export { RESERVED_SUBDOMAINS };
 
 export function getPublicWebOrigin() {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
   return process.env.PUBLIC_WEB_ORIGIN ?? process.env.WEB_ORIGIN ?? process.env.NEXT_PUBLIC_WEB_ORIGIN ?? 'http://lvh.me:3000';
 }
 
 export function getPublicBaseDomain() {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
+      return 'localhost';
+    }
+    if (hostname === 'lvh.me' || hostname.endsWith('.lvh.me')) {
+      return 'lvh.me';
+    }
+    return normalizeBaseDomain(hostname);
+  }
   const configured = process.env.PUBLIC_BASE_DOMAIN ?? process.env.NEXT_PUBLIC_BASE_DOMAIN;
   if (configured) return normalizeBaseDomain(configured);
   try { return normalizeBaseDomain(new URL(getPublicWebOrigin()).hostname); } catch { return 'lvh.me'; }
