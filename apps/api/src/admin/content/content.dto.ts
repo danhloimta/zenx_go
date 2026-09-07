@@ -24,6 +24,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { GAME_TEMPLATE_PRESETS, GameTemplatePreset } from './game-templates';
+import { normalizeSlug } from '../../common/normalize';
 
 // Keep the compact page sizes used by the CMS dashboard/list views alongside the public API defaults.
 const PAGE_SIZES = [3, 4, 5, 10, 15, 20, 50] as const;
@@ -79,7 +80,11 @@ export class AdminContentGenresQueryDto {
 }
 
 export class AdminContentGenreCreateDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value.trim().toUpperCase().replace(/[\s-]+/g, '_')
+      : value,
+  )
   @IsString()
   @MinLength(2)
   @MaxLength(32)
@@ -92,7 +97,7 @@ export class AdminContentGenreCreateDto {
   @MaxLength(80)
   name!: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @Transform(({ value }) => (typeof value === 'string' ? normalizeSlug(value) : value))
   @IsString()
   @MinLength(1)
   @MaxLength(80)
@@ -117,13 +122,14 @@ export class AdminContentGenreUpdateDto {
   @MaxLength(80)
   name?: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @Transform(({ value }) => (typeof value === 'string' ? normalizeSlug(value) : value))
   @IsOptional()
   @IsString()
   @MinLength(1)
   @MaxLength(80)
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   slug?: string;
+
 
   @IsOptional()
   @IsBoolean()

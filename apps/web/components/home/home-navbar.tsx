@@ -8,9 +8,11 @@ import {
   ChevronDown,
   Coins,
   Menu,
+  ShieldAlert,
   UserRound,
-  X
+  X,
 } from 'lucide-react';
+
 import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 import { ZenxCoinGoldIcon } from '@/components/icons';
@@ -35,6 +37,7 @@ export function HomeNavbar() {
   const account = useAccount();
   const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
+  const isAdmin = Boolean(user?.roles && user.roles.length > 0);
 
   const isLinkActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -106,39 +109,56 @@ export function HomeNavbar() {
 
           {/* Auth State */}
           {user ? (
-            <Link
-              href="/account"
-              className="flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white p-1.5 pr-4 hover:border-[#00873E]/40 hover:bg-emerald-50/30 transition-all text-left shadow-2xs group"
-            >
-              {/* Fixed Avatar Container */}
-              <div className="relative shrink-0">
-                <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#00873E]/20 bg-[#E8F7EC] text-[#00873E]">
-                  {mediaUrl(user?.profile?.avatarUrl) ? (
-                    <img
-                      src={mediaUrl(user?.profile?.avatarUrl)}
-                      alt={user?.profile?.fullName || user?.username || 'Avatar'}
-                      className="size-8 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <UserRound className="size-4" />
-                  )}
+            <div className="flex items-center gap-2.5">
+              {isAdmin && (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-9 gap-1.5 rounded-full border-amber-300 bg-amber-50/80 hover:bg-amber-100 hover:border-amber-400 text-amber-900 font-bold text-xs shadow-2xs transition-colors px-3.5"
+                >
+                  <Link href="/admin">
+                    <ShieldAlert className="size-3.5 text-amber-600" />
+                    <span>Quản trị</span>
+                  </Link>
+                </Button>
+              )}
+
+              <Link
+                href="/account"
+                className="flex items-center gap-2.5 rounded-full border border-slate-200/90 bg-white p-1.5 pr-4 hover:border-[#00873E]/40 hover:bg-emerald-50/30 transition-all text-left shadow-2xs group"
+              >
+                {/* Fixed Avatar Container */}
+                <div className="relative shrink-0">
+                  <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#00873E]/20 bg-[#E8F7EC] text-[#00873E]">
+                    {mediaUrl(user?.profile?.avatarUrl) ? (
+                      <img
+                        src={mediaUrl(user?.profile?.avatarUrl)}
+                        alt={user?.profile?.fullName || user?.username || 'Avatar'}
+                        className="size-8 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <UserRound className="size-4" />
+                    )}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-              </div>
 
-              {/* Name Display */}
-              <div className="min-w-0 max-w-[130px]">
-                <span className="block text-xs font-bold text-slate-800 truncate group-hover:text-[#00873E] transition-colors leading-tight">
-                  {user?.profile?.fullName || user?.username || 'Zenxer'}
-                </span>
-                <span className="block text-[10px] text-slate-400 truncate leading-none mt-0.5">
-                  {user?.username ? `@${user.username}` : 'Tài khoản'}
-                </span>
-              </div>
+                {/* Name Display */}
+                <div className="min-w-0 max-w-[130px]">
+                  <span className="block text-xs font-bold text-slate-800 truncate group-hover:text-[#00873E] transition-colors leading-tight">
+                    {user?.profile?.fullName || user?.username || 'Zenxer'}
+                  </span>
+                  <span className="block text-[10px] text-slate-400 truncate leading-none mt-0.5">
+                    {user?.username ? `@${user.username}` : 'Tài khoản'}
+                  </span>
+                </div>
 
-              <ArrowRight className="size-3.5 text-slate-400 group-hover:text-[#00873E] group-hover:translate-x-0.5 transition-all ml-0.5 shrink-0" />
-            </Link>
+                <ArrowRight className="size-3.5 text-slate-400 group-hover:text-[#00873E] group-hover:translate-x-0.5 transition-all ml-0.5 shrink-0" />
+              </Link>
+            </div>
           ) : (
+
             <div className="flex items-center gap-2.5">
               {/* Login Button */}
               <Button
@@ -235,19 +255,35 @@ export function HomeNavbar() {
             </div>
 
             {user ? (
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <Button asChild size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-10">
-                  <Link href="/account" onClick={() => setMobileMenuOpen(false)}>
-                    Tài khoản
-                  </Link>
-                </Button>
-                <Button asChild size="sm" className="rounded-xl text-xs font-semibold h-10">
-                  <Link href="/payment" onClick={() => setMobileMenuOpen(false)}>
-                    Nạp Coin
-                  </Link>
-                </Button>
+              <div className="flex flex-col gap-2 pt-1">
+                {isAdmin && (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="w-full rounded-xl text-xs font-bold border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 h-10 gap-2"
+                  >
+                    <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                      <ShieldAlert className="size-4 text-amber-600" />
+                      <span>Trang quản trị (Admin)</span>
+                    </Link>
+                  </Button>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-10">
+                    <Link href="/account" onClick={() => setMobileMenuOpen(false)}>
+                      Tài khoản
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" className="rounded-xl text-xs font-semibold h-10">
+                    <Link href="/payment" onClick={() => setMobileMenuOpen(false)}>
+                      Nạp Coin
+                    </Link>
+                  </Button>
+                </div>
               </div>
             ) : (
+
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <Button asChild size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-10">
                   <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>

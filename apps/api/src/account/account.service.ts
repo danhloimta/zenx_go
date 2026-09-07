@@ -41,6 +41,7 @@ export class AccountService {
           profile: true,
           socialIdentities: { select: { provider: true } },
           wallet: { select: { balance: true, currency: true } },
+          roles: { select: { role: true } },
         },
       })
       .then((user) => ({
@@ -59,8 +60,10 @@ export class AccountService {
           facebook: user.socialIdentities.some((identity) => identity.provider === 'FACEBOOK'),
         },
         wallet: user.wallet,
+        roles: user.roles.map(({ role }) => role),
       }));
   }
+
 
   async updateMe(userId: string, dto: UpdateAccountDto) {
     const currentProfile = await this.prisma.userProfile.findUnique({

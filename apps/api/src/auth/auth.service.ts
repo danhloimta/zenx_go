@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AccountStatus } from '../common/domain';
+import { AccountStatus, AdminRole } from '../common/domain';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { DomainError, ErrorCode } from '../common/errors';
@@ -83,7 +83,7 @@ export class AuthService {
     const emailNormalized = normalizeEmail(identity);
     const user = await this.prisma.user.findFirst({
       where: { OR: [{ usernameNormalized }, { emailNormalized }] },
-      include: { profile: true },
+      include: { profile: true, roles: { select: { role: true } } },
     });
     if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) {
       throw new DomainError(
@@ -98,8 +98,14 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
     if (user.status === AccountStatus.DELETED)
       throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
-    const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo);
+
+    const hasAdminRole = user.roles.some(({ role }) =>
+      Object.values(AdminRole).includes(role as AdminRole),
+    );
+    const defaultReturnTo = hasAdminRole ? '/admin' : '/account';
+    const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo || defaultReturnTo);
     return { ...(await this.issueTokens(user.id, user.username, user)), redirectTo };
+
   }
 
   async loginWithSocial(userId: string): Promise<AuthTokens> {

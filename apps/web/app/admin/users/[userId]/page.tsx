@@ -28,8 +28,8 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AdminUserDetail } from '@zenx-go/api-client';
-import { useAdminUser } from '@/hooks/use-admin';
+import type { AdminRole, AdminUserDetail } from '@zenx-go/api-client';
+import { useAdminMe, useAdminUser } from '@/hooks/use-admin';
 import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -43,12 +43,14 @@ import { UserAvatar } from '@/components/user-avatar';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { toast } from 'sonner';
 
-type Action = 'password' | 'editIdentity' | 'deleteUser' | null;
+type Action = 'password' | 'editIdentity' | 'deleteUser' | 'roles' | null;
 
 export default function AdminUserDetailPage() {
   const router = useRouter();
   const params = useParams<{ userId: string }>();
   const userId = typeof params.userId === 'string' ? decodeURIComponent(params.userId) : '';
+  const admin = useAdminMe();
+  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
   const query = useAdminUser(userId);
   const user = query.data;
   const queryClient = useQueryClient();
@@ -116,6 +118,20 @@ export default function AdminUserDetailPage() {
       } else {
         toast.success('Đã cập nhật trạng thái tài khoản.');
       }
+      setAction(null);
+      invalidate();
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const updateRolesMutation = useMutation({
+    mutationFn: (roles: AdminRole[]) =>
+      api.admin.updateRoles(userId, {
+        expectedUpdatedAt: user!.updatedAt,
+        roles,
+      }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật phân quyền tài khoản thành công.');
       setAction(null);
       invalidate();
     },
@@ -310,25 +326,38 @@ export default function AdminUserDetailPage() {
                   )}
                 </button>
 
-                {user.roles.length ? (
-                  user.roles.map((role) => (
-                    <span
-                      key={role}
-                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold border ${
-                        role === 'SUPER_ADMIN'
-                          ? 'bg-emerald-50 text-[#00873E] border-emerald-200'
-                          : 'bg-violet-50 text-violet-700 border-violet-200'
-                      }`}
-                    >
-                      <Shield className="size-3" />
-                      {role}
-                    </span>
-                  ))
-                ) : (
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
-                    Member
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => isSuperAdmin && !isDeleted && setAction('roles')}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-2xs transition ${
+                    isSuperAdmin && !isDeleted
+                      ? 'cursor-pointer hover:border-emerald-300 hover:bg-slate-50'
+                      : 'cursor-default'
+                  }`}
+                  title={isSuperAdmin && !isDeleted ? 'Nhấp để phân quyền vai trò' : undefined}
+                >
+                  <Shield className="size-3 text-[#00873E]" />
+                  <span>Vai trò:</span>
+                  {user.roles.length ? (
+                    user.roles.map((role) => (
+                      <span
+                        key={role}
+                        className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
+                          role === 'SUPER_ADMIN'
+                            ? 'bg-emerald-50 text-[#00873E]'
+                            : 'bg-violet-50 text-violet-700'
+                        }`}
+                      >
+                        {role}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-slate-400">Member</span>
+                  )}
+                  {isSuperAdmin && !isDeleted && (
+                    <Pencil className="size-2.5 text-slate-400 hover:text-slate-700 ml-0.5" />
+                  )}
+                </button>
 
                 {user.mustChangePassword ? (
                   <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
@@ -341,6 +370,18 @@ export default function AdminUserDetailPage() {
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 lg:border-t-0 lg:pt-0">
+            {!isDeleted && isSuperAdmin ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setAction('roles')}
+                disabled={updateRolesMutation.isPending}
+                className="gap-1.5 border-slate-200 font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-[#00873E]"
+              >
+                <Shield className="size-3.5 text-[#00873E]" /> Phân quyền
+              </Button>
+            ) : null}
+
             {!isDeleted ? (
               <Button
                 size="sm"
@@ -652,6 +693,16 @@ export default function AdminUserDetailPage() {
           onClose={() => setAction(null)}
           onConfirm={() => statusMutation.mutate('DELETED')}
           pending={statusMutation.isPending}
+        />
+      ) : null}
+
+      {action === 'roles' ? (
+        <UpdateRolesDialog
+          user={user}
+          currentAdminId={admin.data?.id}
+          onClose={() => setAction(null)}
+          onConfirm={(roles) => updateRolesMutation.mutate(roles)}
+          pending={updateRolesMutation.isPending}
         />
       ) : null}
 
@@ -1252,6 +1303,151 @@ function DeleteUserDialog({
             )}
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function UpdateRolesDialog({
+  user,
+  currentAdminId,
+  onClose,
+  onConfirm,
+  pending,
+}: {
+  user: AdminUserDetail;
+  currentAdminId?: string;
+  onClose: () => void;
+  onConfirm: (roles: AdminRole[]) => void;
+  pending: boolean;
+}) {
+  const [selectedRoles, setSelectedRoles] = useState<AdminRole[]>(user.roles);
+
+  const toggleRole = (role: AdminRole) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    );
+  };
+
+  const isSelf = currentAdminId === user.id;
+  const isTargetSuperAdmin = user.roles.includes('SUPER_ADMIN');
+  const isRemovingOwnSuperAdmin = isSelf && isTargetSuperAdmin && !selectedRoles.includes('SUPER_ADMIN');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isRemovingOwnSuperAdmin) return;
+    onConfirm(selectedRoles);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#00873E] border border-emerald-100">
+              <Shield className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-slate-900">
+                Phân quyền & Vai trò
+              </h2>
+              <p className="text-xs text-slate-500">
+                Tài khoản: <strong className="text-slate-800">@{user.username}</strong> ({user.email})
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={pending}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Chọn các vai trò quản trị được cấp cho người dùng này. Nếu không chọn vai trò nào, tài khoản sẽ là thành viên thông thường (Member).
+          </p>
+
+          {/* Option 1: SUPER_ADMIN */}
+          <label
+            className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
+              selectedRoles.includes('SUPER_ADMIN')
+                ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selectedRoles.includes('SUPER_ADMIN')}
+              onChange={() => toggleRole('SUPER_ADMIN')}
+              disabled={pending || (isSelf && isTargetSuperAdmin)}
+              className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]"
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-900">Super Admin (Quản trị tối cao)</span>
+                <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-black text-[#00873E]">
+                  SUPER_ADMIN
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                Toàn quyền quản trị hệ thống: Quản lý người dùng, duyệt tài chính & nạp tiền, quản trị CMS nội dung game, phân quyền vai trò.
+              </p>
+              {isSelf && isTargetSuperAdmin && (
+                <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
+                  ⚠️ Không thể tự tước quyền Super Admin của chính bạn.
+                </p>
+              )}
+            </div>
+          </label>
+
+          {/* Option 2: SUPPORT */}
+          <label
+            className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
+              selectedRoles.includes('SUPPORT')
+                ? 'border-violet-500 bg-violet-50/40 ring-1 ring-violet-500/30'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={selectedRoles.includes('SUPPORT')}
+              onChange={() => toggleRole('SUPPORT')}
+              disabled={pending}
+              className="mt-1 size-4 rounded text-violet-600 focus:ring-violet-500"
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-900">Chuyên viên Hỗ trợ (Support CSKH)</span>
+                <span className="rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-[10px] font-black text-violet-700">
+                  SUPPORT
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                Truy cập Trung tâm hỗ trợ: Tiếp nhận, phân luồng, trả lời ticket yêu cầu người chơi và quản trị bài viết FAQ.
+              </p>
+            </div>
+          </label>
+
+          <div className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-200/80">
+            💡 Sau khi lưu, toàn bộ phiên đăng nhập của người dùng sẽ được thu hồi để yêu cầu đăng nhập và làm mới lại quyền hạn ngay lập tức.
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              disabled={pending || isRemovingOwnSuperAdmin}
+              className="bg-[#00873E] hover:bg-[#007033] text-white font-semibold"
+            >
+              {pending ? 'Đang lưu…' : 'Lưu phân quyền'}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );

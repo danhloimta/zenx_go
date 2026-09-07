@@ -5,6 +5,7 @@ import {
   AdminExpectedUpdateDto,
   AdminProfileUpdateDto,
   AdminResetPasswordDto,
+  AdminRolesUpdateDto,
   AdminStatusUpdateDto,
   AdminUpdateSensitiveIdentityDto,
   AdminUsersQueryDto,
@@ -54,6 +55,16 @@ export class AdminController {
     @Body() dto: AdminStatusUpdateDto,
   ) {
     return this.admin.updateStatus(userId, dto, request.user.sub);
+  }
+
+  @Patch('users/:userId/roles')
+  @RequireAdminRoles(AdminRole.SUPER_ADMIN)
+  updateRoles(
+    @Param('userId') userId: string,
+    @Req() request: AdminRequest,
+    @Body() dto: AdminRolesUpdateDto,
+  ) {
+    return this.admin.updateRoles(userId, dto, request.user.sub);
   }
 
   @Delete('users/:userId')

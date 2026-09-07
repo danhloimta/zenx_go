@@ -22,6 +22,7 @@ import {
   Landmark,
   Receipt,
   Tags,
+  Loader2,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -33,7 +34,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface NavItem {
   href: string;
@@ -99,6 +100,8 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
           ],
         },
       ];
+
+  const isFetching = useIsFetching();
 
   const allItems = navSections.flatMap((s) => s.items);
 
@@ -180,6 +183,13 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
+      {/* Top Loading Progress Bar */}
+      {isFetching > 0 ? (
+        <div className="fixed top-0 left-0 right-0 z-[9999] h-[2.5px] bg-slate-100 overflow-hidden pointer-events-none">
+          <div className="h-full w-full bg-gradient-to-r from-[#00873E] via-emerald-400 to-[#00873E] animate-pulse" />
+        </div>
+      ) : null}
+
       {open ? (
         <button
           aria-label="Đóng menu"
@@ -312,6 +322,13 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
           </div>
 
           <div className="flex items-center gap-3">
+            {isFetching > 0 ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 animate-pulse">
+                <Loader2 className="size-3 animate-spin text-[#00873E]" />
+                <span className="hidden sm:inline">Đang tải…</span>
+              </span>
+            ) : null}
+
             <Link
               href="/"
               target="_blank"

@@ -264,3 +264,20 @@ export function getBankName(code?: string | null): string {
   const normalized = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   return bankNameMap[normalized] || bankNameMap[code.trim()] || code;
 }
+
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+export function codefy(text: string): string {
+  return slugify(text).toUpperCase().replace(/-/g, '_').slice(0, 32);
+}
+

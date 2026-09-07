@@ -33,8 +33,8 @@ const messages: Record<string, string> = {
   UNAUTHORIZED: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   FORBIDDEN: 'Tài khoản không được phép thực hiện thao tác này.',
   ADMIN_ACCESS_REQUIRED: 'Tài khoản chưa được cấp quyền quản trị.',
-  ADMIN_SELF_ACTION_FORBIDDEN: 'Không thể thực hiện thao tác này trên tài khoản admin hiện tại.',
-  LAST_SUPER_ADMIN_PROTECTED: 'Không thể tạm ngưng admin cuối cùng đang hoạt động.',
+  ADMIN_SELF_ACTION_FORBIDDEN: 'Không thể tự tước quyền hoặc thực hiện thao tác này trên tài khoản của chính bạn.',
+  LAST_SUPER_ADMIN_PROTECTED: 'Không thể tạm ngưng hoặc tước quyền Super Admin cuối cùng đang hoạt động.',
   PASSWORD_CHANGE_REQUIRED: 'Bạn cần đổi mật khẩu tạm trước khi tiếp tục.',
   STALE_ADMIN_UPDATE: 'Dữ liệu đã thay đổi. Hãy tải lại trang rồi thử lại.',
   ADMIN_CONTACT_VERIFICATION_REQUIRED: 'Hãy chọn trạng thái xác minh cho thông tin liên hệ mới.',
@@ -75,12 +75,19 @@ const messages: Record<string, string> = {
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {
   if (error instanceof ApiError) {
-    return messages[error.code] ?? fallback;
+    if (messages[error.code]) {
+      return messages[error.code];
+    }
+    if (error.message && error.message !== 'Request failed' && !error.message.startsWith('HTTP_')) {
+      return error.message;
+    }
+    return fallback;
   }
 
   if (error instanceof Error && error.message) {
-    return fallback;
+    return error.message;
   }
 
   return fallback;
 }
+

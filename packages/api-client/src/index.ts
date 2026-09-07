@@ -263,7 +263,9 @@ export interface AuthUser {
   phone?: string | null;
   status?: AccountStatus;
   mustChangePassword?: boolean;
+  roles?: AdminRole[];
 }
+
 
 export interface LoginResponse {
   user: AuthUser;
@@ -401,6 +403,11 @@ export interface AdminProfileUpdateRequest {
 export interface AdminStatusUpdateRequest {
   expectedUpdatedAt: string;
   status: 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+}
+
+export interface AdminRolesUpdateRequest {
+  expectedUpdatedAt: string;
+  roles: AdminRole[];
 }
 
 export interface AdminResetPasswordRequest {
@@ -1341,6 +1348,8 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/profile`, input),
       updateStatus: (userId: string, input: AdminStatusUpdateRequest) =>
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, input),
+      updateRoles: (userId: string, input: AdminRolesUpdateRequest) =>
+        client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/roles`, input),
       deleteUser: (userId: string, input: { expectedUpdatedAt: string }) =>
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/status`, {
           status: 'DELETED',

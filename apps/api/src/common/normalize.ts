@@ -13,3 +13,16 @@ export function normalizePhone(value: string): string {
   if (digits.startsWith('0')) return `+84${digits.slice(1)}`;
   return digits.startsWith('+') ? digits : `+${digits}`;
 }
+
+export function normalizeSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+

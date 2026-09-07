@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   ChevronDown,
@@ -16,11 +16,13 @@ import {
   Menu,
   MessageCircle,
   Phone,
+  ShieldAlert,
   ShieldCheck,
   UserRound,
   WalletCards,
   X,
 } from 'lucide-react';
+
 import { BrandLogo } from '@/components/brand-logo';
 import { PageFooter } from '@/components/page-footer';
 import { LogoutButton } from '@/components/logout-button';
@@ -74,7 +76,22 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const account = useAccount();
   const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
+  const isAdmin = Boolean(user?.roles && user.roles.length > 0);
   const supportUnread = useSupportUnreadCount(Boolean(user && !user.mustChangePassword));
+
+  const navGroups = useMemo(() => {
+    if (!isAdmin) return groups;
+    return [
+      ...groups,
+      {
+        title: 'HỆ THỐNG',
+        items: [
+          { href: '/admin', label: 'Quản trị hệ thống', icon: ShieldAlert },
+        ],
+      },
+    ];
+  }, [isAdmin]);
+
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -166,7 +183,8 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </div>
 
         <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
-          {groups.map((group) => (
+          {navGroups.map((group) => (
+
             <div key={group.title ?? 'overview'}>
               {group.title ? (
                 <p className="mb-2 px-3 text-[11px] font-bold tracking-wider text-slate-400">
@@ -418,10 +436,25 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
                   {/* Dropdown Links */}
                   <div className="space-y-0.5">
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold text-amber-900 bg-amber-50/80 hover:bg-amber-100 transition-colors border border-amber-200/80 mb-1"
+                      >
+                        <span className="flex items-center gap-2">
+                          <ShieldAlert className="size-4 text-amber-600 shrink-0" />
+                          Trang quản trị (Admin)
+                        </span>
+                        <span className="rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-900 uppercase">
+                          {user?.roles?.includes('SUPER_ADMIN') ? 'Super Admin' : 'Staff'}
+                        </span>
+                      </Link>
+                    )}
                     <Link
                       href="/account/profile"
                       className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"
                     >
+
                       <UserRound className="size-4 text-slate-400" />
                       Thông tin cá nhân
                     </Link>

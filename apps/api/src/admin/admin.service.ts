@@ -9,6 +9,7 @@ import { SensitiveProfileCrypto, validateCitizenIdentity } from '../account/sens
 import {
   AdminProfileUpdateDto,
   AdminResetPasswordDto,
+  AdminRolesUpdateDto,
   AdminStatusUpdateDto,
   AdminUpdateSensitiveIdentityDto,
   AdminUsersQueryDto,
@@ -407,6 +408,66 @@ export class AdminService {
         data: { revokedAt: new Date() },
       });
     });
+    return this.getUser(userId);
+  }
+
+  async updateRoles(userId: string, dto: AdminRolesUpdateDto, actorUserId: string) {
+    const current = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { select: { role: true } } },
+    });
+    if (!current) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    this.assertExpectedVersion(current.updatedAt, dto.expectedUpdatedAt);
+
+    const nextRoles = Array.from(new Set(dto.roles));
+    const wasSuperAdmin = current.roles.some(({ role }) => role === AdminRole.SUPER_ADMIN);
+    const willBeSuperAdmin = nextRoles.includes(AdminRole.SUPER_ADMIN);
+
+    if (userId === actorUserId && wasSuperAdmin && !willBeSuperAdmin) {
+      throw new DomainError(
+        ErrorCode.ADMIN_SELF_ACTION_FORBIDDEN,
+        'An administrator cannot revoke their own Super Admin role',
+        400,
+      );
+    }
+
+    if (wasSuperAdmin && !willBeSuperAdmin && current.status === AccountStatus.ACTIVE) {
+      const activeSuperAdmins = await this.prisma.user.count({
+        where: { status: AccountStatus.ACTIVE, roles: { some: { role: AdminRole.SUPER_ADMIN } } },
+      });
+      if (activeSuperAdmins <= 1) {
+        throw new DomainError(
+          ErrorCode.LAST_SUPER_ADMIN_PROTECTED,
+          'The last active super administrator role cannot be revoked',
+          400,
+        );
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { userId } });
+      if (nextRoles.length > 0) {
+        await tx.userRole.createMany({
+          data: nextRoles.map((role) => ({ userId, role })),
+        });
+      }
+      const updated = await tx.user.updateMany({
+        where: { id: userId, updatedAt: current.updatedAt },
+        data: { authVersion: { increment: 1 }, updatedAt: new Date() },
+      });
+      if (updated.count !== 1) {
+        throw new DomainError(
+          ErrorCode.STALE_ADMIN_UPDATE,
+          'The account was changed by another operator',
+          409,
+        );
+      }
+      await tx.refreshSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
     return this.getUser(userId);
   }
 

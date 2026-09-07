@@ -1,6 +1,7 @@
-import { AccountStatus, Gender } from '../common/domain';
+import { AccountStatus, AdminRole, Gender } from '../common/domain';
 import { Transform, Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDateString,
   IsEmail,
@@ -102,5 +103,11 @@ export class AdminUpdateSensitiveIdentityDto extends AdminExpectedUpdateDto {
   @Type(() => SensitiveIdentityDto)
   @IsOptional()
   identity?: SensitiveIdentityDto | null;
+}
+
+export class AdminRolesUpdateDto extends AdminExpectedUpdateDto {
+  @IsArray()
+  @IsEnum(AdminRole, { each: true })
+  roles!: AdminRole[];
 }
 
