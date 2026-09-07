@@ -101,32 +101,32 @@ export default function AdminUsersPage() {
   const endIndex = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header & Title Section */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-xl font-black tracking-tight text-slate-900">
               Quản lý người dùng
-            </h2>
+            </h1>
             {users.data ? (
-              <span className="rounded-full bg-[#E8F7EC] px-2.5 py-0.5 text-xs font-bold text-[#00873E]">
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
                 {totalItems.toLocaleString('vi-VN')} tài khoản
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-500">
             Tra cứu, theo dõi thông tin tài khoản và kiểm soát quyền hạn thành viên.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing || users.isFetching}
-            className="gap-2 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            className="h-8 text-xs gap-1.5 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
           >
             <RefreshCw
               className={`size-3.5 ${isRefreshing || users.isFetching ? 'animate-spin text-[#00873E]' : ''}`}
@@ -134,16 +134,16 @@ export default function AdminUsersPage() {
             <span>{isRefreshing || users.isFetching ? 'Đang tải…' : 'Làm mới'}</span>
           </Button>
 
-          <Button asChild variant="zenx-outline" size="sm" className="font-semibold shadow-2xs">
+          <Button asChild variant="zenx-outline" size="sm" className="h-8 text-xs font-semibold shadow-2xs">
             <Link href="/admin">
-              <ChevronLeft className="size-4" /> Về tổng quan
+              <ChevronLeft className="size-3.5" /> Về tổng quan
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Primary Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
         {statusTabs.map((tab) => {
           const active = status === tab.value;
           const countKey = tab.value === '' ? 'ALL' : tab.value;
@@ -155,18 +155,18 @@ export default function AdminUsersPage() {
                 setStatus(tab.value);
                 setPage(1);
               }}
-              className={`group inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
+              className={`group inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all duration-150 ${
                 active
-                  ? 'bg-[#00873E] text-white shadow-xs'
+                  ? 'bg-slate-900 text-white shadow-xs'
                   : 'border border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {tab.dotColor && !active ? (
-                <span className={`size-2 shrink-0 rounded-full ${tab.dotColor}`} />
+                <span className={`size-1.5 shrink-0 rounded-full ${tab.dotColor}`} />
               ) : null}
               <span>{tab.label}</span>
               <span
-                className={`rounded-full px-2 py-0.5 text-xs font-bold transition-colors ${
+                className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums transition-colors ${
                   active
                     ? 'bg-white/20 text-white'
                     : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200/80 group-hover:text-slate-900'
@@ -180,59 +180,57 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Filter & Search Bar Section */}
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs sm:p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm username, email, số điện thoại, họ tên người dùng…"
-              className="h-10 pl-10 pr-9 text-sm"
-              aria-label="Tìm kiếm người dùng"
-            />
-            {search ? (
-              <button
-                onClick={() => setSearch('')}
-                aria-label="Xóa từ khóa tìm kiếm"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X className="size-3.5" />
-              </button>
-            ) : null}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 whitespace-nowrap">
-              <SlidersHorizontal className="size-3.5 text-slate-400" />
-              <span>Số lượng:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#00873E] focus:ring-1 focus:ring-[#00873E]"
-              >
-                <option value={20}>20 / trang</option>
-                <option value={50}>50 / trang</option>
-                <option value={100}>100 / trang</option>
-              </select>
-            </div>
-
-            {hasActiveFilters ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFilters}
-                className="h-9 px-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              >
-                <X className="size-3.5 mr-1" /> Xóa bộ lọc
-              </Button>
-            ) : null}
-          </div>
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm username, email, số điện thoại, họ tên người dùng…"
+            className="h-8 rounded-xl pl-9 pr-8 text-xs bg-white border-slate-200"
+            aria-label="Tìm kiếm người dùng"
+          />
+          {search ? (
+            <button
+              onClick={() => setSearch('')}
+              aria-label="Xóa từ khóa tìm kiếm"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <X className="size-3" />
+            </button>
+          ) : null}
         </div>
-      </section>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 whitespace-nowrap">
+            <SlidersHorizontal className="size-3 text-slate-400" />
+            <span>Hiển thị:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+              className="h-8 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#00873E] focus:ring-1 focus:ring-[#00873E]"
+            >
+              <option value={20}>20 / trang</option>
+              <option value={50}>50 / trang</option>
+              <option value={100}>100 / trang</option>
+            </select>
+          </div>
+
+          {hasActiveFilters ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-8 px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <X className="size-3 mr-1" /> Xóa bộ lọc
+            </Button>
+          ) : null}
+        </div>
+      </div>
 
       {/* Main Content Area */}
       {users.isLoading ? (
@@ -263,12 +261,12 @@ export default function AdminUsersPage() {
               <table className="w-full text-left">
                 <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="px-5 py-3.5">Người dùng</th>
-                    <th className="px-5 py-3.5">Liên hệ</th>
-                    <th className="whitespace-nowrap px-5 py-3.5">Trạng thái</th>
-                    <th className="px-5 py-3.5">Vai trò</th>
-                    <th className="px-5 py-3.5">Ngày tham gia</th>
-                    <th className="px-5 py-3.5 text-right">Thao tác</th>
+                    <th className="px-4 py-2.5">Người dùng</th>
+                    <th className="px-4 py-2.5">Liên hệ</th>
+                    <th className="whitespace-nowrap px-4 py-2.5">Trạng thái</th>
+                    <th className="px-4 py-2.5">Vai trò</th>
+                    <th className="px-4 py-2.5">Ngày tham gia</th>
+                    <th className="px-4 py-2.5 text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -316,7 +314,7 @@ export default function AdminUsersPage() {
 
           {/* Pagination Controls */}
           {users.data.items.length > 0 ? (
-            <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white px-5 py-3.5 shadow-2xs sm:flex-row">
+            <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-2xs sm:flex-row">
               <span className="text-xs font-medium text-slate-500">
                 Hiển thị <strong className="text-slate-800">{startIndex}</strong> -{' '}
                 <strong className="text-slate-800">{endIndex}</strong> trong tổng số{' '}
@@ -384,8 +382,8 @@ function UserTableRow({ user }: { user: AdminUserSummary }) {
 
   return (
     <tr className="group transition duration-150 hover:bg-slate-50/80">
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-3.5">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
           <UserAvatar
             id={user.id}
             name={fullName}
@@ -410,7 +408,7 @@ function UserTableRow({ user }: { user: AdminUserSummary }) {
         </div>
       </td>
 
-      <td className="px-5 py-4">
+      <td className="px-4 py-3">
         <p className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
           <Mail className="size-3.5 text-slate-400 shrink-0" />
           <span className="truncate">{user.email}</span>
@@ -421,11 +419,11 @@ function UserTableRow({ user }: { user: AdminUserSummary }) {
         </p>
       </td>
 
-      <td className="whitespace-nowrap px-5 py-4">
+      <td className="whitespace-nowrap px-4 py-3">
         <AccountStatusBadge status={user.status} variant="dot" size="sm" />
       </td>
 
-      <td className="px-5 py-4">
+      <td className="px-4 py-3">
         {user.roles.length ? (
           <div className="flex flex-wrap gap-1">
             {user.roles.map((role) => (
@@ -449,16 +447,16 @@ function UserTableRow({ user }: { user: AdminUserSummary }) {
         )}
       </td>
 
-      <td className="whitespace-nowrap px-5 py-4 text-xs font-medium text-slate-500">
+      <td className="whitespace-nowrap px-4 py-3 text-xs font-medium text-slate-500">
         {formatDate(user.createdAt)}
       </td>
 
-      <td className="px-5 py-4 text-right">
+      <td className="px-4 py-3 text-right">
         <Button
           asChild
           variant="outline"
           size="sm"
-          className="h-8 gap-1 px-2.5 text-xs font-semibold border-slate-200 bg-white hover:border-[#00873E]/40 hover:bg-[#E8F7EC] hover:text-[#00873E]"
+          className="h-7 gap-1 px-2 text-xs font-semibold border-slate-200 bg-white hover:border-[#00873E]/40 hover:bg-[#E8F7EC] hover:text-[#00873E]"
         >
           <Link href={`/admin/users/${user.id}`} aria-label={`Xem chi tiết ${user.username}`}>
             <span>Xem hồ sơ</span>

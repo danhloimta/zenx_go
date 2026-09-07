@@ -112,58 +112,43 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-7">
-      {/* Top Banner & Executive Command Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/60 to-emerald-50/30 p-6 shadow-xs sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-[#E8F7EC] px-3 py-1 text-xs font-bold text-[#00873E]">
-                <Sparkles className="size-3.5" />
-                <span>Super Admin</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                Hệ thống trực tuyến (Live)
-              </span>
-              <span className="text-xs font-medium text-slate-400 capitalize">
-                {currentDateFormatted}
-              </span>
-            </div>
-
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+      {/* Executive Command Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Tổng quan vận hành ZENX GO
-            </h2>
-            <p className="mt-1.5 text-sm text-slate-600">
-              Chào mừng trở lại,{' '}
-              <span className="font-bold text-slate-900">
-                {admin.data?.profile?.fullName || admin.data?.username}
-              </span>
-              . Theo dõi chỉ số người dùng, hoạt động bảo mật và tình trạng hệ sinh thái.
-            </p>
+            </h1>
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-[#E8F7EC] px-2 py-0.5 text-[10px] font-bold text-[#00873E]">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live
+            </span>
           </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Xin chào <span className="font-semibold text-slate-800">{admin.data?.profile?.fullName || admin.data?.username}</span> · {currentDateFormatted}
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="gap-2 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-            >
-              <RefreshCw
-                className={`size-3.5 ${isRefreshing || dashboard.isFetching ? 'animate-spin text-[#00873E]' : ''}`}
-              />
-              <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
-            </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-8 text-xs gap-1.5 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+          >
+            <RefreshCw
+              className={`size-3.5 ${isRefreshing || dashboard.isFetching ? 'animate-spin text-[#00873E]' : ''}`}
+            />
+            <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
+          </Button>
 
-            <Button asChild variant="default" size="sm" className="font-semibold shadow-xs">
-              <Link href="/admin/users" className="gap-2">
-                <Users className="size-4" />
-                <span>Quản lý người dùng</span>
-                <ArrowRight className="size-3.5" />
-              </Link>
-            </Button>
-          </div>
+          <Button asChild size="sm" className="h-8 text-xs gap-1.5 font-semibold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs">
+            <Link href="/admin/users">
+              <Users className="size-3.5" />
+              <span>Quản lý người dùng</span>
+            </Link>
+          </Button>
         </div>
       </div>
 

@@ -95,120 +95,140 @@ export default function AdminContentAnnouncementsPage() {
   const draftCount = allItems.filter((i) => i.status === 'DRAFT').length;
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-amber-100/80 bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-800">
-                <Megaphone className="size-3.5" /> Content CMS
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {allItems.length} thông báo
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+    <div className="space-y-4 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Ribbon Thông báo Portal
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Quản lý các thanh thông báo khẩn cấp, bảo trì, ưu đãi hoặc sự kiện nổi bật ghim trên đầu trang web.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {allItems.length} thông báo
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void query.refetch()}
-              disabled={query.isFetching}
-              className="gap-2 bg-white"
-            >
-              <RefreshCw className={`size-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setEditing(null)}
-              className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]"
-            >
-              <Plus className="size-4" /> Tạo thông báo mới
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Quản lý các thanh thông báo bảo trì, ưu đãi hoặc sự kiện nổi bật ghim trên trang.
+          </p>
         </div>
 
-        {/* Quick KPI stats strip */}
-        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Tổng thông báo</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{allItems.length}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đang ghim hiển thị</div>
-            <div className="mt-1 flex items-center gap-1.5 text-xl font-black text-amber-600">
-              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
-              {activeCount}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đã xuất bản</div>
-            <div className="mt-1 text-xl font-black text-emerald-600">{publishedCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Bản nháp</div>
-            <div className="mt-1 text-xl font-black text-slate-600">{draftCount}</div>
-          </div>
+        <div className="flex items-center gap-2">
+          {(search || filterStatus) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch('');
+                setFilterStatus('');
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+            >
+              <X className="size-3.5 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void query.refetch()}
+            disabled={query.isFetching}
+            className="text-xs h-8 px-3 rounded-xl"
+          >
+            <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setEditing(null)}
+            className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs"
+          >
+            <Plus className="size-4 mr-1.5" /> Tạo thông báo mới
+          </Button>
         </div>
       </div>
 
-      {/* Filter toolbar */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-1 flex-wrap items-center gap-3">
-            <div className="relative min-w-[240px] flex-1">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm theo tiêu đề, mã code, thông điệp…"
-                className="h-10 text-sm"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-
-            <Select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as '' | ContentPublishStatus)}
-              className="h-10 w-44 text-sm"
+      {/* Quick Filter Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+          <button
+            type="button"
+            onClick={() => setFilterStatus('')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              !filterStatus
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span>Tất cả</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                !filterStatus ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+              }`}
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PUBLISHED">Đã xuất bản</option>
-              <option value="DRAFT">Bản nháp</option>
-            </Select>
+              {allItems.length}
+            </span>
+          </button>
 
-            {(search || filterStatus) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearch('');
-                  setFilterStatus('');
-                }}
-                className="text-xs text-rose-600 hover:bg-rose-50"
-              >
-                Xóa lọc
-              </Button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('PUBLISHED')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              filterStatus === 'PUBLISHED'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            <span>Đã xuất bản</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                filterStatus === 'PUBLISHED' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+              }`}
+            >
+              {publishedCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterStatus('DRAFT')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              filterStatus === 'DRAFT'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            <span>Bản nháp</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                filterStatus === 'DRAFT' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+              }`}
+            >
+              {draftCount}
+            </span>
+          </button>
         </div>
-      </section>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-64">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo tiêu đề, mã code…"
+            className="h-8 rounded-xl text-xs pr-8"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Announcements List */}
       {query.isLoading ? (

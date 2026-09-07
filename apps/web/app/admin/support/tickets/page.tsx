@@ -106,65 +106,71 @@ export default function SupportAdminTicketsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <LifeBuoy className="size-3.5" /> Support Operations
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {totalCount} tickets phù hợp
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+    <div className="space-y-4 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Hàng đợi Xử lý Yêu cầu
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Danh sách tiếp nhận yêu cầu từ người chơi, phân công chuyên viên và cập nhật tiến độ xử lý.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {totalCount} yêu cầu
+            </span>
           </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tiếp nhận yêu cầu từ người chơi, phân công và cập nhật tiến độ xử lý.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => void tickets.refetch()}
-              disabled={tickets.isFetching}
-              className="gap-2 bg-white"
+              onClick={handleResetFilters}
+              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
             >
-              <RefreshCw className={`size-3.5 ${tickets.isFetching ? 'animate-spin' : ''}`} />
-              Làm mới
+              <X className="size-3.5 mr-1" />
+              Xóa bộ lọc
             </Button>
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
-              <Link href="/admin/support">
-                <LifeBuoy className="size-4" /> Tổng quan Support
-              </Link>
-            </Button>
-          </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void tickets.refetch()}
+            disabled={tickets.isFetching}
+            className="text-xs h-8 px-3 rounded-xl"
+          >
+            <RefreshCw className={`size-3.5 mr-1.5 ${tickets.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+          <Button asChild size="sm" className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs">
+            <Link href="/admin/support">
+              <LifeBuoy className="size-4 mr-1.5" /> Tổng quan hỗ trợ
+            </Link>
+          </Button>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
         <div className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Tìm theo mã ticket, tiêu đề, tên user…"
-                className="h-10 pl-10 pr-9 text-sm"
+                className="pl-8 pr-8 h-8 rounded-xl text-xs"
                 aria-label="Tìm ticket"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -177,7 +183,7 @@ export default function SupportAdminTicketsPage() {
                 setStatus(event.target.value as '' | SupportTicketStatus);
                 setPage(1);
               }}
-              className="h-10 text-sm"
+              className="h-8 rounded-xl text-xs"
               aria-label="Lọc trạng thái"
             >
               {statusOptions.map((option) => (
@@ -193,7 +199,7 @@ export default function SupportAdminTicketsPage() {
                 setPriority(event.target.value as '' | SupportTicketPriority);
                 setPage(1);
               }}
-              className="h-10 text-sm"
+              className="h-8 rounded-xl text-xs"
               aria-label="Lọc ưu tiên"
             >
               {priorityOptions.map((option) => (
@@ -209,7 +215,7 @@ export default function SupportAdminTicketsPage() {
                 setAssignee(event.target.value as '' | 'ME' | 'UNASSIGNED');
                 setPage(1);
               }}
-              className="h-10 text-sm"
+              className="h-8 rounded-xl text-xs"
               aria-label="Lọc phân công"
             >
               <option value="">Tất cả người xử lý</option>

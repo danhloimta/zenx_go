@@ -37,6 +37,17 @@
   font-size: 0.9em;
 }
 
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.prose input[type='checkbox'] {
+  margin-right: 0.5rem;
+  accent-color: #00873e;
+}
+
 :root {
   --background: 150 20% 98%;
   --foreground: 222 28% 11%;

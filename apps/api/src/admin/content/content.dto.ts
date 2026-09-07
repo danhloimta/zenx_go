@@ -156,6 +156,14 @@ export class AdminContentArticlesQueryDto extends AdminContentPageDto {
   @IsOptional() @IsUUID() gameId?: string;
   @IsOptional() @IsIn(Object.values(GameArticleCategory)) category?: GameArticleCategory;
   @IsOptional() @IsIn(CONTENT_STATUSES) status?: ContentPublishStatus;
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true' || value === '1') return true;
+    if (value === false || value === 'false' || value === '0') return false;
+    return undefined;
+  })
+  @IsBoolean()
+  deletedOnly?: boolean;
 }
 
 export class AdminContentArticleCreateDto {

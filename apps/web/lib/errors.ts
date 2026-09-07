@@ -62,7 +62,7 @@ const messages: Record<string, string> = {
   COIN_PACKAGE_MUST_BE_INACTIVE: 'Hãy ngừng bán gói nạp trước khi xóa.',
   FINANCE_STALE_UPDATE: 'Dữ liệu tài chính đã thay đổi. Hãy tải lại trang rồi thử lại.',
   FINANCE_PAYMENT_TRANSITION_INVALID: 'Payment không thể chuyển sang trạng thái này.',
-  FINANCE_PROVIDER_TRANSACTION_EXISTS: 'Mã giao dịch provider đã được liên kết hoặc còn thiếu.',
+  FINANCE_PROVIDER_TRANSACTION_EXISTS: 'Mã giao dịch ngân hàng chưa được nhập hoặc đã được sử dụng cho một đơn nạp khác.',
   FINANCE_INVALID_AMOUNT: 'Số tiền phải là số nguyên dương hợp lệ.',
   INSUFFICIENT_BALANCE: 'Số dư Coin không đủ để thực hiện hoàn/trừ.',
 };

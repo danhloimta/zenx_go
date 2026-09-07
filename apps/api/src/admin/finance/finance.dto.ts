@@ -79,7 +79,7 @@ export class AdminFinanceCoinPackageUpdateDto {
 
 export class AdminFinancePaymentsQueryDto extends AdminFinancePageDto {
   @IsOptional() @Transform(({ value }) => trimOrUndefined(value)) @IsString() @MaxLength(100) search?: string;
-  @IsOptional() @IsIn(Object.values(PaymentStatus)) status?: PaymentStatus;
+  @IsOptional() @Transform(({ value }) => trimOrUndefined(value)) @IsString() @MaxLength(100) status?: string;
   @IsOptional() @IsString() @MaxLength(64) provider?: string;
   @IsOptional() @IsIn(Object.values(PaymentMethod)) paymentMethod?: PaymentMethod;
   @IsOptional() @Transform(({ value }) => trimOrUndefined(value)) @IsDateString() from?: string;

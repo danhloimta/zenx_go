@@ -21,7 +21,6 @@
     "admin:role": "tsx scripts/admin-role.ts"
   },
   "dependencies": {
-    "@zenx-go/web-domain": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
@@ -31,6 +30,7 @@
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "6.19.3",
+    "@zenx-go/web-domain": "workspace:*",
     "argon2": "^0.41.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -38,6 +38,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "joi": "^17.13.3",
+    "marked": "^18.0.11",
     "nestjs-pino": "^4.4.0",
     "pino-http": "^10.5.0",
     "reflect-metadata": "^0.2.2",

@@ -101,6 +101,7 @@ const ARTICLE_LIST_SELECT = {
   publishedAt: true,
   seoTitle: true,
   seoDescription: true,
+  deletedAt: true,
   createdAt: true,
   updatedAt: true,
   game: { select: GAME_SUMMARY_SELECT },
@@ -168,8 +169,8 @@ export class ContentAdminService {
     ] = await Promise.all([
         this.prisma.game.count(),
         this.prisma.game.count({ where: { isPublic: true } }),
-        this.prisma.gameArticle.count({ where: { status: GameArticleStatus.DRAFT } }),
-        this.prisma.gameArticle.count({ where: { status: GameArticleStatus.PUBLISHED } }),
+        this.prisma.gameArticle.count({ where: { status: GameArticleStatus.DRAFT, deletedAt: null } }),
+        this.prisma.gameArticle.count({ where: { status: GameArticleStatus.PUBLISHED, deletedAt: null } }),
         this.prisma.gameEvent.count({
           where: {
             ...publishedEventWhere,
@@ -429,7 +430,7 @@ export class ContentAdminService {
       where: { id: gameId },
       select: {
         ...GAME_SELECT,
-        articles: { select: { status: true } },
+        articles: { where: { deletedAt: null }, select: { status: true } },
         milestones: { select: { id: true } },
       },
     });
@@ -465,13 +466,13 @@ export class ContentAdminService {
       where: { id: gameId },
       select: {
         ...GAME_SELECT,
-        articles: { where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] },
+        articles: { where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() }, deletedAt: null }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] },
         milestones: { orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }] },
       },
     });
     if (!game) throw this.notFound('Game not found');
-    const parsedTheme = JSON.parse(game.themeConfig);
-    const parsedFeatureConfig = JSON.parse(game.featureConfig);
+    const parsedTheme = validateGameThemeConfig(JSON.parse(game.themeConfig));
+    const parsedFeatureConfig = validateGameFeatureConfig(JSON.parse(game.featureConfig));
     const pageConfig = parseGamePageConfig(game.pageConfig, game.themePreset);
     return {
       ...this.publicGame(game),
@@ -488,6 +489,7 @@ export class ContentAdminService {
     const pageSize = query.pageSize ?? 20;
     const search = query.search?.trim();
     const where: Prisma.GameArticleWhereInput = {
+      ...(query.deletedOnly ? { deletedAt: { not: null } } : { deletedAt: null }),
       ...(query.gameId ? { gameId: query.gameId } : {}),
       ...(query.category ? { category: query.category } : {}),
       ...(query.status ? { status: query.status } : {}),
@@ -593,6 +595,42 @@ export class ContentAdminService {
       this.rethrowUnique(error);
       throw error;
     }
+    return this.getArticle(articleId);
+  }
+
+  async deleteArticle(articleId: string) {
+    const current = await this.prisma.gameArticle.findUnique({
+      where: { id: articleId },
+      select: { id: true, title: true, deletedAt: true },
+    });
+    if (!current) throw this.notFound('Article not found');
+    if (current.deletedAt) throw this.invalidState('Article has already been deleted');
+
+    await this.prisma.gameArticle.update({
+      where: { id: articleId },
+      data: {
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    return { success: true, id: articleId };
+  }
+
+  async restoreArticle(articleId: string) {
+    const current = await this.prisma.gameArticle.findUnique({
+      where: { id: articleId },
+      select: { id: true, title: true, deletedAt: true },
+    });
+    if (!current) throw this.notFound('Article not found');
+    if (!current.deletedAt) throw this.invalidState('Article is not in trash');
+
+    await this.prisma.gameArticle.update({
+      where: { id: articleId },
+      data: {
+        deletedAt: null,
+        updatedAt: new Date(),
+      },
+    });
     return this.getArticle(articleId);
   }
 

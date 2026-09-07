@@ -49,7 +49,7 @@ export function useAdminFinancePayments(query: {
   page?: number;
   pageSize?: number;
   search?: string;
-  status?: PaymentStatus;
+  status?: PaymentStatus | string;
   provider?: string;
   paymentMethod?: PaymentMethod;
   from?: string;

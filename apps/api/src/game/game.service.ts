@@ -5,6 +5,7 @@ import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
 import { GamesQueryDto } from './game.dto';
 import { parseGamePageConfig } from '../admin/content/game-templates';
+import { Marked } from 'marked';
 
 const GAME_INCLUDE = {
   genres: { include: { genre: true } },
@@ -15,7 +16,11 @@ function gameDetailInclude(now: Date) {
   return {
     ...GAME_INCLUDE,
     articles: {
-      where: { status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: now } },
+      where: {
+        status: GameArticleStatus.PUBLISHED,
+        publishedAt: { not: null, lte: now },
+        deletedAt: null,
+      },
       orderBy: [
         { publishedAt: 'desc' as Prisma.SortOrder },
         { createdAt: 'desc' as Prisma.SortOrder },
@@ -63,16 +68,40 @@ export class GameService {
   async articles(slug: string) {
     const game = await this.prisma.game.findFirst({ where: { slug: slug.trim().toLowerCase(), isPublic: true }, select: { id: true } });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
-    const articles = await this.prisma.gameArticle.findMany({ where: { gameId: game.id, status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }] });
+    const articles = await this.prisma.gameArticle.findMany({
+      where: {
+        gameId: game.id,
+        status: GameArticleStatus.PUBLISHED,
+        publishedAt: { not: null, lte: new Date() },
+        deletedAt: null,
+      },
+      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+    });
     return { items: articles.map((article) => this.publicArticleSummary(article)) };
   }
 
   async article(slug: string, articleSlug: string) {
     const article = await this.prisma.gameArticle.findFirst({
-      where: { game: { slug: slug.trim().toLowerCase(), isPublic: true }, slug: articleSlug.trim().toLowerCase(), status: GameArticleStatus.PUBLISHED, publishedAt: { not: null, lte: new Date() } },
+      where: {
+        game: { slug: slug.trim().toLowerCase(), isPublic: true },
+        slug: articleSlug.trim().toLowerCase(),
+        status: GameArticleStatus.PUBLISHED,
+        publishedAt: { not: null, lte: new Date() },
+        deletedAt: null,
+      },
     });
     if (!article) throw new DomainError(ErrorCode.GAME_ARTICLE_NOT_FOUND, 'Game article not found', 404);
-    const related = await this.prisma.gameArticle.findMany({ where: { gameId: article.gameId, id: { not: article.id }, status: GameArticleStatus.PUBLISHED, publishedAt: { not: null } }, orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }], take: 3 });
+    const related = await this.prisma.gameArticle.findMany({
+      where: {
+        gameId: article.gameId,
+        id: { not: article.id },
+        status: GameArticleStatus.PUBLISHED,
+        publishedAt: { not: null },
+        deletedAt: null,
+      },
+      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 3,
+    });
     return { ...this.publicArticleDetail(article), related: related.map((item) => this.publicArticleSummary(item)) };
   }
 
@@ -199,23 +228,37 @@ function escapeHtml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
-export function markdownToSafeHtml(markdown: string) {
-  return markdown.split(/\r?\n\r?\n/).map((block) => {
-    const escaped = escapeHtml(block.trim());
-    if (!escaped) return '';
-    if (escaped.startsWith('### ')) return `<h3>${inlineMarkdown(escaped.slice(4))}</h3>`;
-    if (escaped.startsWith('## ')) return `<h2>${inlineMarkdown(escaped.slice(3))}</h2>`;
-    if (escaped.startsWith('# ')) return `<h1>${inlineMarkdown(escaped.slice(2))}</h1>`;
-    if (escaped.split('\n').every((line) => line.startsWith('- '))) return `<ul>${escaped.split('\n').map((line) => `<li>${inlineMarkdown(line.slice(2))}</li>`).join('')}</ul>`;
-    return `<p>${inlineMarkdown(escaped).replaceAll('\n', '<br />')}</p>`;
-  }).join('');
+const markdownParser = new Marked({
+  gfm: true,
+  breaks: true,
+});
+
+markdownParser.use({
+  renderer: {
+    html({ text }) {
+      return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+    link({ href, title, text }) {
+      const cleanHref = href && (/^https?:\/\//i.test(href) || href.startsWith('/')) ? href : '#';
+      const titleAttr = title ? ` title="${title}"` : '';
+      return `<a href="${cleanHref}"${titleAttr} rel="noopener noreferrer" target="_blank">${text}</a>`;
+    },
+    image({ href, title, text }) {
+      const cleanHref = href && (/^https?:\/\//i.test(href) || href.startsWith('/')) ? href : '';
+      if (!cleanHref) return '';
+      const titleAttr = title ? ` title="${title}"` : '';
+      const altAttr = text ? ` alt="${text}"` : '';
+      return `<img src="${cleanHref}"${altAttr}${titleAttr} loading="lazy" />`;
+    },
+  },
+});
+
+export function markdownToSafeHtml(markdown: string): string {
+  if (!markdown || typeof markdown !== 'string' || !markdown.trim()) return '';
+  try {
+    return (markdownParser.parse(markdown.trim()) as string).trim();
+  } catch {
+    return escapeHtml(markdown.trim());
+  }
 }
 
-function inlineMarkdown(value: string) {
-  return value
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener noreferrer">$1</a>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/__([^_]+)__/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/_([^_]+)_/g, '<em>$1</em>');
-}

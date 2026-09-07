@@ -1092,6 +1092,7 @@ export interface AdminContentArticle extends Omit<GameArticleSummary, 'game'> {
   gameId: string;
   content?: string;
   status: ContentPublishStatus;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   game: AdminContentGameRef | null;
@@ -1357,7 +1358,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
             page?: number;
             pageSize?: number;
             search?: string;
-            status?: PaymentStatus;
+            status?: PaymentStatus | string;
             provider?: string;
             paymentMethod?: PaymentMethod;
             from?: string;
@@ -1519,6 +1520,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
             gameId?: string;
             category?: GameArticleCategory;
             status?: ContentPublishStatus;
+            deletedOnly?: boolean;
           } = {},
         ) => client.get<Paginated<AdminContentArticle>>('/admin/content/articles', query),
         article: (articleId: string) =>
@@ -1529,6 +1531,14 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           client.patch<AdminContentArticle>(
             `/admin/content/articles/${encodeURIComponent(articleId)}`,
             input,
+          ),
+        deleteArticle: (articleId: string) =>
+          client.delete<{ success: boolean; id: string }>(
+            `/admin/content/articles/${encodeURIComponent(articleId)}`,
+          ),
+        restoreArticle: (articleId: string) =>
+          client.post<AdminContentArticle>(
+            `/admin/content/articles/${encodeURIComponent(articleId)}/restore`,
           ),
         events: (
           query: {

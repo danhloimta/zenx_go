@@ -110,7 +110,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ gameKe
               ? 'prose prose-slate max-w-none text-[#2b3d56] prose-headings:text-[#152238] prose-headings:font-serif prose-a:text-[#9d7d47]'
               : 'prose prose-slate max-w-none text-slate-700 prose-headings:text-[#123b63] prose-headings:font-serif prose-a:text-[#118a94]'
           }`}
-          dangerouslySetInnerHTML={{ __html: withoutLeadingTitle(article.contentHtml) }}
+          dangerouslySetInnerHTML={{ __html: withoutLeadingTitle(article.contentHtml, article.title) }}
         />
       </div>
 
@@ -221,6 +221,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ gameKe
   );
 }
 
-function withoutLeadingTitle(contentHtml: string) {
-  return contentHtml.replace(/^\s*<h1>[^<]*<\/h1>/i, '');
+function withoutLeadingTitle(contentHtml: string, title?: string) {
+  if (!contentHtml) return '';
+  const match = contentHtml.match(/^\s*<h1>([\s\S]*?)<\/h1>\s*/i);
+  if (match) {
+    const headingText = match[1].replace(/<[^>]*>/g, '').trim().toLowerCase();
+    const articleTitle = (title ?? '').trim().toLowerCase();
+    if (!articleTitle || headingText === articleTitle) {
+      return contentHtml.replace(/^\s*<h1>[\s\S]*?<\/h1>\s*/i, '');
+    }
+  }
+  return contentHtml;
 }

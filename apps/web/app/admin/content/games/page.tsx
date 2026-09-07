@@ -92,147 +92,195 @@ export default function AdminContentGamesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <Gamepad2 className="size-3.5" /> Content CMS
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {totalCount} games
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+    <div className="space-y-4 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Quản lý Game & Vũ trụ
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Quản lý danh sách tựa game, vòng đời phát hành, thông số vận hành, subdomain và giao diện CMS.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {totalCount} games
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
-              <Link href="/admin/content/games/new">
-                <Plus className="size-4" /> Thêm game
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void games.refetch()}
-              disabled={games.isFetching}
-              className="gap-2 bg-white"
-            >
-              <RefreshCw className={`size-3.5 ${games.isFetching ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
-            <Button asChild variant="outline" size="sm" className="gap-2 bg-white">
-              <Link href="/admin/content">
-                <Layers className="size-4" /> Tổng quan CMS
-              </Link>
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Quản lý danh sách tựa game, vòng đời phát hành, thông số vận hành và giao diện.
+          </p>
         </div>
 
-        {/* Quick KPI stats strip */}
-        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Tổng số game</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{totalCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đang vận hành (Live)</div>
-            <div className="mt-1 flex items-center gap-1.5 text-xl font-black text-emerald-600">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              {liveCount}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Hiển thị Public</div>
-            <div className="mt-1 text-xl font-black text-sky-600">{publicCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Vận hành chuẩn</div>
-            <div className="mt-1 text-xl font-black text-slate-800">
-              {games.data?.items.filter((g) => g.operationalStatus === 'AVAILABLE').length ?? 0}
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+            >
+              <X className="size-3.5 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void games.refetch()}
+            disabled={games.isFetching}
+            className="text-xs h-8 px-3 rounded-xl"
+          >
+            <RefreshCw className={`size-3.5 mr-1.5 ${games.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+          <Button asChild size="sm" className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs">
+            <Link href="/admin/content/games/new">
+              <Plus className="size-4 mr-1.5" /> Thêm game
+            </Link>
+          </Button>
         </div>
       </div>
 
+      {/* Quick Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setLifecycleStatus('');
+            setVisibility('');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            !lifecycleStatus && !visibility
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span>Tất cả game</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              !lifecycleStatus && !visibility ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+            }`}
+          >
+            {totalCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setLifecycleStatus('LIVE');
+            setVisibility('');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            lifecycleStatus === 'LIVE'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          <span>Đang vận hành (Live)</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              lifecycleStatus === 'LIVE' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            {liveCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setLifecycleStatus('');
+            setVisibility('PUBLIC');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            visibility === 'PUBLIC'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span className="size-1.5 rounded-full bg-sky-500" />
+          <span>Hiển thị Public</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              visibility === 'PUBLIC' ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'
+            }`}
+          >
+            {publicCount}
+          </span>
+        </button>
+      </div>
+
       {/* Filter Toolbar */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_170px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm theo tên game, code (LDDM), slug…"
-                className="h-10 pl-10 pr-9 text-sm"
-                aria-label="Tìm game"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-
-            <Select
-              value={lifecycleStatus}
-              onChange={(event) => {
-                setLifecycleStatus(event.target.value as '' | GameLifecycleStatus);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc vòng đời"
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm theo tên game, code (LDDM), slug…"
+            className="pl-8 pr-8 h-8 rounded-xl text-xs"
+            aria-label="Tìm game"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
             >
-              {lifecycleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
 
-            <Select
-              value={operationalStatus}
-              onChange={(event) => {
-                setOperationalStatus(event.target.value as '' | GameOperationalStatus);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc trạng thái vận hành"
-            >
-              {operationalOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
+        <Select
+          value={lifecycleStatus}
+          onChange={(event) => {
+            setLifecycleStatus(event.target.value as '' | GameLifecycleStatus);
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc vòng đời"
+        >
+          {lifecycleOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
 
-            <Select
-              value={visibility}
-              onChange={(event) => {
-                setVisibility(event.target.value as '' | 'PUBLIC' | 'PRIVATE');
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc hiển thị"
-            >
-              <option value="">Tất cả hiển thị</option>
-              <option value="PUBLIC">Đang Public</option>
-              <option value="PRIVATE">Đang Ẩn (Private)</option>
-            </Select>
-          </div>
+        <Select
+          value={operationalStatus}
+          onChange={(event) => {
+            setOperationalStatus(event.target.value as '' | GameOperationalStatus);
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc trạng thái vận hành"
+        >
+          {operationalOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          value={visibility}
+          onChange={(event) => {
+            setVisibility(event.target.value as '' | 'PUBLIC' | 'PRIVATE');
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc hiển thị"
+        >
+          <option value="">Tất cả hiển thị</option>
+          <option value="PUBLIC">Công khai (Public)</option>
+          <option value="PRIVATE">Ẩn / Nội bộ (Private)</option>
+        </Select>
+      </div>
 
           {/* Filter badges & Clear */}
           {hasActiveFilters && (
@@ -270,8 +318,6 @@ export default function AdminContentGamesPage() {
               </Button>
             </div>
           )}
-        </div>
-      </section>
 
       {/* Main Table / Grid Content */}
       {games.isLoading ? (

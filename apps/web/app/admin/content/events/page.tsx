@@ -107,139 +107,203 @@ export default function AdminContentEventsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <CalendarDays className="size-3.5" /> Content CMS
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {totalCount} sự kiện
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+    <div className="space-y-4 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Sự kiện & Giải đấu Portal
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Quản lý các sự kiện in-game, đua top, giải đấu cộng đồng, mốc thời gian diễn ra và hình ảnh truyền thông.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {totalCount} sự kiện
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void events.refetch()}
-              disabled={events.isFetching}
-              className="gap-2 bg-white"
-            >
-              <RefreshCw className={`size-3.5 ${events.isFetching ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
-              <Link href="/admin/content/events/new">
-                <Plus className="size-4" /> Tạo sự kiện mới
-              </Link>
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Quản lý các sự kiện in-game, đua top, giải đấu cộng đồng và mốc thời gian.
+          </p>
         </div>
 
-        {/* Quick KPI stats strip */}
-        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Tổng số sự kiện</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{totalCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đang diễn ra (Hot)</div>
-            <div className="mt-1 flex items-center gap-1.5 text-xl font-black text-emerald-600">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              {happeningCount}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đã xuất bản</div>
-            <div className="mt-1 text-xl font-black text-sky-600">{publishedCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Bản nháp (Draft)</div>
-            <div className="mt-1 text-xl font-black text-amber-600">{draftCount}</div>
-          </div>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+            >
+              <X className="size-3.5 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void events.refetch()}
+            disabled={events.isFetching}
+            className="text-xs h-8 px-3 rounded-xl"
+          >
+            <RefreshCw className={`size-3.5 mr-1.5 ${events.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+          <Button asChild size="sm" className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs">
+            <Link href="/admin/content/events/new">
+              <Plus className="size-4 mr-1.5" /> Tạo sự kiện mới
+            </Link>
+          </Button>
         </div>
       </div>
 
+      {/* Quick Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setTimelineFilter('');
+            setStatus('');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            !timelineFilter && !status
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span>Tất cả</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              !timelineFilter && !status ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-700'
+            }`}
+          >
+            {totalCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setTimelineFilter('HAPPENING');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            timelineFilter === 'HAPPENING'
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          <span>Đang diễn ra (Hot)</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              timelineFilter === 'HAPPENING' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            {happeningCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatus('PUBLISHED');
+            setTimelineFilter('');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            status === 'PUBLISHED' && !timelineFilter
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span className="size-1.5 rounded-full bg-sky-500" />
+          <span>Đã xuất bản</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              status === 'PUBLISHED' && !timelineFilter ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-800'
+            }`}
+          >
+            {publishedCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatus('DRAFT');
+            setTimelineFilter('');
+            setPage(1);
+          }}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+            status === 'DRAFT' && !timelineFilter
+              ? 'bg-slate-900 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+        >
+          <span className="size-1.5 rounded-full bg-amber-500" />
+          <span>Bản nháp</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+              status === 'DRAFT' && !timelineFilter ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'
+            }`}
+          >
+            {draftCount}
+          </span>
+        </button>
+      </div>
+
       {/* Filter Toolbar */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_170px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm tiêu đề sự kiện, slug, trích dẫn…"
-                className="h-10 pl-10 pr-9 text-sm"
-                aria-label="Tìm sự kiện"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-
-            <Select
-              value={gameId}
-              onChange={(event) => {
-                setGameId(event.target.value);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc phạm vi game"
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm tiêu đề sự kiện, slug, trích dẫn…"
+            className="pl-8 pr-8 h-8 rounded-xl text-xs"
+            aria-label="Tìm sự kiện"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
             >
-              <option value="">Tất cả phạm vi (Portal & Game)</option>
-              {(games.data?.items ?? []).map((game) => (
-                <option key={game.id} value={game.id}>
-                  {game.name} ({game.code})
-                </option>
-              ))}
-            </Select>
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
 
-            <Select
-              value={timelineFilter}
-              onChange={(event) => {
-                setTimelineFilter(event.target.value as '' | 'HAPPENING' | 'UPCOMING' | 'ENDED');
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc tiến độ thời gian"
-            >
-              <option value="">Tất cả tiến độ</option>
-              <option value="HAPPENING">Đang diễn ra</option>
-              <option value="UPCOMING">Sắp diễn ra</option>
-              <option value="ENDED">Đã kết thúc</option>
-            </Select>
+        <Select
+          value={gameId}
+          onChange={(event) => {
+            setGameId(event.target.value);
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc phạm vi game"
+        >
+          <option value="">Tất cả phạm vi (Portal & Game)</option>
+          {(games.data?.items ?? []).map((game) => (
+            <option key={game.id} value={game.id}>
+              {game.name} ({game.code})
+            </option>
+          ))}
+        </Select>
 
-            <Select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as '' | ContentPublishStatus);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc trạng thái"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PUBLISHED">Đã xuất bản</option>
-              <option value="DRAFT">Bản nháp</option>
-            </Select>
-          </div>
+        <Select
+          value={timelineFilter}
+          onChange={(event) => {
+            setTimelineFilter(event.target.value as '' | 'HAPPENING' | 'UPCOMING' | 'ENDED');
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc tiến độ thời gian"
+        >
+          <option value="">Tất cả tiến độ</option>
+          <option value="HAPPENING">Đang diễn ra</option>
+          <option value="UPCOMING">Sắp diễn ra</option>
+          <option value="ENDED">Đã kết thúc</option>
+        </Select>
+      </div>
 
           {/* Filter badges */}
           {hasActiveFilters && (
@@ -277,8 +341,6 @@ export default function AdminContentEventsPage() {
               </Button>
             </div>
           )}
-        </div>
-      </section>
 
       {/* Main List Content */}
       {events.isLoading ? (

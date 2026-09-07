@@ -86,59 +86,53 @@ export default function SupportAdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Banner Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <LifeBuoy className="size-3.5" /> Support Operations
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {totalTickets} tickets toàn hệ thống
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Trung tâm Hỗ trợ Khách hàng
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Tiếp nhận, phân luồng yêu cầu, trả lời ticket và quản lý cơ sở tri thức FAQ cho toàn bộ người chơi.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+              {totalTickets} tickets
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void dashboard.refetch();
-                void tickets.refetch();
-              }}
-              disabled={dashboard.isFetching || tickets.isFetching}
-              className="gap-2 bg-white"
-            >
-              <RefreshCw
-                className={`size-3.5 ${dashboard.isFetching || tickets.isFetching ? 'animate-spin' : ''}`}
-              />
-              Làm mới
-            </Button>
-            <Button asChild variant="outline" size="sm" className="gap-2 bg-white">
-              <Link href="/admin/support/faqs">
-                <HelpCircle className="size-4 text-slate-500" /> Quản lý FAQ
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
-              <Link href="/admin/support/tickets">
-                <ClipboardList className="size-4" /> Mở hàng đợi xử lý
-              </Link>
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tiếp nhận, phân luồng yêu cầu, trả lời ticket và quản lý cơ sở tri thức FAQ cho toàn bộ người chơi.
+          </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void dashboard.refetch();
+              void tickets.refetch();
+            }}
+            disabled={dashboard.isFetching || tickets.isFetching}
+            className="h-8 text-xs gap-1.5"
+          >
+            <RefreshCw
+              className={`size-3.5 ${dashboard.isFetching || tickets.isFetching ? 'animate-spin' : ''}`}
+            />
+            Làm mới
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <Link href="/admin/support/faqs">
+              <HelpCircle className="size-3.5 text-slate-500" /> Quản lý FAQ
+            </Link>
+          </Button>
+          <Button asChild size="sm" className="h-8 text-xs gap-1.5 bg-[#00873E] text-white hover:bg-[#007033]">
+            <Link href="/admin/support/tickets">
+              <ClipboardList className="size-3.5" /> Hàng đợi xử lý
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* 4 Core Actionable Metrics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {queueCards.map((card) => {
           const Icon = card.icon;
           const value =
@@ -150,15 +144,15 @@ export default function SupportAdminDashboardPage() {
             <Link
               key={card.key}
               href={card.href}
-              className="group relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-md"
+              className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-sm"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-bold text-slate-500 group-hover:text-[#00873E]">
+                  <p className="text-xs font-semibold text-slate-500 group-hover:text-[#00873E]">
                     {card.label}
                   </p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-3xl font-black tracking-tight text-slate-900">
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className="text-2xl font-black tracking-tight text-slate-900">
                       {value}
                     </span>
                     {card.key === 'unread' && value > 0 && (
@@ -167,16 +161,16 @@ export default function SupportAdminDashboardPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-[11px] text-slate-400">{card.desc}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-400">{card.desc}</p>
                 </div>
                 <span
-                  className={`flex size-12 items-center justify-center rounded-2xl border ${card.tone} shadow-2xs transition-transform duration-300 group-hover:scale-110`}
+                  className={`flex size-10 items-center justify-center rounded-xl border ${card.tone} shadow-2xs transition-transform duration-300 group-hover:scale-105`}
                 >
-                  <Icon className="size-5" />
+                  <Icon className="size-4" />
                 </span>
               </div>
-              <div className="mt-4 flex items-center gap-1 text-xs font-bold text-[#00873E]">
-                Mở danh sách <ArrowRight className="size-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+              <div className="mt-3 flex items-center gap-1 text-[11px] font-bold text-[#00873E]">
+                Mở danh sách <ArrowRight className="size-3 transition-transform duration-200 group-hover:translate-x-1" />
               </div>
             </Link>
           );

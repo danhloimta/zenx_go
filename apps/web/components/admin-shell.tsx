@@ -19,7 +19,8 @@ import {
   Megaphone,
   Layers,
   Coins,
-  ReceiptText,
+  Landmark,
+  Receipt,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -67,10 +68,9 @@ const allNavSections: NavSection[] = [
   {
     title: 'Tài chính',
     items: [
-      { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Coins, exact: true },
+      { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Landmark, exact: true },
       { href: '/admin/finance/packages', label: 'Gói nạp ZENX Coin', icon: Coins },
-      { href: '/admin/finance/payments', label: 'Payment operations', icon: ReceiptText },
-      { href: '/admin/finance/transactions', label: 'Sổ cái Coin', icon: ReceiptText },
+      { href: '/admin/finance/payments', label: 'Đơn nạp tiền', icon: Receipt },
     ],
   },
   {

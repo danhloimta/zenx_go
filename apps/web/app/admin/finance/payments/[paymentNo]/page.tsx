@@ -1,46 +1,623 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Clock3, CreditCard, RotateCcw, XCircle } from 'lucide-react';
+import {
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  RotateCcw,
+  XCircle,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAdminFinancePayment, useAdminFinancePaymentActions } from '@/hooks/use-finance';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatAmount, formatDate, paymentMethodLabels, transactionTypeLabels } from '@/lib/utils';
+import { bankNameMap, formatAmount, formatDate, paymentMethodLabels } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
 
-const statusLabels: Record<string, string> = { CREATED: 'Mới tạo', PENDING: 'Đang chờ', SUCCESS: 'Thành công', FAILED: 'Thất bại', EXPIRED: 'Hết hạn', CANCELLED: 'Đã hủy', REFUNDED: 'Đã hoàn' };
-const statusClass: Record<string, string> = { CREATED: 'bg-slate-100 text-slate-600', PENDING: 'bg-amber-50 text-amber-700', SUCCESS: 'bg-emerald-50 text-emerald-700', FAILED: 'bg-red-50 text-red-700', EXPIRED: 'bg-slate-100 text-slate-500', CANCELLED: 'bg-slate-100 text-slate-500', REFUNDED: 'bg-violet-50 text-violet-700' };
+const statusBadge: Record<string, { label: string; className: string }> = {
+  CREATED: { label: 'Chờ thanh toán', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  PENDING: { label: 'Chờ thanh toán', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  SUCCESS: { label: 'Thành công', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  FAILED: { label: 'Thất bại', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+  EXPIRED: { label: 'Hết hạn', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+  CANCELLED: { label: 'Đã hủy', className: 'bg-slate-100 text-slate-600 border-slate-200' },
+  REFUNDED: { label: 'Đã hoàn tiền', className: 'bg-purple-50 text-purple-700 border-purple-200' },
+};
+
+type ActionKind = 'success' | 'fail' | 'expire' | 'cancel' | 'refund';
+
+function parsePayload(payload: unknown): Record<string, any> | null {
+  if (!payload) return null;
+  if (typeof payload === 'object') return payload as Record<string, any>;
+  if (typeof payload === 'string') {
+    try {
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 export default function AdminFinancePaymentDetailPage() {
   const params = useParams<{ paymentNo: string }>();
   const paymentNo = decodeURIComponent(params.paymentNo);
   const query = useAdminFinancePayment(paymentNo);
   const actions = useAdminFinancePaymentActions(paymentNo);
-  const [providerTransactionId, setProviderTransactionId] = useState('');
-  useEffect(() => { if (query.data?.providerTransactionId && !query.data.providerTransactionId.startsWith('*')) setProviderTransactionId(query.data.providerTransactionId); }, [query.data?.providerTransactionId]);
-  const action = (kind: 'fail' | 'expire' | 'cancel' | 'refund') => {
-    if (!query.data) return;
-    const labels = { fail: 'đánh dấu thất bại', expire: 'đánh dấu hết hạn', cancel: 'hủy payment', refund: 'hoàn giao dịch và thu hồi Coin' };
-    if (!window.confirm(`Xác nhận ${labels[kind]} cho ${query.data.paymentNo}?`)) return;
-    const input = { expectedUpdatedAt: query.data.updatedAt };
-    const mutation = actions[kind];
-    mutation.mutate(input, { onSuccess: () => toast.success('Đã cập nhật payment.'), onError: (error) => toast.error(getErrorMessage(error)) });
-  };
-  const confirmSuccess = () => {
-    if (!query.data) return;
-    if (!window.confirm(`Xác nhận payment ${query.data.paymentNo} thành công và cộng ${formatAmount(query.data.coinAmount)} Coin?`)) return;
-    actions.confirmSuccess.mutate({ expectedUpdatedAt: query.data.updatedAt, providerTransactionId: providerTransactionId.trim() || undefined }, { onSuccess: () => toast.success('Đã xác nhận payment và cộng Coin.'), onError: (error) => toast.error(getErrorMessage(error)) });
-  };
-  if (query.isLoading) return <div className="space-y-6"><Skeleton className="h-28 rounded-3xl" /><Skeleton className="h-72 rounded-2xl" /><Skeleton className="h-64 rounded-2xl" /></div>;
-  if (query.isError || !query.data) return <div className="rounded-2xl bg-red-50 p-6 text-sm text-red-700">{getErrorMessage(query.error, 'Không thể tải payment.')}</div>;
-  const payment = query.data;
-  const terminal = ['SUCCESS', 'FAILED', 'EXPIRED', 'CANCELLED', 'REFUNDED'].includes(payment.status);
-  const pending = actions.confirmSuccess.isPending || actions.fail.isPending || actions.expire.isPending || actions.cancel.isPending || actions.refund.isPending;
-  return <div className="space-y-6"><div className="flex items-center gap-3"><Button asChild variant="ghost" size="icon"><Link href="/admin/finance/payments" aria-label="Quay lại danh sách"><ArrowLeft className="size-5" /></Link></Button><div><p className="text-xs font-bold uppercase tracking-wider text-[#00873E]">Payment operations</p><h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900">{payment.paymentNo}</h1></div><span className={`ml-auto rounded-full px-3 py-1.5 text-xs font-bold ${statusClass[payment.status] ?? 'bg-slate-100 text-slate-600'}`}>{statusLabels[payment.status] ?? payment.status}</span></div><div className="grid gap-6 lg:grid-cols-[1fr_340px]"><div className="space-y-6"><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><CreditCard className="size-4 text-[#00873E]" /><h2 className="font-black text-slate-900">Thông tin giao dịch</h2></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><Detail label="Số tiền" value={`${formatAmount(payment.amountVnd)} ₫`} /><Detail label="Coin" value={`${formatAmount(payment.coinAmount)} ZENX`} tone="text-emerald-700" /><Detail label="Gói nạp" value={`${payment.coinPackage.name} (${payment.coinPackage.code})`} /><Detail label="Provider / phương thức" value={`${payment.provider} · ${paymentMethodLabels[payment.paymentMethod ?? ''] ?? payment.paymentMethod}`} /><Detail label="Tạo lúc" value={formatDate(payment.createdAt)} /><Detail label="Thanh toán lúc" value={formatDate(payment.paidAt)} /><Detail label="Provider transaction" value={payment.providerTransactionId || 'Chưa có'} /><Detail label="Cập nhật" value={formatDate(payment.updatedAt)} /></div>{payment.providerPayload ? <div className="mt-5 rounded-xl bg-slate-50 p-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Provider payload đã lọc</p><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-slate-600">{JSON.stringify(payment.providerPayload, null, 2)}</pre></div> : null}</section><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-black text-slate-900">Wallet ledger liên quan</h2><p className="mt-1 text-xs text-slate-500">Các bút toán của payment và refund</p></div><Link href="/admin/finance/transactions" className="text-xs font-bold text-[#00873E]">Mở sổ cái →</Link></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400"><th className="pb-3 pr-4">Mã giao dịch</th><th className="pb-3 pr-4">Loại</th><th className="pb-3 pr-4">Số Coin</th><th className="pb-3 pr-4">Số dư sau</th><th className="pb-3">Thời gian</th></tr></thead><tbody>{payment.walletTransactions.map((item) => <tr key={item.transactionNo} className="border-b border-slate-50 last:border-0"><td className="py-3 pr-4"><p className="font-semibold text-slate-800">{item.transactionNo}</p><p className="mt-1 text-[11px] text-slate-400">{item.referenceType}</p></td><td className="py-3 pr-4">{transactionTypeLabels[item.type] ?? item.type}</td><td className={`py-3 pr-4 font-bold ${item.type === 'DEBIT' ? 'text-red-700' : 'text-emerald-700'}`}>{item.type === 'DEBIT' ? '−' : '+'}{formatAmount(item.amount)} ZENX</td><td className="py-3 pr-4 text-slate-600">{formatAmount(item.balanceAfter)} ZENX</td><td className="py-3 text-xs text-slate-500">{formatDate(item.createdAt)}</td></tr>)}{!payment.walletTransactions.length ? <tr><td colSpan={5} className="py-10 text-center text-sm text-slate-500">Chưa có bút toán liên quan.</td></tr> : null}</tbody></table></div></section></div><aside className="space-y-6"><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Clock3 className="size-4 text-[#00873E]" /><h2 className="font-black text-slate-900">Người dùng</h2></div><p className="mt-4 text-lg font-black text-slate-900">{payment.user.profile?.fullName || payment.user.username}</p><p className="mt-1 text-sm text-slate-500">{payment.user.email}</p>{payment.user.phone ? <p className="mt-1 text-sm text-slate-500">{payment.user.phone}</p> : null}<Link href={`/admin/users/${payment.user.id}`} className="mt-4 inline-block text-xs font-bold text-[#00873E]">Mở hồ sơ user →</Link></section><section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><h2 className="font-black text-slate-900">Thao tác payment</h2>{payment.status !== 'SUCCESS' && payment.status !== 'REFUNDED' ? <div className="mt-4 space-y-3"><label className="block text-xs font-bold text-slate-600">Provider transaction ID <span className="font-normal text-slate-400">(bắt buộc nếu payment chưa có)</span><Input className="mt-1.5" value={providerTransactionId} onChange={(event) => setProviderTransactionId(event.target.value)} placeholder="Mã giao dịch ngân hàng/provider" /></label>{!terminal || ['EXPIRED', 'FAILED'].includes(payment.status) ? <Button className="w-full" disabled={pending || (!providerTransactionId.trim() && !payment.providerTransactionId)} onClick={confirmSuccess}><CheckCircle2 className="size-4" /> Xác nhận thành công</Button> : null}</div> : null}{['CREATED', 'PENDING'].includes(payment.status) ? <div className="mt-3 grid gap-2"><Button variant="outline" disabled={pending} onClick={() => action('fail')}><XCircle className="size-4 text-red-600" /> Đánh dấu thất bại</Button><Button variant="outline" disabled={pending} onClick={() => action('expire')}><Clock3 className="size-4 text-amber-600" /> Đánh dấu hết hạn</Button><Button variant="outline" disabled={pending} onClick={() => action('cancel')}><XCircle className="size-4 text-slate-500" /> Hủy payment</Button></div> : null}{payment.status === 'SUCCESS' ? <Button variant="outline" className="mt-3 w-full border-violet-200 text-violet-700 hover:bg-violet-50" disabled={pending} onClick={() => action('refund')}><RotateCcw className="size-4" /> Hoàn và thu hồi Coin</Button> : null}{payment.status === 'REFUNDED' ? <p className="mt-4 rounded-xl bg-violet-50 p-3 text-xs font-semibold text-violet-800">Payment đã hoàn, không thể thao tác tiếp.</p> : null}<p className="mt-4 text-[11px] leading-5 text-slate-400">Các thao tác được thực hiện atomic với wallet ledger. Payment và ledger không thể chỉnh sửa trực tiếp.</p></section></aside></div></div>;
-}
 
-function Detail({ label, value, tone = 'text-slate-800' }: { label: string; value: string; tone?: string }) { return <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-1 text-sm font-semibold ${tone}`}>{value}</p></div>; }
+  const [providerTransactionId, setProviderTransactionId] = useState('');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showJson, setShowJson] = useState(false);
+  const [confirmKind, setConfirmKind] = useState<ActionKind | null>(null);
+  const [missingTxError, setMissingTxError] = useState(false);
+
+  useEffect(() => {
+    if (query.data?.providerTransactionId && !query.data.providerTransactionId.startsWith('*')) {
+      setProviderTransactionId(query.data.providerTransactionId);
+    }
+  }, [query.data?.providerTransactionId]);
+
+  const copy = (text: string, key: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success('Đã sao chép');
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
+
+  const handleExecuteAction = () => {
+    if (!confirmKind || !query.data) return;
+    const payment = query.data;
+    const input = { expectedUpdatedAt: payment.updatedAt };
+
+    if (confirmKind === 'success') {
+      actions.confirmSuccess.mutate(
+        {
+          expectedUpdatedAt: payment.updatedAt,
+          providerTransactionId: providerTransactionId.trim() || undefined,
+        },
+        {
+          onSuccess: () => {
+            toast.success('Đã duyệt đơn và cộng Coin.');
+            setConfirmKind(null);
+          },
+          onError: (error) => toast.error(getErrorMessage(error)),
+        },
+      );
+    } else {
+      const mutationMap = {
+        fail: actions.fail,
+        expire: actions.expire,
+        cancel: actions.cancel,
+        refund: actions.refund,
+      };
+      mutationMap[confirmKind].mutate(input, {
+        onSuccess: () => {
+          toast.success('Cập nhật trạng thái thành công.');
+          setConfirmKind(null);
+        },
+        onError: (error) => toast.error(getErrorMessage(error)),
+      });
+    }
+  };
+
+  if (query.isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-48 rounded-xl" />
+        <Skeleton className="h-28 rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <Skeleton className="h-80 rounded-2xl" />
+          <Skeleton className="h-80 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (query.isError || !query.data) {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-6 text-center text-rose-900">
+        <XCircle className="mx-auto size-8 text-rose-500" />
+        <p className="mt-2 text-sm font-bold">Không tìm thấy đơn nạp tiền</p>
+        <Button asChild variant="outline" size="sm" className="mt-4 rounded-xl">
+          <Link href="/admin/finance/payments">Quay lại danh sách</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const payment = query.data;
+  const status = statusBadge[payment.status] || {
+    label: payment.status,
+    className: 'bg-slate-100 text-slate-700 border-slate-200',
+  };
+
+  const isPending =
+    actions.confirmSuccess.isPending ||
+    actions.fail.isPending ||
+    actions.expire.isPending ||
+    actions.cancel.isPending ||
+    actions.refund.isPending;
+
+  const payload = parsePayload(payment.providerPayload);
+  const metadata = payload?.displayMetadata || {};
+  const qrImageUrl = payload?.qrImageUrl;
+  const bankAccount = metadata.bankAccount || '';
+  const accountHolder = metadata.accountHolder || '';
+  const bankName = bankNameMap[metadata.bankCode] || (metadata.bankCode ? `Ngân hàng ${metadata.bankCode}` : '');
+  const userName = payment.user.profile?.fullName || payment.user.username;
+
+  return (
+    <div className="space-y-5 max-w-6xl">
+      {/* Compact Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <Button asChild variant="ghost" size="icon" className="size-8 rounded-lg hover:bg-slate-100">
+            <Link href="/admin/finance/payments">
+              <ArrowLeft className="size-4 text-slate-600" />
+            </Link>
+          </Button>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 font-mono tracking-tight">
+              {payment.paymentNo}
+            </h1>
+            <button
+              type="button"
+              onClick={() => copy(payment.paymentNo, 'paymentNo')}
+              className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+              title="Sao chép mã đơn"
+            >
+              {copiedKey === 'paymentNo' ? (
+                <Check className="size-3.5 text-emerald-600" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs text-slate-400">{formatDate(payment.createdAt)}</span>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-bold ${status.className}`}
+          >
+            <span className="size-1.5 rounded-full bg-current" />
+            {status.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Hero Overview Strip */}
+      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Số tiền</p>
+            <p className="mt-1 text-2xl font-black text-slate-900">
+              {formatAmount(payment.amountVnd)} <span className="text-sm font-semibold text-slate-500">₫</span>
+            </p>
+            <p className="text-xs text-slate-500">{payment.coinPackage.name}</p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Coin nhận</p>
+            <p className="mt-1 text-2xl font-black text-emerald-600">
+              +{formatAmount(payment.coinAmount)} <span className="text-sm font-bold">Coin</span>
+            </p>
+            <p className="text-xs text-emerald-800/80">Cộng vào ví</p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hình thức</p>
+            <p className="mt-1 text-sm font-bold text-slate-800">
+              {paymentMethodLabels[payment.paymentMethod ?? ''] ?? payment.paymentMethod}
+            </p>
+            <p className="text-xs text-slate-500 uppercase">{payment.provider}</p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Khách hàng</p>
+            <Link
+              href={`/admin/users/${payment.user.id}`}
+              className="mt-1 block text-sm font-bold text-slate-900 hover:text-[#00873E] truncate"
+              title="Xem hồ sơ khách"
+            >
+              {userName}
+            </Link>
+            <p className="text-xs text-slate-400 truncate font-mono">
+              {payment.user.phone || payment.user.email}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main 2-Column Grid */}
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+        {/* Left Column */}
+        <div className="space-y-5">
+          {/* Thông tin chuyển khoản */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">Thông tin chuyển khoản</h2>
+              {qrImageUrl ? (
+                <a
+                  href={qrImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#00873E] hover:underline"
+                >
+                  <span>Mở ảnh VietQR</span>
+                  <ExternalLink className="size-3" />
+                </a>
+              ) : null}
+            </div>
+
+            <div className="mt-3.5 flex flex-col sm:flex-row gap-4 items-start">
+              {/* QR Thumbnail */}
+              {qrImageUrl ? (
+                <div className="size-20 shrink-0 rounded-xl border border-slate-200 bg-white p-1">
+                  <img src={qrImageUrl} alt="QR" className="size-full object-contain" />
+                </div>
+              ) : null}
+
+              {/* Bank Details */}
+              <div className="grid flex-1 grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                {bankName ? (
+                  <div>
+                    <span className="text-slate-400">Ngân hàng</span>
+                    <p className="font-semibold text-slate-800">{bankName}</p>
+                  </div>
+                ) : null}
+
+                {bankAccount ? (
+                  <div>
+                    <span className="text-slate-400">Số tài khoản</span>
+                    <p className="flex items-center gap-1 font-mono font-bold text-slate-900">
+                      {bankAccount}
+                      <button
+                        type="button"
+                        onClick={() => copy(bankAccount, 'acc')}
+                        className="text-slate-400 hover:text-slate-700"
+                      >
+                        {copiedKey === 'acc' ? (
+                          <Check className="size-3 text-emerald-600" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </button>
+                    </p>
+                  </div>
+                ) : null}
+
+                {accountHolder ? (
+                  <div>
+                    <span className="text-slate-400">Người nhận</span>
+                    <p className="font-semibold text-slate-800 uppercase">{accountHolder}</p>
+                  </div>
+                ) : null}
+
+                <div>
+                  <span className="text-slate-400">Nội dung chuyển</span>
+                  <p className="flex items-center gap-1 font-mono font-bold text-amber-900">
+                    <span className="bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      {payment.paymentNo}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copy(payment.paymentNo, 'memo')}
+                      className="text-slate-400 hover:text-slate-700"
+                    >
+                      {copiedKey === 'memo' ? (
+                        <Check className="size-3 text-emerald-600" />
+                      ) : (
+                        <Copy className="size-3" />
+                      )}
+                    </button>
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-slate-400">Mã giao dịch đối tác</span>
+                  <p className="font-mono font-medium text-slate-700">
+                    {payment.providerTransactionId || <span className="text-slate-400 italic">Chưa có</span>}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-slate-400">Thanh toán lúc</span>
+                  <p className="font-medium text-slate-700">
+                    {payment.paidAt ? formatDate(payment.paidAt) : <span className="text-slate-400">—</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Biến động ví */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">Biến động ví</h2>
+              <Link
+                href="/admin/finance/transactions"
+                className="text-xs font-semibold text-[#00873E] hover:underline"
+              >
+                Xem tất cả giao dịch ví →
+              </Link>
+            </div>
+
+            <div className="mt-3 overflow-x-auto">
+              {payment.walletTransactions && payment.walletTransactions.length > 0 ? (
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400">
+                      <th className="pb-2 font-medium">Mã giao dịch ví</th>
+                      <th className="pb-2 font-medium">Hành động</th>
+                      <th className="pb-2 font-medium">Số Coin</th>
+                      <th className="pb-2 font-medium">Số dư sau</th>
+                      <th className="pb-2 font-medium">Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {payment.walletTransactions.map((tx) => {
+                      const isCredit = tx.type !== 'DEBIT';
+                      return (
+                        <tr key={tx.transactionNo}>
+                          <td className="py-2.5 font-mono font-medium text-slate-700">{tx.transactionNo}</td>
+                          <td className="py-2.5">
+                            <span
+                              className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full font-semibold text-[11px] ${
+                                isCredit
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-rose-50 text-rose-700'
+                              }`}
+                            >
+                              {isCredit ? <ArrowDownRight className="size-3" /> : <ArrowUpRight className="size-3" />}
+                              {isCredit ? 'Cộng Coin' : 'Thu hồi'}
+                            </span>
+                          </td>
+                          <td
+                            className={`py-2.5 font-bold ${
+                              isCredit ? 'text-emerald-600' : 'text-rose-600'
+                            }`}
+                          >
+                            {isCredit ? '+' : '−'}
+                            {formatAmount(tx.amount)} Coin
+                          </td>
+                          <td className="py-2.5 text-slate-600">{formatAmount(tx.balanceAfter)} Coin</td>
+                          <td className="py-2.5 text-slate-400">{formatDate(tx.createdAt)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="py-4 text-center text-xs text-slate-400">Chưa có biến động ví.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Collapsible raw data */}
+          {payload ? (
+            <div className="text-xs">
+              <button
+                type="button"
+                onClick={() => setShowJson((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                <span>Dữ liệu kỹ thuật</span>
+                {showJson ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              </button>
+              {showJson && (
+                <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-slate-900 p-3 font-mono text-[11px] text-slate-300">
+                  {JSON.stringify(payload, null, 2)}
+                </pre>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Right Column: Actions */}
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
+            <h2 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">
+              Xử lý đơn
+            </h2>
+
+            {/* Chưa thành công */}
+            {payment.status !== 'SUCCESS' && payment.status !== 'REFUNDED' ? (
+              <div className="mt-3.5 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Mã giao dịch ngân hàng {!payment.providerTransactionId && <span className="text-rose-500 font-bold">*</span>}
+                  </label>
+                  <Input
+                    className={`mt-1 h-8 rounded-lg text-xs ${
+                      missingTxError ? 'border-rose-400 bg-rose-50/20' : ''
+                    }`}
+                    value={providerTransactionId}
+                    onChange={(e) => {
+                      setProviderTransactionId(e.target.value);
+                      if (missingTxError) setMissingTxError(false);
+                    }}
+                    placeholder={payment.providerTransactionId ? 'Mã đối soát' : 'Bắt buộc nhập mã sao kê'}
+                  />
+                  {missingTxError ? (
+                    <p className="mt-1 text-[11px] font-medium text-rose-600">
+                      Cần điền mã giao dịch ngân hàng để đối soát khi duyệt đơn.
+                    </p>
+                  ) : !payment.providerTransactionId ? (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Bắt buộc nhập mã sao kê để đối soát khi duyệt thủ công.
+                    </p>
+                  ) : null}
+                </div>
+
+                <Button
+                  className="w-full gap-1.5 rounded-xl bg-[#00873E] text-white hover:bg-[#006830] font-bold text-xs py-2 shadow-xs"
+                  disabled={isPending}
+                  onClick={() => {
+                    if (!payment.providerTransactionId && !providerTransactionId.trim()) {
+                      setMissingTxError(true);
+                      toast.error('Vui lòng nhập mã giao dịch ngân hàng trước khi duyệt.');
+                      return;
+                    }
+                    setConfirmKind('success');
+                  }}
+                >
+                  <CheckCircle2 className="size-3.5" />
+                  Duyệt & Cộng Coin
+                </Button>
+
+                {['CREATED', 'PENDING'].includes(payment.status) ? (
+                  <div className="grid gap-1.5 pt-2 border-t border-slate-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setConfirmKind('cancel')}
+                      className="w-full justify-start text-xs text-slate-600 hover:text-slate-900 h-8"
+                    >
+                      Hủy đơn nạp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setConfirmKind('expire')}
+                      className="w-full justify-start text-xs text-amber-700 hover:bg-amber-50 h-8"
+                    >
+                      Đóng đơn quá hạn
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => setConfirmKind('fail')}
+                      className="w-full justify-start text-xs text-rose-700 hover:bg-rose-50 h-8"
+                    >
+                      Báo thanh toán thất bại
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Đã thành công */}
+            {payment.status === 'SUCCESS' ? (
+              <div className="mt-3.5 space-y-3">
+                <p className="text-xs text-emerald-800 font-medium bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  Đơn đã hoàn tất. Coin đã cộng vào ví.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 rounded-xl border-purple-200 text-purple-700 hover:bg-purple-50 text-xs font-bold"
+                  disabled={isPending}
+                  onClick={() => setConfirmKind('refund')}
+                >
+                  <RotateCcw className="size-3.5" />
+                  Hoàn tiền & Thu hồi Coin
+                </Button>
+              </div>
+            ) : null}
+
+            {/* Đã hoàn tiền */}
+            {payment.status === 'REFUNDED' ? (
+              <p className="mt-3.5 text-xs text-purple-800 font-medium bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+                Đơn đã hoàn tiền và thu hồi Coin.
+              </p>
+            ) : null}
+          </div>
+
+          {/* Quick Customer Card */}
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-700">Tài khoản</span>
+              <Link
+                href={`/admin/users/${payment.user.id}`}
+                className="text-[#00873E] font-semibold hover:underline"
+              >
+                Hồ sơ →
+              </Link>
+            </div>
+            <p className="font-semibold text-slate-900 truncate">{userName}</p>
+            <p className="text-slate-500 font-mono truncate">{payment.user.email}</p>
+            {payment.user.phone ? (
+              <p className="text-slate-500 font-mono">{payment.user.phone}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* Confirmation Modal */}
+      {confirmKind && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
+          <div className="relative w-full max-w-sm rounded-2xl border border-slate-100 bg-white p-5 shadow-xl">
+            <h3 className="text-base font-bold text-slate-900">
+              {confirmKind === 'success' && 'Xác nhận duyệt nạp tiền'}
+              {confirmKind === 'refund' && 'Xác nhận hoàn tiền'}
+              {confirmKind === 'cancel' && 'Xác nhận hủy đơn'}
+              {confirmKind === 'expire' && 'Xác nhận đóng đơn'}
+              {confirmKind === 'fail' && 'Xác nhận thất bại'}
+            </h3>
+
+            <div className="mt-2 text-xs leading-relaxed text-slate-600">
+              {confirmKind === 'success' && (
+                <div>
+                  <p>Cộng +{formatAmount(payment.coinAmount)} Coin vào ví của {userName}?</p>
+                  {(providerTransactionId.trim() || payment.providerTransactionId) && (
+                    <p className="mt-1 text-[11px] text-slate-400 font-mono">
+                      Mã GD: {providerTransactionId.trim() || payment.providerTransactionId}
+                    </p>
+                  )}
+                </div>
+              )}
+              {confirmKind === 'refund' &&
+                `Thu hồi -${formatAmount(payment.coinAmount)} Coin từ ví của ${userName}?`}
+              {confirmKind === 'cancel' && `Hủy đơn nạp ${payment.paymentNo}?`}
+              {confirmKind === 'expire' && `Đóng đơn nạp ${payment.paymentNo} do quá hạn?`}
+              {confirmKind === 'fail' && `Đánh dấu đơn ${payment.paymentNo} thanh toán thất bại?`}
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmKind(null)}
+                disabled={isPending}
+                className="rounded-xl px-3 text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleExecuteAction}
+                disabled={isPending}
+                className={`rounded-xl px-3 text-xs font-bold text-white ${
+                  confirmKind === 'success'
+                    ? 'bg-[#00873E] hover:bg-[#006830]'
+                    : confirmKind === 'refund'
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
+              >
+                {isPending ? 'Đang xử lý...' : 'Đồng ý'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

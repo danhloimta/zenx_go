@@ -18,6 +18,8 @@ import {
   Save,
   Sparkles,
   SplitSquareVertical,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -27,7 +29,11 @@ import type {
   ContentPublishStatus,
   GameArticleCategory,
 } from '@zenx-go/api-client';
-import { useAdminContentArticle, useAdminContentGames } from '@/hooks/use-content';
+import {
+  useAdminContentArticle,
+  useAdminContentGames,
+  useAdminDeleteArticle,
+} from '@/hooks/use-content';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { gameUrl } from '@/lib/domain';
@@ -105,8 +111,21 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const deleteMutation = useAdminDeleteArticle();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleDeleteArticle = async () => {
+    if (!articleId) return;
+    try {
+      await deleteMutation.mutateAsync(articleId);
+      toast.success('Đã chuyển bài viết vào thùng rác');
+      router.push('/admin/content/articles');
+    } catch {
+      toast.error('Không thể xóa bài viết. Vui lòng thử lại.');
+    }
+  };
 
   useEffect(() => {
     if (article && !initialized) {
@@ -322,6 +341,21 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
                 <ExternalLink className="size-3.5 text-slate-400" />
                 <span>Xem trên web</span>
               </a>
+            ) : null}
+
+            {editing ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={deleteMutation.isPending || pending}
+                className="gap-1.5 border-rose-200 bg-rose-50/50 text-xs font-semibold text-rose-600 hover:bg-rose-100 hover:text-rose-700 cursor-pointer"
+                title="Chuyển bài viết vào thùng rác"
+              >
+                <Trash2 className="size-3.5" />
+                <span className="hidden sm:inline">Xóa bài</span>
+              </Button>
             ) : null}
 
             <Button
@@ -962,6 +996,55 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
           </div>
         </div>
       </form>
+
+      {/* Soft Delete Confirmation Modal Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <AlertTriangle className="size-6" />
+            </div>
+
+            <h3 className="mt-4 text-lg font-black text-slate-900">Xác nhận chuyển vào thùng rác</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              Bài viết <strong className="text-slate-800">&ldquo;{form.title}&rdquo;</strong> sẽ được chuyển vào thùng rác và lập tức ẩn khỏi toàn bộ portal và game site.
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Bạn vẫn có thể kiểm tra và khôi phục lại bất kỳ lúc nào từ danh sách bài viết trong tab Thùng rác.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteMutation.isPending}
+                className="rounded-xl px-4 text-xs font-bold"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleDeleteArticle}
+                disabled={deleteMutation.isPending}
+                className="gap-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 px-4 text-xs font-bold shadow-xs cursor-pointer"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" /> Đang chuyển…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" /> Xóa vào thùng rác
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

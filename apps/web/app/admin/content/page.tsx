@@ -158,67 +158,58 @@ export default function AdminContentDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Executive Command Header */}
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs sm:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-[#E8F7EC] text-[#00873E]">
-                <Layers className="size-4" />
-              </span>
-              <span className="text-xs font-black uppercase tracking-wider text-[#00873E]">
-                Content Management System
-              </span>
-              <span className="text-slate-300">·</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200/60">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Hệ thống trực tuyến
-              </span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-              Trung tâm Quản trị Nội dung & Game
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              Quản trị Nội dung & Game
             </h1>
-            <p className="max-w-2xl text-xs sm:text-sm leading-relaxed text-slate-500">
-              Điều phối tập trung toàn bộ kho game, biên tập bài viết tin tức, giám sát chuỗi sự
-              kiện và xuất bản banner thông báo portal.
-            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Trực tuyến
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              asChild
-              className="bg-[#00873E] text-white hover:bg-[#007234] shadow-xs gap-1.5 font-bold"
-            >
-              <Link href="/admin/content/articles/new">
-                <Plus className="size-4" />
-                Tạo bài viết mới
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="gap-1.5 font-semibold text-slate-700">
-              <Link href="/admin/content/events/new">
-                <Plus className="size-4" />
-                Thêm sự kiện
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" className="gap-1 text-xs text-slate-500">
-              <Link href="/" target="_blank" rel="noopener noreferrer">
-                <span>Xem Portal</span>
-                <ExternalLink className="size-3.5" />
-              </Link>
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Điều phối kho game, bài viết tin tức, sự kiện và banner thông báo portal.
+          </p>
         </div>
-      </section>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            size="sm"
+            className="bg-[#00873E] text-white hover:bg-[#007234] shadow-xs gap-1.5 font-bold h-8 text-xs"
+          >
+            <Link href="/admin/content/articles/new">
+              <Plus className="size-3.5" />
+              Tạo bài viết
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-1.5 font-semibold text-slate-700 h-8 text-xs">
+            <Link href="/admin/content/events/new">
+              <Plus className="size-3.5" />
+              Thêm sự kiện
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="gap-1 text-xs text-slate-500 h-8">
+            <Link href="/" target="_blank" rel="noopener noreferrer">
+              <span>Xem Portal</span>
+              <ExternalLink className="size-3.5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {/* 4 Primary KPI Summary Cards */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
             <Link
               key={kpi.key}
               href={kpi.href}
-              className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-md"
+              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
             >
               <div className="flex items-start justify-between">
                 <div>

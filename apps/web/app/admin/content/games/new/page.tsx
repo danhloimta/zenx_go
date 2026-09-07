@@ -125,16 +125,20 @@ export default function AdminContentGameCreatePage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/content/games" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]">
-        <ArrowLeft className="size-4" /> Quay lại Catalog Game
-      </Link>
-
-      <section className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-500/10 to-white p-6 sm:p-8">
-        <div className="flex items-start gap-4">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-[#00873E] text-white"><Gamepad2 className="size-6" /></span>
-          <div><h1 className="text-2xl font-black text-slate-900">Thêm game mới</h1><p className="mt-1 text-sm text-slate-600">Game được tạo ở trạng thái ẩn mặc định. Bạn có thể hoàn thiện nội dung rồi mới công khai.</p></div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/content/games"
+            className="inline-flex items-center justify-center size-8 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">Thêm game mới</h1>
+            <p className="text-xs text-slate-500">Game được tạo ở trạng thái ẩn mặc định. Bạn có thể hoàn thiện nội dung rồi mới công khai.</p>
+          </div>
         </div>
-      </section>
+      </div>
 
       <form className="grid gap-6 lg:grid-cols-12" onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
         <div className="space-y-6 lg:col-span-8">

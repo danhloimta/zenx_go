@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   ContentPublishStatus,
@@ -84,6 +84,7 @@ export function useAdminContentArticles(
     gameId?: string;
     category?: GameArticleCategory;
     status?: ContentPublishStatus;
+    deletedOnly?: boolean;
   } = {},
   enabled = true,
 ) {
@@ -93,6 +94,28 @@ export function useAdminContentArticles(
     enabled,
     retry: false,
     placeholderData: (previous) => previous,
+  });
+}
+
+export function useAdminDeleteArticle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (articleId: string) => api.admin.content.deleteArticle(articleId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'articles'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'dashboard'] });
+    },
+  });
+}
+
+export function useAdminRestoreArticle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (articleId: string) => api.admin.content.restoreArticle(articleId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'articles'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'dashboard'] });
+    },
   });
 }
 

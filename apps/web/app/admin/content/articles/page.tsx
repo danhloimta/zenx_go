@@ -10,18 +10,27 @@ import {
   Gamepad2,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
+  AlertTriangle,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { ContentPublishStatus, GameArticleCategory } from '@zenx-go/api-client';
-import { useAdminContentArticles, useAdminContentGames } from '@/hooks/use-content';
+import type { AdminContentArticle, ContentPublishStatus, GameArticleCategory } from '@zenx-go/api-client';
+import {
+  useAdminContentArticles,
+  useAdminContentGames,
+  useAdminDeleteArticle,
+  useAdminRestoreArticle,
+} from '@/hooks/use-content';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, mediaUrl } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const categories: Array<{ value: '' | GameArticleCategory; label: string }> = [
   { value: '', label: 'Tất cả chuyên mục' },
@@ -32,14 +41,20 @@ const categories: Array<{ value: '' | GameArticleCategory; label: string }> = [
 ];
 
 export default function AdminContentArticlesPage() {
+  const [tab, setTab] = useState<'active' | 'trash'>('active');
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [gameId, setGameId] = useState('');
   const [category, setCategory] = useState<'' | GameArticleCategory>('');
   const [status, setStatus] = useState<'' | ContentPublishStatus>('');
   const [page, setPage] = useState(1);
+  const [articleToDelete, setArticleToDelete] = useState<AdminContentArticle | null>(null);
 
   const games = useAdminContentGames({ page: 1, pageSize: 50 });
+  const deleteMutation = useAdminDeleteArticle();
+  const restoreMutation = useAdminRestoreArticle();
+  const trashArticles = useAdminContentArticles({ deletedOnly: true, pageSize: 1 });
+  const trashCount = trashArticles.data?.total ?? 0;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -57,8 +72,9 @@ export default function AdminContentArticlesPage() {
       gameId: gameId || undefined,
       category: category || undefined,
       status: status || undefined,
+      deletedOnly: tab === 'trash' ? true : undefined,
     }),
-    [category, debounced, gameId, page, status],
+    [category, debounced, gameId, page, status, tab],
   );
 
   const articles = useAdminContentArticles(query);
@@ -79,142 +95,225 @@ export default function AdminContentArticlesPage() {
     setPage(1);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!articleToDelete) return;
+    try {
+      await deleteMutation.mutateAsync(articleToDelete.id);
+      toast.success(`Đã chuyển bài viết "${articleToDelete.title}" vào thùng rác`);
+      setArticleToDelete(null);
+    } catch {
+      toast.error('Không thể xóa bài viết. Vui lòng thử lại.');
+    }
+  };
+
+  const handleRestore = async (article: AdminContentArticle) => {
+    try {
+      await restoreMutation.mutateAsync(article.id);
+      toast.success(`Đã khôi phục bài viết "${article.title}" thành công`);
+    } catch {
+      toast.error('Không thể khôi phục bài viết. Vui lòng thử lại.');
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/70 bg-gradient-to-r from-emerald-500/10 via-emerald-50/50 to-white p-6 sm:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#00873E]/10 px-3 py-1 text-xs font-bold text-[#00873E]">
-                <FileText className="size-3.5" /> Content CMS
-              </span>
-              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {totalCount} bài viết
-              </span>
-            </div>
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+    <div className="space-y-4 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
               Bài viết & Tin tức Game
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Quản lý tin tức, thông báo, nhật ký bản cập nhật, sự kiện trong game. Hỗ trợ định dạng Markdown và xuất bản đa kênh.
-            </p>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {totalCount} bài viết
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void articles.refetch()}
-              disabled={articles.isFetching}
-              className="gap-2 bg-white"
-            >
-              <RefreshCw className={`size-3.5 ${articles.isFetching ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
-            <Button asChild size="sm" className="gap-2 bg-[#00873E] text-white hover:bg-[#007033]">
-              <Link href="/admin/content/articles/new">
-                <Plus className="size-4" /> Viết bài mới
-              </Link>
-            </Button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Quản lý tin tức, thông báo, bản cập nhật và sự kiện trong game.
+          </p>
         </div>
 
-        {/* Quick KPI stats strip */}
-        <div className="relative z-10 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Tổng bài viết</div>
-            <div className="mt-1 text-xl font-black text-slate-900">{totalCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Đã xuất bản (Live)</div>
-            <div className="mt-1 flex items-center gap-1.5 text-xl font-black text-emerald-600">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              {publishedCount}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Bản nháp (Draft)</div>
-            <div className="mt-1 text-xl font-black text-amber-600">{draftCount}</div>
-          </div>
-          <div className="rounded-2xl border border-white/80 bg-white/70 p-3.5 shadow-xs backdrop-blur-xs">
-            <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Game liên kết</div>
-            <div className="mt-1 text-xl font-black text-slate-800">{games.data?.items.length ?? 0} games</div>
-          </div>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+            >
+              <X className="size-3.5 mr-1" />
+              Xóa bộ lọc
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void articles.refetch()}
+            disabled={articles.isFetching}
+            className="text-xs h-8 px-3 rounded-xl"
+          >
+            <RefreshCw className={`size-3.5 mr-1.5 ${articles.isFetching ? 'animate-spin' : ''}`} />
+            Làm mới
+          </Button>
+          <Button asChild size="sm" className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs">
+            <Link href="/admin/content/articles/new">
+              <Plus className="size-4 mr-1.5" /> Viết bài mới
+            </Link>
+          </Button>
         </div>
       </div>
 
+      {/* Quick Filter Tabs: Tất cả, Đã xuất bản, Bản nháp, Thùng rác */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setTab('active');
+              setStatus('');
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              tab === 'active' && !status
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span>Tất cả bài viết</span>
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                tab === 'active' && !status
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200/80 text-slate-700'
+              }`}
+            >
+              {tab === 'active' && !status ? totalCount : 'Tất cả'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTab('active');
+              setStatus('PUBLISHED');
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              tab === 'active' && status === 'PUBLISHED'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            <span>Đã xuất bản</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTab('active');
+              setStatus('DRAFT');
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              tab === 'active' && status === 'DRAFT'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            <span>Bản nháp</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setTab('trash');
+              setStatus('');
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              tab === 'trash'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <Trash2 className="size-3.5" />
+            <span>Thùng rác</span>
+            {trashCount > 0 && (
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums ${
+                  tab === 'trash' ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-700'
+                }`}
+              >
+                {trashCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {tab === 'trash' && (
+          <span className="text-xs font-medium text-rose-600">
+            * Các bài viết trong thùng rác đã bị ẩn khỏi game site & portal.
+          </span>
+        )}
+      </div>
+
       {/* Filter Toolbar */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_170px]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm tiêu đề, slug, tóm tắt bài viết…"
-                className="h-10 pl-10 pr-9 text-sm"
-                aria-label="Tìm bài viết"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-
-            <Select
-              value={gameId}
-              onChange={(event) => {
-                setGameId(event.target.value);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc game"
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm tiêu đề, slug, tóm tắt bài viết…"
+            className="pl-8 pr-8 h-8 rounded-xl text-xs"
+            aria-label="Tìm bài viết"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
             >
-              <option value="">Tất cả game</option>
-              {(games.data?.items ?? []).map((game) => (
-                <option key={game.id} value={game.id}>
-                  {game.name} ({game.code})
-                </option>
-              ))}
-            </Select>
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
 
-            <Select
-              value={category}
-              onChange={(event) => {
-                setCategory(event.target.value as '' | GameArticleCategory);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc chuyên mục"
-            >
-              {categories.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
+        <Select
+          value={gameId}
+          onChange={(event) => {
+            setGameId(event.target.value);
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc game"
+        >
+          <option value="">Tất cả game</option>
+          {(games.data?.items ?? []).map((game) => (
+            <option key={game.id} value={game.id}>
+              {game.name} ({game.code})
+            </option>
+          ))}
+        </Select>
 
-            <Select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as '' | ContentPublishStatus);
-                setPage(1);
-              }}
-              className="h-10 text-sm"
-              aria-label="Lọc trạng thái"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="PUBLISHED">Đã xuất bản</option>
-              <option value="DRAFT">Bản nháp</option>
-            </Select>
-          </div>
+        <Select
+          value={category}
+          onChange={(event) => {
+            setCategory(event.target.value as '' | GameArticleCategory);
+            setPage(1);
+          }}
+          className="h-8 rounded-xl text-xs"
+          aria-label="Lọc chuyên mục"
+        >
+          {categories.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </Select>
+      </div>
 
           {/* Filter badges & Reset */}
           {hasActiveFilters && (
@@ -252,8 +351,6 @@ export default function AdminContentArticlesPage() {
               </Button>
             </div>
           )}
-        </div>
-      </section>
 
       {/* Main List Content */}
       {articles.isLoading ? (
@@ -373,7 +470,12 @@ export default function AdminContentArticlesPage() {
                       {/* Date */}
                       <td className="px-5 py-4">
                         <div className="space-y-0.5 text-xs">
-                          {article.publishedAt ? (
+                          {tab === 'trash' && article.deletedAt ? (
+                            <div className="flex items-center gap-1 font-bold text-rose-600">
+                              <span className="size-1.5 rounded-full bg-rose-500" />
+                              Đã xóa {formatDate(article.deletedAt)}
+                            </div>
+                          ) : article.publishedAt ? (
                             <div className="flex items-center gap-1 text-emerald-700 font-medium">
                               <span className="size-1.5 rounded-full bg-emerald-500" />
                               {formatDate(article.publishedAt)}
@@ -392,16 +494,41 @@ export default function AdminContentArticlesPage() {
 
                       {/* Action */}
                       <td className="px-6 py-4 text-right">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 gap-1.5 rounded-xl px-3 text-xs font-bold text-slate-700 hover:bg-[#00873E]/10 hover:text-[#00873E]"
-                        >
-                          <Link href={`/admin/content/articles/${article.id}`}>
-                            <FileEdit className="size-3.5" /> Chỉnh sửa
-                          </Link>
-                        </Button>
+                        {tab === 'trash' ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRestore(article)}
+                              disabled={restoreMutation.isPending}
+                              className="h-8 gap-1.5 rounded-xl border-emerald-200 bg-emerald-50/60 px-3 text-xs font-bold text-[#00873E] hover:bg-emerald-100"
+                            >
+                              <RotateCcw className="size-3.5" /> Khôi phục
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 gap-1 rounded-xl px-2.5 text-xs font-bold text-slate-700 hover:bg-[#00873E]/10 hover:text-[#00873E]"
+                            >
+                              <Link href={`/admin/content/articles/${article.id}`}>
+                                <FileEdit className="size-3.5" /> Sửa
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setArticleToDelete(article)}
+                              className="h-8 gap-1 rounded-xl px-2 text-xs font-bold text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                              title="Chuyển vào thùng rác"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -450,16 +577,38 @@ export default function AdminContentArticlesPage() {
 
                       <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[11px] text-slate-400">
                         <span>
-                          {article.publishedAt
-                            ? `Live: ${formatDate(article.publishedAt)}`
-                            : `Cập nhật: ${formatDate(article.updatedAt)}`}
+                          {tab === 'trash' && article.deletedAt
+                            ? `Đã xóa: ${formatDate(article.deletedAt)}`
+                            : article.publishedAt
+                              ? `Live: ${formatDate(article.publishedAt)}`
+                              : `Cập nhật: ${formatDate(article.updatedAt)}`}
                         </span>
-                        <Link
-                          href={`/admin/content/articles/${article.id}`}
-                          className="inline-flex items-center gap-1 font-bold text-[#00873E]"
-                        >
-                          Sửa bài <ArrowRight className="size-3" />
-                        </Link>
+                        {tab === 'trash' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRestore(article)}
+                            disabled={restoreMutation.isPending}
+                            className="inline-flex items-center gap-1 font-bold text-[#00873E] hover:underline cursor-pointer"
+                          >
+                            <RotateCcw className="size-3" /> Khôi phục
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={`/admin/content/articles/${article.id}`}
+                              className="inline-flex items-center gap-1 font-bold text-[#00873E]"
+                            >
+                              Sửa bài <ArrowRight className="size-3" />
+                            </Link>
+                            <button
+                              type="button"
+                              onClick={() => setArticleToDelete(article)}
+                              className="inline-flex items-center gap-1 font-bold text-rose-500 hover:text-rose-700 cursor-pointer"
+                            >
+                              <Trash2 className="size-3" /> Xóa
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -498,6 +647,53 @@ export default function AdminContentArticlesPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Soft Delete Confirmation Modal Dialog */}
+      {articleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <AlertTriangle className="size-6" />
+            </div>
+
+            <h3 className="mt-4 text-lg font-black text-slate-900">Xác nhận chuyển vào thùng rác</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              Bài viết <strong className="text-slate-800">&ldquo;{articleToDelete.title}&rdquo;</strong> sẽ được chuyển vào thùng rác và lập tức ẩn khỏi toàn bộ portal và game site.
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Bạn vẫn có thể kiểm tra và khôi phục lại bất kỳ lúc nào từ tab Thùng rác.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setArticleToDelete(null)}
+                disabled={deleteMutation.isPending}
+                className="rounded-xl px-4 text-xs font-bold"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleDeleteConfirm}
+                disabled={deleteMutation.isPending}
+                className="gap-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 px-4 text-xs font-bold shadow-xs cursor-pointer"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <RefreshCw className="size-3.5 animate-spin" /> Đang chuyển…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-3.5" /> Xóa vào thùng rác
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

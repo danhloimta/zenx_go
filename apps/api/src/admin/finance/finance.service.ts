@@ -368,8 +368,19 @@ export class FinanceService {
   }
 
   private paymentWhere(query: AdminFinancePaymentsQueryDto): Prisma.PaymentWhereInput {
+    let statusFilter: Prisma.PaymentWhereInput['status'] = undefined;
+    if (query.status) {
+      const parts = query.status.split(',').map((s) => s.trim()).filter(Boolean);
+      const validStatuses = parts.filter((p) => PAYMENT_STATUSES.includes(p as PaymentStatus)) as PaymentStatus[];
+      if (validStatuses.length === 1) {
+        statusFilter = validStatuses[0];
+      } else if (validStatuses.length > 1) {
+        statusFilter = { in: validStatuses };
+      }
+    }
+
     const where: Prisma.PaymentWhereInput = {
-      ...(query.status ? { status: query.status } : {}),
+      ...(statusFilter ? { status: statusFilter } : {}),
       ...(query.provider ? { provider: { contains: query.provider.trim() } } : {}),
       ...(query.paymentMethod ? { paymentMethod: query.paymentMethod } : {}),
     };

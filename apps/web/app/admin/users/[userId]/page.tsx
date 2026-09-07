@@ -233,7 +233,7 @@ export default function AdminUserDetailPage() {
   const canChangeStatus = user.status === 'ACTIVE' || user.status === 'SUSPENDED';
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5">
       {/* Breadcrumb Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
@@ -259,8 +259,8 @@ export default function AdminUserDetailPage() {
       </div>
 
       {/* User Header Summary Card */}
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/50 to-emerald-50/20 p-6 shadow-xs sm:p-7">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <section className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-start gap-4 sm:gap-5">
             <UserAvatar
               id={user.id}

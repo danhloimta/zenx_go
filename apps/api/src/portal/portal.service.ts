@@ -41,6 +41,7 @@ export class PortalService {
           status: PUBLIC_STATUS,
           publishedAt: { not: null, lte: now },
           game: { isPublic: true },
+          deletedAt: null,
         },
         include: { game: { select: { name: true, slug: true, subdomain: true } } },
         orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
@@ -77,6 +78,7 @@ export class PortalService {
     const where: Prisma.GameArticleWhereInput = {
       status: PUBLIC_STATUS,
       publishedAt: { not: null, lte: now },
+      deletedAt: null,
       game: {
         isPublic: true,
         ...(query.game ? this.gameFilter(query.game) : {}),

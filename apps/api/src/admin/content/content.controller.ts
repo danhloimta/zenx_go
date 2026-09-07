@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -133,6 +134,16 @@ export class ContentAdminController {
     @Body() dto: AdminContentArticleUpdateDto,
   ) {
     return this.content.updateArticle(articleId, dto);
+  }
+
+  @Delete('articles/:articleId')
+  deleteArticle(@Param('articleId') articleId: string) {
+    return this.content.deleteArticle(articleId);
+  }
+
+  @Post('articles/:articleId/restore')
+  restoreArticle(@Param('articleId') articleId: string) {
+    return this.content.restoreArticle(articleId);
   }
 
   @Get('events')
