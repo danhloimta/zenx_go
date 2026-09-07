@@ -407,16 +407,6 @@ function GenreEditor({
     set('code', val.toUpperCase().replace(/[^A-Z0-9_]/g, ''));
   };
 
-  const reSyncSlug = () => {
-    setAutoSlug(true);
-    set('slug', slugify(editor.form.name));
-  };
-
-  const reSyncCode = () => {
-    setAutoCode(true);
-    set('code', codefy(editor.form.name));
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-xs">
       <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
