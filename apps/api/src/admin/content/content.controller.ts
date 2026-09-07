@@ -30,6 +30,9 @@ import {
   AdminContentGamePresentationUpdateDto,
   AdminContentGameUpdateDto,
   AdminContentGamesQueryDto,
+  AdminContentGenreCreateDto,
+  AdminContentGenreUpdateDto,
+  AdminContentGenresQueryDto,
 } from './content.dto';
 import { ContentAdminService } from './content.service';
 
@@ -95,6 +98,26 @@ export class ContentAdminController {
   @Get('game-options')
   gameOptions() {
     return this.content.gameOptions();
+  }
+
+  @Get('genres')
+  genres(@Query() query: AdminContentGenresQueryDto) {
+    return this.content.listGenres(query);
+  }
+
+  @Post('genres')
+  createGenre(@Body() dto: AdminContentGenreCreateDto) {
+    return this.content.createGenre(dto);
+  }
+
+  @Patch('genres/:genreId')
+  updateGenre(@Param('genreId') genreId: string, @Body() dto: AdminContentGenreUpdateDto) {
+    return this.content.updateGenre(genreId, dto);
+  }
+
+  @Delete('genres/:genreId')
+  deleteGenre(@Param('genreId') genreId: string) {
+    return this.content.deleteGenre(genreId);
   }
 
   @Patch('games/:gameId')

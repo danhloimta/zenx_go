@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical API/data inventory
 >
-> Last verified: 2026-09-06
+> Last verified: 2026-09-07
 >
 > Verified commit: `788f781`
 
@@ -119,7 +119,7 @@
 | --- | --- | --- | --- | --- |
 | `API-ADMIN-CONTENT-DASHBOARD` | `GET /admin/content/dashboard` | SUPER_ADMIN | `IMPLEMENTED` | Game/article/event/announcement KPI. |
 | `API-ADMIN-CONTENT-GAMES` | `GET /admin/content/games` | SUPER_ADMIN | `IMPLEMENTED` | Search/filter/paginated game list. |
-| `API-ADMIN-CONTENT-GAME-OPTIONS` | `GET /admin/content/game-options` | SUPER_ADMIN | `IMPLEMENTED` | Available genres and supported platforms for the game editor. |
+| `API-ADMIN-CONTENT-GAME-OPTIONS` | `GET /admin/content/game-options` | SUPER_ADMIN | `IMPLEMENTED` | Available genres (including `isActive` for edit safeguards) and supported platforms for the game editor. |
 | `API-ADMIN-CONTENT-GAME` | `GET /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Game detail; basic fields, primary game and taxonomy are editable. |
 | `API-ADMIN-CONTENT-GAME-UPDATE` | `PATCH /admin/content/games/:id` | SUPER_ADMIN | `IMPLEMENTED` | Update basic fields, primary game, taxonomy and code/slug/subdomain with expectedUpdatedAt. |
 | `API-ADMIN-CONTENT-ARTICLES` | `GET /admin/content/articles`, `GET /admin/content/articles/:id` | SUPER_ADMIN | `IMPLEMENTED` | Article list/detail including draft. |
@@ -128,6 +128,7 @@
 | `API-ADMIN-CONTENT-EVENT-MUTATION` | `POST /admin/content/events`, `PATCH /admin/content/events/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update event, date range and publish state. |
 | `API-ADMIN-CONTENT-ANNOUNCEMENTS` | `GET /admin/content/announcements` | SUPER_ADMIN | `IMPLEMENTED` | Announcement list including draft. |
 | `API-ADMIN-CONTENT-ANNOUNCEMENT-MUTATION` | `POST /admin/content/announcements`, `PATCH /admin/content/announcements/:id` | SUPER_ADMIN | `IMPLEMENTED` | Create/update announcement and time window. |
+| `API-ADMIN-CONTENT-GENRES` | `GET/POST/PATCH/DELETE /admin/content/genres` | SUPER_ADMIN | `IMPLEMENTED` | Genre CRUD, search/status, usage count, inactive assignment protection. |
 
 ## Admin Finance API (Phase 4)
 
@@ -205,7 +206,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 | `SupportCategory`, `SupportFaq`, `SupportTicket`                  | FAQ catalog, priority/assignee/status lifecycle và activity timestamps.                                         | FAQ public; ticket user-scoped hoặc limited support view.                  |
 | `SupportTicketMessage` / `support_ticket_messages`                | Immutable customer/staff replies và internal notes, visibility/author type.                                     | User hoặc support theo visibility.                                          |
 | `SupportTicketReadState` / `support_ticket_read_states`           | Per-viewer last-read cursor cho ticket.                                                                         | Không public trực tiếp; unread count tính theo viewer.                     |
-| `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping.                                           | Public summaries/details theo `isPublic`.                                  |
+| `Game`, `Genre`, `GameGenre`, `GamePlatform`                      | Public game catalog, genre/platform joins, filtering và host mapping; admin genre lifecycle/usage.             | Public summaries/details theo `isPublic`; genre `isActive` chỉ là admin assignment policy. |
 | `GameArticle`, `GameMilestone`, `GameEvent`, `PortalAnnouncement` | CMS-managed game/portal content, draft/publish state, roadmap, events, announcement windows.                    | Public khi status/time/isPublic rules pass; CMS chỉ SUPER_ADMIN.           |
 
 ## Error/status conventions

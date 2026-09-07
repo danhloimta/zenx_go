@@ -15,7 +15,6 @@ import { Transform, Type } from 'class-transformer';
 import {
   CoinPackageStatus,
   PaymentMethod,
-  PaymentStatus,
   WalletTransactionStatus,
   WalletTransactionType,
 } from '../../common/domain';

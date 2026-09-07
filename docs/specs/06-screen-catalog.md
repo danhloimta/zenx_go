@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical screen inventory
 >
-> Last verified: 2026-09-03
+> Last verified: 2026-09-07
 >
 > Verified commit: `788f781`
 
@@ -92,6 +92,7 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `SCR-ADMIN-CONTENT-HOME` | `/admin/content` | `SUPER_ADMIN` | `IMPLEMENTED` | KPI game/article/event/announcement và link quản lý. | `apps/web/app/admin/content/page.tsx` | `/admin/content/dashboard` | `content-admin.spec.ts` |
 | `SCR-ADMIN-CONTENT-GAMES` | `/admin/content/games` | `SUPER_ADMIN` | `IMPLEMENTED` | Search/filter/pagination game và public state. | `apps/web/app/admin/content/games/page.tsx` | `/admin/content/games` | `content-admin.spec.ts` |
+| `SCR-ADMIN-CONTENT-GENRES` | `/admin/content/genres` | `SUPER_ADMIN` | `IMPLEMENTED` | Search/filter genre, CRUD, active/inactive, usage count và delete protection. | `apps/web/app/admin/content/genres/page.tsx` | `/admin/content/genres` | `genre-admin.spec.ts` |
 | `SCR-ADMIN-CONTENT-GAME` | `/admin/content/games/[gameId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Sửa thông tin cơ bản và code/slug/subdomain; cấu hình nâng cao chỉ đọc. | `apps/web/app/admin/content/games/[gameId]/page.tsx` | `/admin/content/games/:id` | `content-admin.spec.ts` |
 | `SCR-ADMIN-CONTENT-ARTICLES` | `/admin/content/articles` | `SUPER_ADMIN` | `IMPLEMENTED` | Filter article theo game/category/status. | `apps/web/app/admin/content/articles/page.tsx` | `/admin/content/articles` | `content-admin.spec.ts` |
 | `SCR-ADMIN-CONTENT-ARTICLE` | `/admin/content/articles/new`, `/admin/content/articles/[articleId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Markdown editor, safe preview, draft/publish. | `apps/web/components/admin-content/article-editor.tsx` | `/admin/content/articles/*` | `content-admin.spec.ts` |

@@ -21,6 +21,7 @@ import {
   Coins,
   Landmark,
   Receipt,
+  Tags,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -60,6 +61,7 @@ const allNavSections: NavSection[] = [
     items: [
       { href: '/admin/content', label: 'Tổng quan CMS', icon: Layers, exact: true },
       { href: '/admin/content/games', label: 'Quản lý Game', icon: Gamepad2 },
+      { href: '/admin/content/genres', label: 'Thể loại game', icon: Tags },
       { href: '/admin/content/articles', label: 'Bài viết & Tin tức', icon: FileText },
       { href: '/admin/content/events', label: 'Sự kiện Game', icon: CalendarDays },
       { href: '/admin/content/announcements', label: 'Thông báo Portal', icon: Megaphone },

@@ -22,6 +22,9 @@ import {
   AdminContentGamePresentationUpdateDto,
   AdminContentGameUpdateDto,
   AdminContentGamesQueryDto,
+  AdminContentGenreCreateDto,
+  AdminContentGenreUpdateDto,
+  AdminContentGenresQueryDto,
 } from './content.dto';
 import { assertAssetUrl, assertContentMarkdown, assertCtaPath, normalizeSlug } from './content-markdown';
 import { checkGameReadiness, createPageConfig, getGameTemplate, listGameTemplates, parseGamePageConfig, validateGameFeatureConfig, validateGamePageConfig, validateGameThemeConfig } from './game-templates';
@@ -236,9 +239,122 @@ export class ContentAdminService {
   async gameOptions() {
     const genres = await this.prisma.genre.findMany({
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { code: 'asc' }],
-      select: { code: true, name: true, slug: true },
+      select: { code: true, name: true, slug: true, isActive: true },
     });
     return { genres, platforms: GAME_PLATFORM_OPTIONS };
+  }
+
+  async listGenres(query: AdminContentGenresQueryDto = {}) {
+    const search = query.search?.trim();
+    const where: Prisma.GenreWhereInput = {
+      ...(query.status ? { isActive: query.status === 'ACTIVE' } : {}),
+      ...(search
+        ? {
+            OR: [
+              { code: { contains: search.toUpperCase() } },
+              { name: { contains: search } },
+              { slug: { contains: search.toLowerCase() } },
+            ],
+          }
+        : {}),
+    };
+    const genres = await this.prisma.genre.findMany({
+      where,
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { code: 'asc' }],
+      include: { _count: { select: { games: true } } },
+    });
+    return genres.map((genre) => this.publicGenre(genre));
+  }
+
+  async createGenre(dto: AdminContentGenreCreateDto) {
+    const code = dto.code.trim().toUpperCase();
+    const name = dto.name.trim();
+    const slug = dto.slug.trim().toLowerCase();
+    await this.assertGenreUniqueness(code, slug);
+    try {
+      const genre = await this.prisma.genre.create({
+        data: { code, name, slug, sortOrder: dto.sortOrder, isActive: true },
+        include: { _count: { select: { games: true } } },
+      });
+      return this.publicGenre(genre);
+    } catch (error) {
+      this.rethrowGenreUnique(error);
+      throw error;
+    }
+  }
+
+  async updateGenre(genreId: string, dto: AdminContentGenreUpdateDto) {
+    const current = await this.prisma.genre.findUnique({ where: { id: genreId } });
+    if (!current) throw new DomainError(ErrorCode.CONTENT_GENRE_NOT_FOUND, 'Genre not found', 404);
+    this.assertExpected(current.updatedAt, dto.expectedUpdatedAt);
+
+    const data: Prisma.GenreUpdateManyMutationInput = {
+      ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+      ...(dto.slug !== undefined ? { slug: dto.slug.trim().toLowerCase() } : {}),
+      ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+      updatedAt: new Date(),
+    };
+    if (Object.keys(data).length === 1) {
+      throw new DomainError(ErrorCode.ADMIN_NO_CHANGES, 'No genre changes were provided', 400);
+    }
+    await this.assertGenreUniqueness(
+      undefined,
+      dto.slug === undefined ? undefined : dto.slug.trim().toLowerCase(),
+      genreId,
+    );
+    try {
+      const updated = await this.prisma.genre.updateMany({
+        where: { id: genreId, updatedAt: current.updatedAt },
+        data,
+      });
+      if (updated.count !== 1) throw this.stale('The genre was changed by another operator');
+      const genre = await this.prisma.genre.findUniqueOrThrow({
+        where: { id: genreId },
+        include: { _count: { select: { games: true } } },
+      });
+      return this.publicGenre(genre);
+    } catch (error) {
+      this.rethrowGenreUnique(error);
+      throw error;
+    }
+  }
+
+  async deleteGenre(genreId: string) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const genre = await tx.genre.findUnique({ where: { id: genreId } });
+        if (!genre) throw new DomainError(ErrorCode.CONTENT_GENRE_NOT_FOUND, 'Genre not found', 404);
+        if (genre.isActive) {
+          throw new DomainError(
+            ErrorCode.CONTENT_GENRE_MUST_BE_INACTIVE,
+            'Deactivate the genre before deleting it',
+            409,
+          );
+        }
+        const usageCount = await tx.gameGenre.count({ where: { genreId } });
+        if (usageCount > 0) {
+          throw new DomainError(
+            ErrorCode.CONTENT_GENRE_IN_USE,
+            'Genre is still assigned to one or more games',
+            409,
+          );
+        }
+        await tx.genre.delete({ where: { id: genreId } });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      // A concurrent GameGenre insert can surface as a foreign-key failure
+      // or a serializable write conflict depending on SQL Server timing.
+      if (this.isPrismaCode(error, 'P2003') || this.isPrismaCode(error, 'P2034')) {
+        throw new DomainError(
+          ErrorCode.CONTENT_GENRE_IN_USE,
+          'Genre is still assigned to one or more games',
+          409,
+        );
+      }
+      throw error;
+    }
+    return { deleted: true, id: genreId };
   }
 
   async createGame(dto: AdminContentGameCreateDto) {
@@ -317,7 +433,9 @@ export class ContentAdminService {
     const effectivePlatforms = platforms ?? current.platforms.map(({ platform }) => platform);
     if (effectiveGenreCodes.length === 0) throw this.invalidState('At least one genre is required');
     if (effectivePlatforms.length === 0) throw this.invalidState('At least one platform is required');
-    const genreIds = genreCodes === undefined ? undefined : await this.resolveGenreIds(genreCodes);
+    const genreIds = genreCodes === undefined
+      ? undefined
+      : await this.resolveGenreIds(genreCodes, current.genres.map(({ genre }) => genre.code));
     const assetFields = ['logoUrl', 'iconUrl', 'coverUrl', 'heroDesktopUrl', 'heroMobileUrl'] as const;
     for (const field of assetFields) assertAssetUrl(dto[field]);
     assertCtaPath(dto.primaryCtaPath);
@@ -951,15 +1069,78 @@ export class ContentAdminService {
     return new DomainError(ErrorCode.CONTENT_INVALID_STATE, message, 400);
   }
 
-  private async resolveGenreIds(codes: string[]) {
+  private async resolveGenreIds(codes: string[], allowedInactiveCodes: string[] = []) {
     const genres = await this.prisma.genre.findMany({
       where: { code: { in: codes } },
-      select: { code: true, id: true },
+      select: { code: true, id: true, isActive: true },
     });
     const idsByCode = new Map(genres.map((genre) => [genre.code, genre.id]));
     const missing = codes.filter((code) => !idsByCode.has(code));
     if (missing.length) throw this.invalidState(`Unknown genre: ${missing.join(', ')}`);
+    const inactive = genres
+      .filter((genre) => !genre.isActive && !allowedInactiveCodes.includes(genre.code))
+      .map((genre) => genre.code);
+    if (inactive.length) {
+      throw new DomainError(
+        ErrorCode.CONTENT_GENRE_INACTIVE,
+        `Inactive genres cannot be newly assigned: ${inactive.join(', ')}`,
+        400,
+      );
+    }
     return codes.map((code) => idsByCode.get(code)!);
+  }
+
+  private publicGenre(genre: {
+    id: string;
+    code: string;
+    name: string;
+    slug: string;
+    sortOrder: number;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    _count?: { games: number };
+  }) {
+    return {
+      id: genre.id,
+      code: genre.code,
+      name: genre.name,
+      slug: genre.slug,
+      sortOrder: genre.sortOrder,
+      isActive: genre.isActive,
+      usageCount: genre._count?.games ?? 0,
+      createdAt: genre.createdAt,
+      updatedAt: genre.updatedAt,
+    };
+  }
+
+  private rethrowGenreUnique(error: unknown) {
+    if (!this.isPrismaCode(error, 'P2002')) return;
+    const target = (error as { meta?: { target?: unknown } }).meta?.target;
+    const fields = Array.isArray(target) ? target.map(String) : [String(target ?? '')];
+    if (fields.some((field) => field.includes('slug'))) {
+      throw new DomainError(ErrorCode.CONTENT_GENRE_SLUG_EXISTS, 'Genre slug already exists', 409);
+    }
+    throw new DomainError(ErrorCode.CONTENT_GENRE_CODE_EXISTS, 'Genre code already exists', 409);
+  }
+
+  private async assertGenreUniqueness(code?: string, slug?: string, excludeId?: string) {
+    if (code) {
+      const existingCode = await this.prisma.genre.findUnique({ where: { code }, select: { id: true } });
+      if (existingCode && existingCode.id !== excludeId) {
+        throw new DomainError(ErrorCode.CONTENT_GENRE_CODE_EXISTS, 'Genre code already exists', 409);
+      }
+    }
+    if (slug) {
+      const existingSlug = await this.prisma.genre.findUnique({ where: { slug }, select: { id: true } });
+      if (existingSlug && existingSlug.id !== excludeId) {
+        throw new DomainError(ErrorCode.CONTENT_GENRE_SLUG_EXISTS, 'Genre slug already exists', 409);
+      }
+    }
+  }
+
+  private isPrismaCode(error: unknown, code: string) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
   }
 
   private stale(message: string) {

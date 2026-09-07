@@ -10,7 +10,6 @@ import {
   Clock3,
   HelpCircle,
   Inbox,
-  LifeBuoy,
   RefreshCw,
   Ticket as TicketIcon,
   UserCheck,

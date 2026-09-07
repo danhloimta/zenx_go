@@ -28,6 +28,8 @@ import { GAME_TEMPLATE_PRESETS, GameTemplatePreset } from './game-templates';
 // Keep the compact page sizes used by the CMS dashboard/list views alongside the public API defaults.
 const PAGE_SIZES = [3, 4, 5, 10, 15, 20, 50] as const;
 const CONTENT_STATUSES = Object.values(ContentPublishStatus);
+export const GENRE_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+export type GenreStatus = (typeof GENRE_STATUSES)[number];
 
 function trim(value: unknown) {
   return typeof value === 'string' ? value.trim() : value;
@@ -62,6 +64,76 @@ export class AdminContentGamesQueryDto extends AdminContentPageDto {
   @IsOptional() @IsIn(Object.values(GameLifecycleStatus)) lifecycleStatus?: GameLifecycleStatus;
   @IsOptional() @IsIn(Object.values(GameOperationalStatus)) operationalStatus?: GameOperationalStatus;
   @IsOptional() @Transform(({ value }) => booleanValue(value)) @IsBoolean() isPublic?: boolean;
+}
+
+export class AdminContentGenresQueryDto {
+  @IsOptional()
+  @Transform(({ value }) => trimOrUndefined(value))
+  @IsString()
+  @MaxLength(100)
+  search?: string;
+
+  @IsOptional()
+  @IsIn(GENRE_STATUSES)
+  status?: GenreStatus;
+}
+
+export class AdminContentGenreCreateDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsString()
+  @MinLength(2)
+  @MaxLength(32)
+  @Matches(/^[A-Z0-9_]+$/)
+  code!: string;
+
+  @Transform(({ value }) => trim(value))
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  name!: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  slug!: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder = 0;
+}
+
+export class AdminContentGenreUpdateDto {
+  @IsDateString()
+  expectedUpdatedAt!: string;
+
+  @Transform(({ value }) => trim(value))
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  name?: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  slug?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
 }
 
 export class AdminContentGameCreateDto {

@@ -98,7 +98,12 @@ describe('Content admin API (SQL Server)', () => {
     const editedSubdomain = `cms-${suffixPart}`;
     const editedCode = `CMS${suffixPart}`.slice(0, 32).toUpperCase();
     const options = await http().get('/admin/content/game-options').set('Cookie', adminCookies);
-    const genreCodes = options.body.data.genres.slice(0, 2).map((genre: { code: string }) => genre.code);
+    // Inactive genres remain visible in game options for edit screens, but
+    // cannot be newly assigned to a game. Use active choices for this update.
+    const genreCodes = options.body.data.genres
+      .filter((genre: { isActive: boolean }) => genre.isActive)
+      .slice(0, 2)
+      .map((genre: { code: string }) => genre.code);
     const platforms = ['PC', 'MOBILE'];
     let editedUpdatedAt = '';
     try {

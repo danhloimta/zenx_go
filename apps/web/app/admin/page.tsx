@@ -16,7 +16,6 @@ import {
   FileText,
   LifeBuoy,
   Gamepad2,
-  Sparkles,
   TrendingUp,
   ChevronRight,
 } from 'lucide-react';

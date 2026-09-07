@@ -176,7 +176,8 @@ async function seedGames() {
   for (const [code, name, slug, sortOrder] of genres) {
     const genre = await prisma.genre.upsert({
       where: { code },
-      update: { name, slug, sortOrder },
+      // Preserve taxonomy changes made in admin; seed only bootstraps missing genres.
+      update: {},
       create: { code, name, slug, sortOrder },
     });
     genreIds.set(code, genre.id);

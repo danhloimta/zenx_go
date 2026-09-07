@@ -5,6 +5,7 @@ module.exports = {
   testEnvironment: 'node',
   moduleFileExtensions: ['js', 'json', 'ts'],
   setupFiles: ['<rootDir>/test/setup-env.ts'],
+  moduleNameMapper: { '^marked$': '<rootDir>/test/marked.cjs' },
   maxWorkers: 1,
   detectOpenHandles: true,
 };

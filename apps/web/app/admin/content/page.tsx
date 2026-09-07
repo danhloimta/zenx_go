@@ -9,7 +9,6 @@ import {
   ExternalLink,
   FileText,
   Gamepad2,
-  Layers,
   Megaphone,
   Plus,
   Sparkles,

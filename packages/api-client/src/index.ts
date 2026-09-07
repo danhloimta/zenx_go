@@ -865,10 +865,22 @@ export interface GameGenre {
   slug: string;
 }
 
+export interface AdminContentGenreOption extends GameGenre {
+  isActive: boolean;
+}
+
+export interface AdminContentGenre extends AdminContentGenreOption {
+  id: string;
+  sortOrder: number;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type GamePlatform = 'PC' | 'MOBILE' | 'WEB';
 
 export interface AdminContentGameOptions {
-  genres: GameGenre[];
+  genres: AdminContentGenreOption[];
   platforms: Array<{ code: GamePlatform; label: string }>;
 }
 
@@ -1151,6 +1163,21 @@ export interface AdminContentGameUpdateRequest {
   sortOrder?: number;
   genreCodes?: string[];
   platforms?: GamePlatform[];
+}
+
+export interface AdminContentGenreCreateRequest {
+  code: string;
+  name: string;
+  slug: string;
+  sortOrder?: number;
+}
+
+export interface AdminContentGenreUpdateRequest {
+  expectedUpdatedAt: string;
+  name?: string;
+  slug?: string;
+  isActive?: boolean;
+  sortOrder?: number;
 }
 
 export interface AdminContentGameCreateRequest {
@@ -1511,6 +1538,19 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           client.patch<AdminContentGame>(
             `/admin/content/games/${encodeURIComponent(gameId)}`,
             input,
+          ),
+        genres: (query: { search?: string; status?: 'ACTIVE' | 'INACTIVE' } = {}) =>
+          client.get<AdminContentGenre[]>('/admin/content/genres', query),
+        createGenre: (input: AdminContentGenreCreateRequest) =>
+          client.post<AdminContentGenre>('/admin/content/genres', input),
+        updateGenre: (genreId: string, input: AdminContentGenreUpdateRequest) =>
+          client.patch<AdminContentGenre>(
+            `/admin/content/genres/${encodeURIComponent(genreId)}`,
+            input,
+          ),
+        deleteGenre: (genreId: string) =>
+          client.delete<{ deleted: boolean; id: string }>(
+            `/admin/content/genres/${encodeURIComponent(genreId)}`,
           ),
         articles: (
           query: {

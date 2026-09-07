@@ -82,15 +82,6 @@ export default function AdminContentAnnouncementsPage() {
 
   // Quick stats
   const now = new Date().getTime();
-  const activeCount = useMemo(() => {
-    return allItems.filter((item) => {
-      if (item.status !== 'PUBLISHED') return false;
-      const start = new Date(item.startsAt).getTime();
-      const end = item.endsAt ? new Date(item.endsAt).getTime() : null;
-      return start <= now && (end === null || end >= now);
-    }).length;
-  }, [allItems, now]);
-
   const publishedCount = allItems.filter((i) => i.status === 'PUBLISHED').length;
   const draftCount = allItems.filter((i) => i.status === 'DRAFT').length;
 

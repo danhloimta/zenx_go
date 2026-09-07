@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type {
   ContentPublishStatus,
+  AdminContentGenreCreateRequest,
+  AdminContentGenreUpdateRequest,
   GameArticleCategory,
   GameLifecycleStatus,
   GameOperationalStatus,
@@ -55,6 +57,43 @@ export function useAdminContentGameOptions(enabled = true) {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
+}
+
+export function useAdminContentGenres(
+  query: { search?: string; status?: 'ACTIVE' | 'INACTIVE' } = {},
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['admin', 'content', 'genres', query],
+    queryFn: () => api.admin.content.genres(query),
+    enabled,
+    retry: false,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useAdminContentGenreMutations() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'genres'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'game-options'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'games'] });
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'game'] });
+  };
+  const create = useMutation({
+    mutationFn: (input: AdminContentGenreCreateRequest) => api.admin.content.createGenre(input),
+    onSuccess: invalidate,
+  });
+  const update = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: AdminContentGenreUpdateRequest }) =>
+      api.admin.content.updateGenre(id, input),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.admin.content.deleteGenre(id),
+    onSuccess: invalidate,
+  });
+  return { create, update, remove };
 }
 
 export function useAdminContentGameTemplates(enabled = true) {

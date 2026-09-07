@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { PaymentMethod, PaymentStatus } from '@zenx-go/api-client';
+import type { PaymentMethod } from '@zenx-go/api-client';
 import { useAdminFinancePayments } from '@/hooks/use-finance';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

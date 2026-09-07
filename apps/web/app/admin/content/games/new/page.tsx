@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Gamepad2, Save } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -191,7 +191,7 @@ export default function AdminContentGameCreatePage() {
           </Section>
 
           <Section title="Phân loại" description="Chọn ít nhất một thể loại và một nền tảng.">
-            <div><p className="mb-2 text-xs font-bold text-slate-700">Thể loại</p><div className="grid gap-2">{(optionsQuery.data?.genres ?? []).map((genre) => <Choice key={genre.code} label={genre.name} checked={form.genreCodes.includes(genre.code)} onChange={(checked) => set('genreCodes', checked ? [...form.genreCodes, genre.code] : form.genreCodes.filter((code) => code !== genre.code))} />)}</div></div>
+            <div><p className="mb-2 text-xs font-bold text-slate-700">Thể loại</p><div className="grid gap-2">{(optionsQuery.data?.genres ?? []).filter((genre) => genre.isActive).map((genre) => <Choice key={genre.code} label={genre.name} checked={form.genreCodes.includes(genre.code)} onChange={(checked) => set('genreCodes', checked ? [...form.genreCodes, genre.code] : form.genreCodes.filter((code) => code !== genre.code))} />)}</div></div>
             <div><p className="mb-2 text-xs font-bold text-slate-700">Nền tảng</p><div className="grid gap-2">{(optionsQuery.data?.platforms ?? []).map((platform) => <Choice key={platform.code} label={platform.label} checked={form.platforms.includes(platform.code)} onChange={(checked) => set('platforms', checked ? [...form.platforms, platform.code] : form.platforms.filter((code) => code !== platform.code))} />)}</div></div>
             {optionsQuery.isError ? <p className="text-xs font-semibold text-red-600">Không thể tải danh sách phân loại.</p> : null}
           </Section>

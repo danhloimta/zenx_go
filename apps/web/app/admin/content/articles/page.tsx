@@ -82,8 +82,6 @@ export default function AdminContentArticlesPage() {
   const totalCount = articles.data?.total ?? 0;
 
   // Stats from loaded list or overall
-  const publishedCount = articles.data?.items.filter((a) => a.status === 'PUBLISHED').length ?? 0;
-  const draftCount = articles.data?.items.filter((a) => a.status === 'DRAFT').length ?? 0;
   const hasActiveFilters = Boolean(debounced || gameId || category || status);
 
   const handleResetFilters = () => {

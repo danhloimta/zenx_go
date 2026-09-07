@@ -8,7 +8,6 @@ import {
   Eye,
   EyeOff,
   Gamepad2,
-  Layers,
   Plus,
   RefreshCw,
   Search,

@@ -846,19 +846,26 @@ export default function AdminContentGameDetailPage() {
                     <div className="mt-2 grid grid-cols-2 gap-2">
                       {options.genres.map((genre) => {
                         const checked = form.genreCodes.includes(genre.code);
+                        const inactive = !genre.isActive;
                         return (
                           <label
                             key={genre.code}
-                            className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                            className={`flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                               checked
                                 ? 'border-[#00873E] bg-emerald-50/70 text-[#00873E]'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                                : inactive
+                                  ? 'border-slate-200 bg-slate-50 text-slate-400'
+                                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                             }`}
                           >
-                            <span className="truncate">{genre.name}</span>
+                            <span className="truncate">
+                              {genre.name}
+                              {inactive ? <span className="ml-1 text-[10px] font-medium text-slate-400">(Ngừng dùng)</span> : null}
+                            </span>
                             <input
                               type="checkbox"
                               checked={checked}
+                              disabled={inactive && !checked}
                               onChange={(e) =>
                                 set(
                                   'genreCodes',

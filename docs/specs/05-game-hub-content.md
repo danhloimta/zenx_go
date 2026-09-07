@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-03
+> Last verified: 2026-09-07
 >
 > Verified commit: `788f781`
 
@@ -22,6 +22,7 @@
 | `FEAT-CMS-001`     | Game CMS                   | SUPER_ADMIN | Chỉnh sửa nội dung cơ bản, media, trạng thái, CTA và code/slug/subdomain của game hiện có.      | `IMPLEMENTED` |
 | `FEAT-CMS-002`     | Article CMS                | SUPER_ADMIN | Tạo/sửa draft, publish/unpublish bài viết Markdown theo game.                                   | `IMPLEMENTED` |
 | `FEAT-CMS-003`     | Event/announcement CMS     | SUPER_ADMIN | Tạo/sửa draft, publish/unpublish event và announcement portal.                                  | `IMPLEMENTED` |
+| `FEAT-CMS-004`     | Game genre taxonomy        | SUPER_ADMIN | CRUD thể loại, active/inactive, sort order và usage protection.                                | `IMPLEMENTED` |
 
 ## Portal screens and behavior
 
@@ -48,6 +49,7 @@
 CMS dùng `AdminShell` và chỉ `SUPER_ADMIN` được truy cập. `SUPPORT` không được xem hoặc sửa content.
 
 - Game cho phép sửa code/slug/subdomain cùng nội dung, media, CTA, trạng thái cơ bản, primary game và taxonomy. Record type, theme preset và theme/feature config chỉ dùng nội bộ, không hiển thị trong editor; taxonomy chọn từ danh mục có sẵn và phải có ít nhất một thể loại cùng một nền tảng.
+- Genre có thể tạo/sửa tên, slug, trạng thái và thứ tự. Code khóa sau khi tạo; genre inactive không được gắn mới nhưng vẫn giữ trên game đang sử dụng.
 - Đổi code/slug/subdomain không giữ alias URL cũ và được validate duy nhất/an toàn.
 - Article/event/announcement dùng `DRAFT/PUBLISHED`; publish đặt `publishedAt=now`, unpublish xoá `publishedAt`. Không hard-delete, schedule, approval hoặc revision.
 - Slug được normalize ở mỗi lần tạo/cập nhật. Asset/CTA chỉ nhận path nội bộ an toàn hoặc URL `http/https`.
@@ -64,6 +66,7 @@ CMS dùng `AdminShell` và chỉ `SUPER_ADMIN` được truy cập. `SUPPORT` kh
 | `SCR-ADMIN-CONTENT-EVENTS` | `/admin/content/events` | Filter event và mở editor. |
 | `SCR-ADMIN-CONTENT-EVENT` | `/admin/content/events/new`, `/admin/content/events/[eventId]` | Event scope game/portal, date range, Markdown và publish. |
 | `SCR-ADMIN-CONTENT-ANNOUNCEMENTS` | `/admin/content/announcements` | Danh sách và modal tạo/sửa announcement, status/time window. |
+| `SCR-ADMIN-CONTENT-GENRES` | `/admin/content/genres` | Tìm kiếm/lọc genre, tạo/sửa, active/inactive, usage count và xóa genre inactive chưa được sử dụng. |
 
 ## Game website behavior
 
@@ -107,10 +110,12 @@ Public game host được cấu hình mặc định gồm `lucdia`, `hoalong`, `
 | `API-ADMIN-CONTENT-EVENTS` | `GET /admin/content/events`, `GET /admin/content/events/:id` | SUPER_ADMIN | Event list/detail. |
 | `API-ADMIN-CONTENT-EVENT-MUTATION` | `POST/PATCH /admin/content/events` | SUPER_ADMIN | Create/update event và publish state. |
 | `API-ADMIN-CONTENT-ANNOUNCEMENTS` | `GET/POST/PATCH /admin/content/announcements` | SUPER_ADMIN | Announcement list và mutation. |
+| `API-ADMIN-CONTENT-GENRES` | `GET/POST/PATCH/DELETE /admin/content/genres` | SUPER_ADMIN | Genre CRUD, usage count, active assignment rules và optimistic concurrency. |
 
 ## Seed/content source
 
 - `apps/api/prisma/seed.ts` seeds four public games, genres/platforms, articles, milestones, announcements and events.
+- Seed genre chỉ bootstrap record thiếu, không ghi đè cấu hình taxonomy do admin chỉnh sửa.
 - Public records are filtered by `isPublic`, `PUBLISHED`, `publishedAt` and time windows before API response.
 - Content markdown is escaped and converted to a restricted safe HTML subset by `markdownToSafeHtml`.
 - Asset READMEs/PROMPTS remain next to their images; they are not product source-of-truth documents.
@@ -118,5 +123,6 @@ Public game host được cấu hình mặc định gồm `lucdia`, `hoalong`, `
 ## Test evidence
 
 - Integration: `apps/api/test/integration/game.integration.spec.ts`, `portal.integration.spec.ts`.
+- Integration: `apps/api/test/integration/genre-admin.integration.spec.ts` kiểm tra quyền, CRUD, usage protection, inactive assignment và public retention.
 - Browser: `apps/web/e2e/portal-content.spec.ts`, `vertical-slice.spec.ts`, `auth-subdomain.spec.ts`.
 - Test gap: social/community membership, real game server, downloads and in-game topup are not implemented. Theme builder, media library, approval/revision và scheduled publish chưa nằm trong Phase 3.

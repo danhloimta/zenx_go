@@ -2,7 +2,7 @@
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-06
+> Last verified: 2026-09-07
 >
 > Verified commit: `788f781`
 >
@@ -27,7 +27,7 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Admin CCCD reveal                 | `IMPLEMENTED`     | Không yêu cầu re-auth theo quyết định Phase 1.                                              |
 | Multi-role permission UI          | `NOT IMPLEMENTED` | Chưa có màn hình cấp/gỡ role.                                                              |
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
-| Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game cơ bản, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
+| Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game, genre, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 | Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
 
 ## Access model
@@ -72,6 +72,7 @@ Khi admin đặt mật khẩu tạm:
 | `SCR-ADMIN-USERS`     | `/admin/users`          | Search, filter status, pagination.                                       | `GET /admin/users`                            |
 | `SCR-ADMIN-USER`      | `/admin/users/[userId]` | Hồ sơ, status, session, password, CCCD summary/reveal, wallet view và adjustment cho `SUPER_ADMIN`. | `GET /admin/users/:userId`, các mutation user/finance |
 | `SCR-ADMIN-CONTENT`   | `/admin/content/*`      | CMS game, article, event và announcement; chỉ `SUPER_ADMIN`.            | `GET/PATCH /admin/content/*`                 |
+| `SCR-ADMIN-CONTENT-GENRES` | `/admin/content/genres` | Quản lý thể loại game, active/inactive, thứ tự và usage protection.      | `GET/POST/PATCH/DELETE /admin/content/genres` |
 | `SCR-ADMIN-FINANCE`   | `/admin/finance`        | KPI payment, doanh thu/refund và payment pending lâu nhất.              | `GET /admin/finance/dashboard`               |
 | `SCR-ADMIN-PACKAGES`  | `/admin/finance/packages` | CRUD gói nạp, active/inactive và xóa gói chưa từng dùng.              | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` |
 | `SCR-ADMIN-PAYMENTS`  | `/admin/finance/payments*` | Search/detail và command success/fail/expire/cancel/refund.            | `GET /admin/finance/payments*`, payment commands |
@@ -258,6 +259,12 @@ Operational checklist:
 | `CONTENT_SLUG_EXISTS`                  | Slug hoặc announcement code đã tồn tại.                     |
 | `CONTENT_INVALID_URL`                  | Asset hoặc CTA URL không nằm trong allowlist.                |
 | `CONTENT_INVALID_STATE`                | Status/date/Markdown state không hợp lệ.                    |
+| `CONTENT_GENRE_NOT_FOUND`              | Không tìm thấy thể loại game.                                  |
+| `CONTENT_GENRE_CODE_EXISTS`            | Mã thể loại game đã tồn tại.                                   |
+| `CONTENT_GENRE_SLUG_EXISTS`            | Slug thể loại game đã tồn tại.                                 |
+| `CONTENT_GENRE_IN_USE`                 | Genre còn được gắn với game.                                   |
+| `CONTENT_GENRE_MUST_BE_INACTIVE`       | Phải deactivate genre trước khi xóa.                           |
+| `CONTENT_GENRE_INACTIVE`               | Genre inactive không được gắn mới.                             |
 
 ## Test evidence
 
@@ -280,7 +287,7 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 
 ## Out of scope
 
-- CMS nâng cao: role editor/game-admin, media library, WYSIWYG, scheduled publish, revision/approval, theme/feature builder, genre/platform/roadmap editor và tạo/xóa game.
+- CMS nâng cao: role editor/game-admin, media library, WYSIWYG, scheduled publish, revision/approval, theme/feature builder, platform/roadmap editor và tạo/xóa game.
 - Role management UI và permission matrix nhiều role.
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.

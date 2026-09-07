@@ -1,15 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import {
   AlertCircle,
-  ArrowRight,
-  Check,
   Coins,
-  CreditCard,
   Edit3,
-  Layers,
   Plus,
   RefreshCw,
   Save,
