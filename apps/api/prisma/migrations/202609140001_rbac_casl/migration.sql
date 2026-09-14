@@ -98,17 +98,19 @@ BEGIN TRY
   SELECT r.[id], p.[id] FROM [dbo].[roles] r CROSS JOIN [dbo].[permissions] p WHERE r.[code] = 'SUPPORT' AND (p.[module] = 'support' OR p.[code] = 'admin.access');
 
   ALTER TABLE [dbo].[user_roles] ADD [role_id] UNIQUEIDENTIFIER NULL, [assigned_by_user_id] UNIQUEIDENTIFIER NULL, [assigned_at] DATETIME2 NULL;
-  UPDATE ur SET [role_id] = r.[id], [assigned_at] = ur.[created_at] FROM [dbo].[user_roles] ur INNER JOIN [dbo].[roles] r ON r.[code] = ur.[role];
-  IF EXISTS (SELECT 1 FROM [dbo].[user_roles] WHERE [role_id] IS NULL) THROW 50001, 'Cannot migrate an unknown legacy role.', 1;
-  ALTER TABLE [dbo].[user_roles] ALTER COLUMN [role_id] UNIQUEIDENTIFIER NOT NULL;
-  ALTER TABLE [dbo].[user_roles] ALTER COLUMN [assigned_at] DATETIME2 NOT NULL;
-  ALTER TABLE [dbo].[user_roles] DROP CONSTRAINT [user_roles_user_id_role_key];
-  DROP INDEX [user_roles_role_user_id_idx] ON [dbo].[user_roles];
-  ALTER TABLE [dbo].[user_roles] DROP COLUMN [role];
-  ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_user_id_role_id_key] UNIQUE ([user_id], [role_id]);
-  ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_role_id_fkey] FOREIGN KEY ([role_id]) REFERENCES [dbo].[roles]([id]);
-  ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_assigned_by_user_id_fkey] FOREIGN KEY ([assigned_by_user_id]) REFERENCES [dbo].[users]([id]);
-  CREATE INDEX [user_roles_role_id_user_id_idx] ON [dbo].[user_roles]([role_id], [user_id]);
+  EXEC(N'
+    UPDATE ur SET [role_id] = r.[id], [assigned_at] = ur.[created_at] FROM [dbo].[user_roles] ur INNER JOIN [dbo].[roles] r ON r.[code] = ur.[role];
+    IF EXISTS (SELECT 1 FROM [dbo].[user_roles] WHERE [role_id] IS NULL) THROW 50001, ''Cannot migrate an unknown legacy role.'', 1;
+    ALTER TABLE [dbo].[user_roles] ALTER COLUMN [role_id] UNIQUEIDENTIFIER NOT NULL;
+    ALTER TABLE [dbo].[user_roles] ALTER COLUMN [assigned_at] DATETIME2 NOT NULL;
+    ALTER TABLE [dbo].[user_roles] DROP CONSTRAINT [user_roles_user_id_role_key];
+    DROP INDEX [user_roles_role_user_id_idx] ON [dbo].[user_roles];
+    ALTER TABLE [dbo].[user_roles] DROP COLUMN [role];
+    ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_user_id_role_id_key] UNIQUE ([user_id], [role_id]);
+    ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_role_id_fkey] FOREIGN KEY ([role_id]) REFERENCES [dbo].[roles]([id]);
+    ALTER TABLE [dbo].[user_roles] ADD CONSTRAINT [user_roles_assigned_by_user_id_fkey] FOREIGN KEY ([assigned_by_user_id]) REFERENCES [dbo].[users]([id]);
+    CREATE INDEX [user_roles_role_id_user_id_idx] ON [dbo].[user_roles]([role_id], [user_id]);
+  ');
   CREATE INDEX [roles_is_active_code_idx] ON [dbo].[roles]([is_active], [code]);
   CREATE INDEX [permissions_module_sort_order_idx] ON [dbo].[permissions]([module], [sort_order]);
   CREATE INDEX [role_permissions_permission_id_role_id_idx] ON [dbo].[role_permissions]([permission_id], [role_id]);

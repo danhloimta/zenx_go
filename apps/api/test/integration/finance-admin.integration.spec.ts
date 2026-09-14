@@ -53,7 +53,8 @@ describe('Finance admin API (SQL Server)', () => {
         wallet: { create: { currency: 'ZENX', balance: 0n } },
       },
     });
-    await prisma.userRole.create({ data: { userId: admin.id, role: 'SUPER_ADMIN' } });
+    const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { code: 'SUPER_ADMIN' } });
+    await prisma.userRole.create({ data: { userId: admin.id, roleId: superAdminRole.id } });
     const member = await prisma.user.create({
       data: {
         username: `financemember${suffix}`,

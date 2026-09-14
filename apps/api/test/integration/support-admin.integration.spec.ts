@@ -64,7 +64,7 @@ describe('Support admin API (SQL Server)', () => {
   it('limits SUPPORT to support surfaces and exposes queue/dashboard', async () => {
     const me = await http().get('/admin/me').set('Cookie', supportCookies);
     expect(me.status).toBe(200);
-    expect(me.body.data.roles).toContain('SUPPORT');
+    expect(me.body.data.roles).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'SUPPORT' })]));
     const dashboard = await http().get('/admin/support/dashboard').set('Cookie', supportCookies);
     expect(dashboard.status).toBe(200);
     expect(dashboard.body.data.tickets.unassigned).toBeGreaterThanOrEqual(1);
@@ -75,7 +75,7 @@ describe('Support admin API (SQL Server)', () => {
     ).toBe(true);
     const userManagement = await http().get('/admin/users').set('Cookie', supportCookies);
     expect(userManagement.status).toBe(403);
-    expect(userManagement.body.error.code).toBe('ADMIN_ACCESS_REQUIRED');
+    expect(userManagement.body.error.code).toBe('PERMISSION_REQUIRED');
     const audit = await http().get('/admin/audit-logs').set('Cookie', supportCookies);
     expect(audit.status).toBe(404);
   });
@@ -317,7 +317,8 @@ describe('Support admin API (SQL Server)', () => {
         wallet: { create: { currency: 'ZENX', balance: 0n } },
       },
     });
-    await prisma.userRole.create({ data: { userId: user.id, role: 'SUPPORT' } });
+    const supportRole = await prisma.role.findUniqueOrThrow({ where: { code: 'SUPPORT' } });
+    await prisma.userRole.create({ data: { userId: user.id, roleId: supportRole.id } });
     return { id: user.id, email, password };
   }
 

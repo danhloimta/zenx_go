@@ -16,6 +16,6 @@ import { AccessAdminService } from './access.service';
   imports: [AuthModule, AccountModule, FinanceModule],
   controllers: [AdminController, ContentAdminController, AccessAdminController],
   providers: [AdminService, AdminGuard, ContentAdminService, AuthorizationService, PermissionGuard, AccessAdminService],
-  exports: [AdminGuard],
+  exports: [AdminGuard, AuthorizationService, PermissionGuard],
 })
 export class AdminModule {}

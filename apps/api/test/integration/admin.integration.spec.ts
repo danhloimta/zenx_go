@@ -65,7 +65,8 @@ describe('Admin API (SQL Server)', () => {
       },
     });
     adminId = admin.id;
-    await prisma.userRole.create({ data: { userId: admin.id, role: 'SUPER_ADMIN' } });
+    const superAdminRole = await prisma.role.findUniqueOrThrow({ where: { code: 'SUPER_ADMIN' } });
+    await prisma.userRole.create({ data: { userId: admin.id, roleId: superAdminRole.id } });
 
     memberEmail = `member-${Date.now()}@example.com`;
     const member = await prisma.user.create({

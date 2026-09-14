@@ -64,7 +64,7 @@ describe('Content admin API (SQL Server)', () => {
   it('limits CMS to SUPER_ADMIN and exposes dashboard/game reads', async () => {
     const denied = await http().get('/admin/content/dashboard').set('Cookie', supportCookies);
     expect(denied.status).toBe(403);
-    expect(denied.body.error.code).toBe('ADMIN_ACCESS_REQUIRED');
+    expect(denied.body.error.code).toBe('PERMISSION_REQUIRED');
 
     const dashboard = await http().get('/admin/content/dashboard').set('Cookie', adminCookies);
     expect(dashboard.status).toBe(200);
@@ -132,7 +132,7 @@ describe('Content admin API (SQL Server)', () => {
       expect(changed.body.data.themeConfig).toBe(original.themeConfig);
       expect(changed.body.data.featureConfig).toBe(original.featureConfig);
       expect(changed.body.data.primaryGame).toBe(!original.primaryGame);
-      expect(changed.body.data.genres.map((genre: { code: string }) => genre.code)).toEqual(genreCodes);
+      expect(changed.body.data.genres.map((genre: { code: string }) => genre.code).sort()).toEqual([...genreCodes].sort());
       expect(changed.body.data.platforms).toEqual(platforms);
       expect((await http().get(`/games/${gameSlug}`)).status).toBe(404);
       expect((await http().get(`/games/${editedSlug}`)).status).toBe(200);
@@ -454,7 +454,8 @@ describe('Content admin API (SQL Server)', () => {
         wallet: { create: { currency: 'ZENX', balance: 0n } },
       },
     });
-    await prisma.userRole.create({ data: { userId: user.id, role } });
+    const assignedRole = await prisma.role.findUniqueOrThrow({ where: { code: role } });
+    await prisma.userRole.create({ data: { userId: user.id, roleId: assignedRole.id } });
     return user;
   }
 

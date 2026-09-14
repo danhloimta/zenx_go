@@ -65,7 +65,7 @@ describe('Genre admin API (SQL Server)', () => {
   it('supports CRUD, usage protection, active assignment rules and public retention', async () => {
     const denied = await http().get('/admin/content/genres').set('Cookie', supportCookies);
     expect(denied.status).toBe(403);
-    expect(denied.body.error.code).toBe('ADMIN_ACCESS_REQUIRED');
+    expect(denied.body.error.code).toBe('PERMISSION_REQUIRED');
 
     const code = `E2E_GENRE_${suffix}`.slice(0, 32).toUpperCase();
     const slug = `e2e-genre-${suffix}`.slice(0, 80);
@@ -146,7 +146,8 @@ describe('Genre admin API (SQL Server)', () => {
 
   async function createUser(username: string, email: string, role: 'SUPER_ADMIN' | 'SUPPORT') {
     const user = await prisma.user.create({ data: { username: `${username}${suffix.slice(-8)}`, usernameNormalized: `${username}${suffix.slice(-8)}`.toLowerCase(), email, emailNormalized: email, passwordHash: await argon2.hash('GenrePassword123!'), status: 'ACTIVE', profile: { create: { fullName: username, gender: 'UNSPECIFIED', termsVersion: 'test', privacyVersion: 'test', acceptedAt: new Date() } }, wallet: { create: { currency: 'ZENX', balance: 0n } } } });
-    await prisma.userRole.create({ data: { userId: user.id, role } });
+    const assignedRole = await prisma.role.findUniqueOrThrow({ where: { code: role } });
+    await prisma.userRole.create({ data: { userId: user.id, roleId: assignedRole.id } });
   }
 
   async function login(username: string) {
