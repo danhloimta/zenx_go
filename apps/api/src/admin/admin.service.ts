@@ -419,9 +419,9 @@ export class AdminService {
     if (!current) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     this.assertExpectedVersion(current.updatedAt, dto.expectedUpdatedAt);
 
-    const roleSelectors = Array.from(new Set(dto.roleIds ?? dto.roles ?? []));
+    const roleSelectors = Array.from(new Set(dto.roleIds));
     const nextRoles = roleSelectors.length
-      ? await this.prisma.role.findMany({ where: { OR: [{ id: { in: roleSelectors } }, { code: { in: roleSelectors } }], isActive: true }, select: { id: true, code: true } })
+      ? await this.prisma.role.findMany({ where: { id: { in: roleSelectors }, isActive: true }, select: { id: true, code: true } })
       : [];
     if (nextRoles.length !== roleSelectors.length)
       throw new DomainError(ErrorCode.ROLE_INACTIVE, 'One or more roles are inactive or unavailable', 400);

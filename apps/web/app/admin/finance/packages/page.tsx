@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatAmount, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 type Form = {
   code: string;
@@ -43,6 +44,8 @@ const blank: Form = {
 type FilterStatus = 'ALL' | 'ACTIVE' | 'INACTIVE';
 
 export default function AdminFinancePackagesPage() {
+  const ability = useAdminAbility();
+  const canManage = ability.can('manage', 'CoinPackage');
   const query = useAdminFinancePackages();
   const mutations = useAdminFinancePackageMutations();
   const [filter, setFilter] = useState<FilterStatus>('ALL');
@@ -69,8 +72,9 @@ export default function AdminFinancePackagesPage() {
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [allItems, filter, search]);
 
-  const openCreate = () => setEditor({ form: blank });
-  const openEdit = (item: AdminFinanceCoinPackage) =>
+  const openCreate = () => { if (canManage) setEditor({ form: blank }); };
+  const openEdit = (item: AdminFinanceCoinPackage) => {
+    if (!canManage) return;
     setEditor({
       item,
       form: {
@@ -82,6 +86,7 @@ export default function AdminFinancePackagesPage() {
         sortOrder: String(item.sortOrder),
       },
     });
+  };
 
   const submit = () => {
     if (!editor) return;
@@ -187,14 +192,14 @@ export default function AdminFinancePackagesPage() {
             Làm mới
           </Button>
 
-          <Button
+          {canManage ? <Button
             size="sm"
             onClick={openCreate}
             className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] hover:bg-[#00873E]/90 text-white shadow-xs"
           >
             <Plus className="size-4 mr-1.5" />
             Tạo gói nạp
-          </Button>
+          </Button> : null}
         </div>
       </div>
 
@@ -393,7 +398,7 @@ export default function AdminFinancePackagesPage() {
                       {/* Actions */}
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
+                          {canManage ? <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openEdit(item)}
@@ -401,8 +406,8 @@ export default function AdminFinancePackagesPage() {
                           >
                             <Edit3 className="size-3.5 mr-1 text-slate-400" />
                             Sửa
-                          </Button>
-                          <Button
+                          </Button> : null}
+                          {canManage ? <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => remove(item)}
@@ -410,7 +415,7 @@ export default function AdminFinancePackagesPage() {
                           >
                             <Trash2 className="size-3.5 mr-1 text-rose-500" />
                             Xóa
-                          </Button>
+                          </Button> : null}
                         </div>
                       </td>
                     </tr>

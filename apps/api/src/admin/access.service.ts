@@ -50,9 +50,14 @@ export class AccessAdminService {
     if (!current) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (current.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be changed', 400);
     if (current.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
-    const updated = await this.prisma.role.update({ where: { id: roleId }, data: { ...(dto.name !== undefined ? { name: dto.name.trim() } : {}), ...(dto.description !== undefined ? { description: dto.description?.trim() ?? null } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}) }, include: ROLE_INCLUDE });
-    await this.audit(this.prisma, actorUserId, 'ROLE_UPDATED', 'ROLE', roleId, this.serializeRole(current), this.serializeRole(updated), dto.reason);
-    if (dto.isActive === false) await this.invalidateRoleUsers(roleId);
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const write = await tx.role.updateMany({ where: { id: roleId, updatedAt: current.updatedAt }, data: { ...(dto.name !== undefined ? { name: dto.name.trim() } : {}), ...(dto.description !== undefined ? { description: dto.description?.trim() ?? null } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}), updatedAt: new Date() } });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
+      const result = await tx.role.findUniqueOrThrow({ where: { id: roleId }, include: ROLE_INCLUDE });
+      if (dto.isActive === false) await this.invalidateRoleUsers(roleId, tx);
+      await this.audit(tx, actorUserId, 'ROLE_UPDATED', 'ROLE', roleId, this.serializeRole(current), this.serializeRole(result), dto.reason);
+      return result;
+    });
     return this.serializeRole(updated);
   }
 
@@ -61,8 +66,10 @@ export class AccessAdminService {
     if (!role) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (role.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be deleted', 400);
     if (role._count.users) throw new DomainError(ErrorCode.ROLE_IN_USE, 'Role is assigned to users', 409);
-    await this.prisma.role.delete({ where: { id: roleId } });
-    await this.audit(this.prisma, actorUserId, 'ROLE_DELETED', 'ROLE', roleId, this.serializeRole(role), null, reason);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.role.delete({ where: { id: roleId } });
+      await this.audit(tx, actorUserId, 'ROLE_DELETED', 'ROLE', roleId, this.serializeRole(role), null, reason);
+    });
     return { deleted: true };
   }
 

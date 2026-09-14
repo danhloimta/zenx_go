@@ -412,10 +412,8 @@ export interface AdminStatusUpdateRequest {
 
 export interface AdminRolesUpdateRequest {
   expectedUpdatedAt: string;
-  roleIds?: string[];
-  /** @deprecated use roleIds */
-  roles?: AdminRole[];
-  reason?: string;
+  roleIds: string[];
+  reason: string;
 }
 
 export interface CreateRoleRequest { code: string; name: string; description?: string; reason?: string; }

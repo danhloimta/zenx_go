@@ -106,8 +106,6 @@ export class AdminUpdateSensitiveIdentityDto extends AdminExpectedUpdateDto {
 }
 
 export class AdminRolesUpdateDto extends AdminExpectedUpdateDto {
-  @IsOptional() @IsArray() @IsString({ each: true }) roleIds?: string[];
-  /** @deprecated compatibility with the pre-RBAC admin UI. */
-  @IsOptional() @IsArray() @IsString({ each: true }) roles?: string[];
-  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+  @IsArray() @IsString({ each: true }) roleIds!: string[];
+  @IsString() @MinLength(3) @MaxLength(500) reason!: string;
 }

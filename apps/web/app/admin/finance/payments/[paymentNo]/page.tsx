@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { bankNameMap, formatAmount, formatDate, paymentMethodLabels } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   CREATED: { label: 'Chờ thanh toán', className: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -54,6 +55,9 @@ export default function AdminFinancePaymentDetailPage() {
   const paymentNo = decodeURIComponent(params.paymentNo);
   const query = useAdminFinancePayment(paymentNo);
   const actions = useAdminFinancePaymentActions(paymentNo);
+  const ability = useAdminAbility();
+  const canProcess = ability.can('process', 'Payment');
+  const canRefund = ability.can('refund', 'Payment');
 
   const [providerTransactionId, setProviderTransactionId] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -433,7 +437,7 @@ export default function AdminFinancePaymentDetailPage() {
             </h2>
 
             {/* Chưa thành công */}
-            {payment.status !== 'SUCCESS' && payment.status !== 'REFUNDED' ? (
+            {payment.status !== 'SUCCESS' && payment.status !== 'REFUNDED' && canProcess ? (
               <div className="mt-3.5 space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700">
@@ -512,7 +516,7 @@ export default function AdminFinancePaymentDetailPage() {
             ) : null}
 
             {/* Đã thành công */}
-            {payment.status === 'SUCCESS' ? (
+            {payment.status === 'SUCCESS' && canRefund ? (
               <div className="mt-3.5 space-y-3">
                 <p className="text-xs text-emerald-800 font-medium bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
                   Đơn đã hoàn tất. Coin đã cộng vào ví.

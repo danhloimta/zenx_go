@@ -57,4 +57,15 @@ describe('AuthorizationService', () => {
     expect(access.ability.can('read', 'SupportTicket')).toBe(true);
     expect(access.ability.can('manage', 'Finance')).toBe(false);
   });
+
+  it('deduplicates permissions inherited from multiple roles', async () => {
+    const permission = { code: 'users.view', action: 'read', subject: 'User' };
+    const prisma = { userRole: { findMany: jest.fn().mockResolvedValue([
+      { role: { id: 'role-a', code: 'A', name: 'A', isActive: true, permissions: [{ permission }] } },
+      { role: { id: 'role-b', code: 'B', name: 'B', isActive: true, permissions: [{ permission }] } },
+    ]) } };
+    const access = await new AuthorizationService(prisma as any).getAccess('user-id');
+    expect(access.permissionCodes).toEqual(['users.view']);
+    expect(access.abilityRules).toEqual([{ action: 'read', subject: 'User' }]);
+  });
 });

@@ -50,6 +50,7 @@ import {
   type PresentationValue,
 } from '@/components/admin-content/game-presentation-editor';
 import { toast } from 'sonner';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 const lifecycleOptions: Array<{ value: GameLifecycleStatus; label: string }> = [
   { value: 'LIVE', label: 'Đang vận hành (Live)' },
@@ -99,6 +100,9 @@ type GameForm = {
 type ActiveTab = 'general' | 'presentation';
 
 export default function AdminContentGameDetailPage() {
+  const ability = useAdminAbility();
+  const canManage = ability.can('manage', 'Game');
+  const canPublish = ability.can('publish', 'Game');
   const params = useParams<{ gameId: string }>();
   const gameId = typeof params.gameId === 'string' ? decodeURIComponent(params.gameId) : '';
   const gameQuery = useAdminContentGame(gameId);
@@ -359,7 +363,7 @@ export default function AdminContentGameDetailPage() {
               </Link>
             </Button>
 
-            {activeTab === 'general' ? (
+            {canManage && activeTab === 'general' ? (
               <>
                 <Button
                   type="button"
@@ -382,7 +386,7 @@ export default function AdminContentGameDetailPage() {
                   <span>{update.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}</span>
                 </Button>
               </>
-            ) : (
+            ) : canManage ? (
               <>
                 <Button
                   type="button"
@@ -405,7 +409,7 @@ export default function AdminContentGameDetailPage() {
                   <span>{savePresentation.isPending ? 'Đang lưu…' : 'Lưu giao diện'}</span>
                 </Button>
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </header>
@@ -738,7 +742,7 @@ export default function AdminContentGameDetailPage() {
                     ) : null}
                   </div>
 
-                  {game.isPublic ? (
+                  {canPublish && game.isPublic ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -749,7 +753,7 @@ export default function AdminContentGameDetailPage() {
                       <EyeOff className="mr-1.5 size-3.5" />
                       {unpublish.isPending ? 'Đang ẩn…' : 'Ẩn khỏi Public'}
                     </Button>
-                  ) : (
+                  ) : canPublish ? (
                     <Button
                       type="button"
                       disabled={!readinessQuery.data.ready || publish.isPending}
@@ -759,7 +763,7 @@ export default function AdminContentGameDetailPage() {
                       <Eye className="mr-1.5 size-3.5" />
                       {publish.isPending ? 'Đang public…' : 'Public game ngay'}
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </section>
 

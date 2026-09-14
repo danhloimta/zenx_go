@@ -19,13 +19,13 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Hạng mục                          | Trạng thái        | Ghi chú                                                                                    |
 | --------------------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
 | Admin web tại `/admin`            | `IMPLEMENTED`     | Dùng chung root domain và session portal.                                                  |
-| Role storage/RBAC                 | `IMPLEMENTED`     | Có bảng `user_roles`; Phase 1 `SUPER_ADMIN`, Phase 2 thêm `SUPPORT`.                       |
+| Role storage/RBAC                 | `IMPLEMENTED`     | Role, permission, assignment và audit log; backend dùng CASL guard theo permission.        |
 | Dashboard user KPI                | `IMPLEMENTED`     | Tổng user, status counts và user mới.                                                      |
 | User list/detail                  | `IMPLEMENTED`     | Search/filter/pagination và dữ liệu vận hành an toàn.                                      |
 | Profile/status/session operations | `IMPLEMENTED`     | Cập nhật trực tiếp, kiểm tra concurrency và token invalidation.                            |
 | Temporary password                | `IMPLEMENTED`     | Bắt buộc user đổi sau lần login tiếp theo.                                                 |
 | Admin CCCD reveal                 | `IMPLEMENTED`     | Không yêu cầu re-auth theo quyết định Phase 1.                                              |
-| Multi-role permission UI          | `NOT IMPLEMENTED` | Chưa có màn hình cấp/gỡ role.                                                              |
+| Multi-role permission UI          | `IMPLEMENTED`     | CRUD role, permission matrix và gán nhiều role cho user tại `/admin/access/roles`.          |
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
 | Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game, genre, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 | Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
@@ -34,14 +34,14 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 
 ### Role
 
-Phase 1/2/3/4 có các role được hỗ trợ:
+`SUPER_ADMIN` và `SUPPORT` là role hệ thống; admin có thể tạo thêm role custom. User nhận quyền qua một hoặc nhiều role, không gán permission trực tiếp.
 
 | Role          | Ý nghĩa                                                                                 | Cách cấp                    |
 | ------------- | --------------------------------------------------------------------------------------- | --------------------------- |
-| `SUPER_ADMIN` | Toàn quyền trên các endpoint admin Phase 1/2/3/4, gồm finance.                            | CLI idempotent, chưa có UI. |
-| `SUPPORT`     | Chỉ support queue, conversation và FAQ; không user-management/CCCD/wallet.               | CLI idempotent, chưa có UI. |
+| `SUPER_ADMIN` | Toàn quyền trên mọi endpoint admin, gồm finance.                                           | CLI hoặc UI user-role. |
+| `SUPPORT`     | Support queue, conversation và FAQ.                                                        | CLI hoặc UI user-role. |
 
-Role được đọc trực tiếp từ database bởi `AdminGuard` cho mỗi request. Không lưu role trong access JWT để tránh quyền cũ tồn tại sau khi bị gỡ.
+Role và permission được đọc trực tiếp từ database bởi `AdminGuard`/`PermissionGuard` cho mỗi request. Không lưu permission trong access JWT; thay role hoặc permission sẽ revoke refresh session và tăng `authVersion`.
 
 ### Authentication flow
 
@@ -234,7 +234,7 @@ Operational checklist:
 2. Confirm the target user has a valid password and intended account status.
 3. Grant `SUPER_ADMIN` to the smallest possible number of users.
 4. Open `/admin`, verify dashboard and user search.
-5. Verify finance package/payment/ledger controls after applying `202609050004_finance_operations`; wallet mutations are available only to `SUPER_ADMIN` through the finance routes.
+5. Mở `/admin/access/roles`, kiểm tra `SUPER_ADMIN`/`SUPPORT` và permission catalog sau migration.
 
 ## Error codes
 
@@ -288,7 +288,6 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 ## Out of scope
 
 - CMS nâng cao: role editor/game-admin, media library, WYSIWYG, scheduled publish, revision/approval, theme/feature builder, platform/roadmap editor và tạo/xóa game.
-- Role management UI và permission matrix nhiều role.
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.
 - User create/delete và chỉnh sửa sensitive profile.

@@ -53,6 +53,13 @@ export default function AdminUserDetailPage() {
   const admin = useAdminMe();
   const ability = useAdminAbility();
   const canAssignRoles = ability.can('assign-role', 'User');
+  const canUpdateProfile = ability.can('update-profile', 'User');
+  const canUpdateStatus = ability.can('update-status', 'User');
+  const canRevokeSessions = ability.can('revoke-session', 'User');
+  const canResetPassword = ability.can('reset-password', 'User');
+  const canViewSensitive = ability.can('view-sensitive', 'User');
+  const canUpdateSensitive = ability.can('update-sensitive', 'User');
+  const canAdjustWallet = ability.can('adjust', 'Wallet');
   const query = useAdminUser(userId);
   const roleOptions = useQuery({
     queryKey: ['admin', 'access', 'roles', 'active'],
@@ -391,7 +398,7 @@ export default function AdminUserDetailPage() {
               </Button>
             ) : null}
 
-            {!isDeleted ? (
+            {!isDeleted && canRevokeSessions ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -403,7 +410,7 @@ export default function AdminUserDetailPage() {
               </Button>
             ) : null}
 
-            {isDeleted ? (
+            {isDeleted && canUpdateStatus ? (
               <Button
                 size="sm"
                 variant="default"
@@ -415,7 +422,7 @@ export default function AdminUserDetailPage() {
               </Button>
             ) : (
               <>
-                <Button
+                {canUpdateStatus ? <Button
                   size="sm"
                   variant={active ? 'destructive' : 'default'}
                   onClick={() => statusMutation.mutate(active ? 'SUSPENDED' : 'ACTIVE')}
@@ -431,9 +438,9 @@ export default function AdminUserDetailPage() {
                       <CheckCircle2 className="size-3.5" /> Kích hoạt
                     </>
                   )}
-                </Button>
+                </Button> : null}
 
-                <Button
+                {canUpdateStatus ? <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setAction('deleteUser')}
@@ -441,7 +448,7 @@ export default function AdminUserDetailPage() {
                   className="gap-1.5 border-rose-200 font-semibold text-rose-600 shadow-2xs hover:bg-rose-50 hover:text-rose-700"
                 >
                   <Trash2 className="size-3.5" /> Xóa người dùng
-                </Button>
+                </Button> : null}
               </>
             )}
           </div>
@@ -566,7 +573,7 @@ export default function AdminUserDetailPage() {
               </div>
             </div>
 
-            <div className="flex justify-end">
+            {canUpdateProfile ? <div className="flex justify-end">
               <Button
                 onClick={() => profileMutation.mutate()}
                 disabled={profileMutation.isPending}
@@ -574,7 +581,7 @@ export default function AdminUserDetailPage() {
               >
                 {profileMutation.isPending ? 'Đang lưu…' : 'Lưu cập nhật'}
               </Button>
-            </div>
+            </div> : null}
           </div>
         </section>
 
@@ -633,7 +640,7 @@ export default function AdminUserDetailPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {user.sensitiveProfile.identity.configured ? (
+                  {user.sensitiveProfile.identity.configured && canViewSensitive ? (
                     <Button
                       size="sm"
                       variant="outline"
@@ -645,7 +652,7 @@ export default function AdminUserDetailPage() {
                       {revealMutation.isPending ? 'Đang giải mã…' : 'Xem chi tiết'}
                     </Button>
                   ) : null}
-                  <Button
+                  {canUpdateSensitive ? <Button
                     size="sm"
                     variant={user.sensitiveProfile.identity.configured ? 'outline' : 'default'}
                     onClick={handleOpenEditIdentity}
@@ -654,25 +661,25 @@ export default function AdminUserDetailPage() {
                   >
                     <Pencil className="size-3.5" />
                     {user.sensitiveProfile.identity.configured ? 'Chỉnh sửa' : 'Thêm CCCD'}
-                  </Button>
+                  </Button> : null}
                 </div>
               </div>
             </div>
 
             {/* Reset Temporary Password */}
             <div className="mt-5 border-t border-slate-100 pt-4">
-              <Button
+              {canResetPassword ? <Button
                 variant="outline"
                 className="w-full justify-center gap-2 border-slate-200 font-semibold text-slate-700 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700"
                 onClick={() => setAction('password')}
               >
                 <KeyRound className="size-4 text-purple-600" /> Đặt mật khẩu tạm thời
-              </Button>
+              </Button> : null}
             </div>
           </section>
 
           {/* ZENX Wallet Section */}
-          <WalletSection user={user} />
+          <WalletSection user={user} canAdjustWallet={canAdjustWallet} />
         </div>
       </div>
 
@@ -822,7 +829,7 @@ function InfoRow({
   );
 }
 
-function WalletSection({ user }: { user: AdminUserDetail }) {
+function WalletSection({ user, canAdjustWallet }: { user: AdminUserDetail; canAdjustWallet: boolean }) {
   const adjustment = useAdminFinanceWalletAdjustment(user.id);
   const [kind, setKind] = useState<'credit' | 'debit' | null>(null);
   const [amount, setAmount] = useState('');
@@ -848,8 +855,8 @@ function WalletSection({ user }: { user: AdminUserDetail }) {
           <p className="text-xs text-slate-500">Số dư hiện tại & lịch sử biến động Coin</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setKind('credit')}>Cộng Coin</Button>
-          <Button variant="outline" size="sm" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => setKind('debit')}>Trừ Coin</Button>
+          {canAdjustWallet ? <Button variant="outline" size="sm" onClick={() => setKind('credit')}>Cộng Coin</Button> : null}
+          {canAdjustWallet ? <Button variant="outline" size="sm" className="border-red-200 text-red-700 hover:bg-red-50" onClick={() => setKind('debit')}>Trừ Coin</Button> : null}
           <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-50 text-[#00873E]"><WalletCards className="size-4.5" /></div>
         </div>
       </div>
