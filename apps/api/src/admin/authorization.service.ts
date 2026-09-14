@@ -26,7 +26,7 @@ export class AuthorizationService {
 
   async getAccess(userId: string): Promise<AuthorizationAccess> {
     const assignments = await (this.prisma.userRole as any).findMany({
-      where: { userId, role: { isActive: true } },
+      where: { userId },
       select: {
         role: {
           select: {
@@ -34,15 +34,17 @@ export class AuthorizationService {
             code: true,
             name: true,
             isActive: true,
-            permissions: {
-              where: { permission: { isActive: true } },
-              select: { permission: { select: { code: true, action: true, subject: true } } },
-            },
+            permissions: { select: { permission: { select: { code: true, action: true, subject: true, isActive: true } } } },
           },
         },
       },
     });
-    const roles = assignments.map(({ role }: { role: AuthorizationRole }) => role);
+    const roles = assignments
+      .map(({ role }: any) => ({
+        ...role,
+        permissions: role.permissions.filter(({ permission }: any) => permission.isActive !== false),
+      }))
+      .filter((role: any) => role.isActive);
     const { can, build } = new AbilityBuilder(createMongoAbility);
     if (roles.some((role: AuthorizationRole) => role.code === 'SUPER_ADMIN')) {
       can('manage', 'all');

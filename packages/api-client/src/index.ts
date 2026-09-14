@@ -416,9 +416,10 @@ export interface AdminRolesUpdateRequest {
   reason: string;
 }
 
-export interface CreateRoleRequest { code: string; name: string; description?: string; reason?: string; }
-export interface UpdateRoleRequest { expectedUpdatedAt: string; name?: string; description?: string | null; isActive?: boolean; reason?: string; }
-export interface ReplaceRolePermissionsRequest { expectedUpdatedAt: string; permissionIds: string[]; reason?: string; }
+export interface CreateRoleRequest { code: string; name: string; description?: string; reason: string; }
+export interface UpdateRoleRequest { expectedUpdatedAt: string; name?: string; description?: string | null; isActive?: boolean; permissionIds?: string[]; reason: string; }
+export interface DeleteRoleRequest { expectedUpdatedAt: string; reason: string; }
+export interface ReplaceRolePermissionsRequest { expectedUpdatedAt: string; permissionIds: string[]; reason: string; }
 
 export interface AdminResetPasswordRequest {
   expectedUpdatedAt: string;
@@ -1389,7 +1390,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         permissions: () => client.get<Permission[]>('/admin/access/permissions'),
         createRole: (input: CreateRoleRequest) => client.post<RoleDetail>('/admin/access/roles', input),
         updateRole: (roleId: string, input: UpdateRoleRequest) => client.patch<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}`, input),
-        deleteRole: (roleId: string) => client.delete<{ deleted: boolean }>(`/admin/access/roles/${encodeURIComponent(roleId)}`),
+        deleteRole: (roleId: string, input: DeleteRoleRequest) => client.request<{ deleted: boolean }>(`/admin/access/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE', body: input }),
         replacePermissions: (roleId: string, input: ReplaceRolePermissionsRequest) => client.put<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}/permissions`, input),
       },
 

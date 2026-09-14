@@ -5,7 +5,7 @@ export class CreateRoleDto {
   @IsString() @Matches(/^[A-Z][A-Z0-9_]{2,31}$/) code!: string;
   @IsString() @MinLength(2) @MaxLength(120) name!: string;
   @IsOptional() @IsString() @MaxLength(500) description?: string;
-  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+  @IsString() @MinLength(3) @MaxLength(500) reason!: string;
 }
 
 export class UpdateRoleDto {
@@ -13,13 +13,19 @@ export class UpdateRoleDto {
   @IsOptional() @IsString() @MinLength(2) @MaxLength(120) name?: string;
   @IsOptional() @IsString() @MaxLength(500) description?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
-  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+  @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) permissionIds?: string[];
 }
 
 export class ReplaceRolePermissionsDto {
   @IsDateString() expectedUpdatedAt!: string;
   @IsArray() @IsString({ each: true }) permissionIds!: string[];
-  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+  @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class DeleteRoleDto {
+  @IsDateString() expectedUpdatedAt!: string;
+  @IsString() @MinLength(3) @MaxLength(500) reason!: string;
 }
 
 export class RolesQueryDto {

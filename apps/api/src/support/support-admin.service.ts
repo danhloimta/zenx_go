@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
-  AdminRole,
   SupportMessageAuthorType,
   SupportMessageVisibility,
   SupportTicketPriority,
@@ -110,7 +109,7 @@ export class SupportAdminService {
     const users = await this.prisma.user.findMany({
       where: {
         status: 'ACTIVE',
-        roles: { some: { role: { code: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] }, isActive: true } } },
+        roles: { some: { role: { isActive: true, permissions: { some: { permission: { is: { code: 'support.tickets.view', isActive: true } } } } } } },
       },
       orderBy: [{ username: 'asc' }, { id: 'asc' }],
       select: AGENT_SELECT,
@@ -597,7 +596,7 @@ export class SupportAdminService {
       where: {
         id: userId,
         status: 'ACTIVE',
-        roles: { some: { role: { code: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] }, isActive: true } } },
+        roles: { some: { role: { isActive: true, permissions: { some: { permission: { is: { code: 'support.tickets.view', isActive: true } } } } } } },
       },
       select: { id: true },
     });

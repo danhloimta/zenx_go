@@ -28,7 +28,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AdminUserDetail, RoleSummary } from '@zenx-go/api-client';
+import type { AdminUserDetail, RoleDetail, RoleSummary } from '@zenx-go/api-client';
 import { useAdminMe, useAdminUser } from '@/hooks/use-admin';
 import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
@@ -101,6 +101,7 @@ export default function AdminUserDetailPage() {
     void queryClient.invalidateQueries({ queryKey: ['admin', 'user', userId] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
     void queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    if (admin.data?.id === userId) void queryClient.invalidateQueries({ queryKey: ['admin', 'me'] });
   };
 
   const profileMutation = useMutation({
@@ -1334,7 +1335,7 @@ function UpdateRolesDialog({
   pending,
 }: {
   user: AdminUserDetail;
-  availableRoles: RoleSummary[];
+  availableRoles: RoleDetail[];
   currentAdminId?: string;
   onClose: () => void;
   onConfirm: (roleIds: string[], reason: string) => void;
@@ -1361,6 +1362,9 @@ function UpdateRolesDialog({
     if (!reason.trim()) return;
     onConfirm(selectedRoles.map((role) => role.id), reason.trim());
   };
+  const effectivePermissions = Array.from(new Set(
+    selectedRoles.flatMap((selected) => availableRoles.find((role) => role.id === selected.id)?.permissions.map((permission) => permission.code) ?? []),
+  ));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
@@ -1432,6 +1436,11 @@ function UpdateRolesDialog({
               <div className="flex-1"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-900">{role.name}</span><span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">{role.code}</span></div></div>
             </label>
           ))}
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+            <p className="font-bold text-slate-800">Permission hiệu lực ({effectivePermissions.length})</p>
+            <p className="mt-1 break-words">{effectivePermissions.length ? effectivePermissions.join(' · ') : 'Không có quyền chức năng ngoài admin.access.'}</p>
+          </div>
 
           <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do thay đổi phân quyền" required disabled={pending} />
 

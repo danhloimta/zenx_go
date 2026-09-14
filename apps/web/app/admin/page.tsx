@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -33,7 +32,6 @@ import { useAdminAbility } from '@/lib/admin-ability';
 
 export default function AdminDashboardPage() {
   const admin = useAdminMe();
-  const router = useRouter();
   const ability = useAdminAbility();
   const canViewDashboard = ability.can('read', 'Dashboard');
   const dashboard = useAdminDashboard(Boolean(admin.data && canViewDashboard));
@@ -43,11 +41,7 @@ export default function AdminDashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (admin.data && !canViewDashboard) router.replace('/admin');
-  }, [admin.data, canViewDashboard, router]);
-
-  if (admin.data && !canViewDashboard) return null;
+  if (admin.data && !canViewDashboard) return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">Tài khoản đã vào khu vực quản trị nhưng chưa được cấp quyền cho màn hình nào.</div>;
   if (dashboard.isLoading) return <DashboardSkeleton />;
 
   if (dashboard.isError || !dashboard.data) {

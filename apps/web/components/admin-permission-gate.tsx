@@ -14,6 +14,8 @@ const routePermissions: Array<{ prefix: string; action: string; subject: string 
   { prefix: '/admin/finance/payments', action: 'read', subject: 'Payment' },
   { prefix: '/admin/finance/transactions', action: 'read', subject: 'WalletTransaction' },
   { prefix: '/admin/finance', action: 'read', subject: 'FinanceDashboard' },
+  { prefix: '/admin/support/faqs', action: 'manage', subject: 'SupportFaq' },
+  { prefix: '/admin/support/tickets', action: 'read', subject: 'SupportTicket' },
   { prefix: '/admin/users', action: 'read', subject: 'User' },
   { prefix: '/admin/access', action: 'read', subject: 'Role' },
   { prefix: '/admin/support', action: 'read', subject: 'SupportDashboard' },

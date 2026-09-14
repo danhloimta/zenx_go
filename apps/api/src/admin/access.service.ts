@@ -27,7 +27,7 @@ export class AccessAdminService {
     return this.prisma.permission.findMany({ where: { isActive: true }, orderBy: [{ module: 'asc' }, { sortOrder: 'asc' }] });
   }
 
-  async createRole(dto: CreateRoleDto, actorUserId: string) {
+  async createRole(dto: CreateRoleDto, actorUserId: string, ipAddress?: string, userAgent?: string) {
     try {
       const role = await this.prisma.$transaction(async (tx) => {
         const adminAccess = await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
@@ -35,7 +35,7 @@ export class AccessAdminService {
         const created = await tx.role.create({ data: { code: dto.code, name: dto.name.trim(), description: dto.description?.trim() ?? null }, include: ROLE_INCLUDE });
         await tx.rolePermission.create({ data: { roleId: created.id, permissionId: adminAccess.id } });
         const result = await tx.role.findUniqueOrThrow({ where: { id: created.id }, include: ROLE_INCLUDE });
-        await this.audit(tx, actorUserId, 'ROLE_CREATED', 'ROLE', result.id, null, this.serializeRole(result), dto.reason);
+        await this.audit(tx, actorUserId, 'ROLE_CREATED', 'ROLE', result.id, null, this.serializeRole(result), dto.reason, ipAddress, userAgent);
         return result;
       });
       return this.serializeRole(role);
@@ -45,35 +45,46 @@ export class AccessAdminService {
     }
   }
 
-  async updateRole(roleId: string, dto: UpdateRoleDto, actorUserId: string) {
+  async updateRole(roleId: string, dto: UpdateRoleDto, actorUserId: string, ipAddress?: string, userAgent?: string) {
     const current = await this.prisma.role.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
     if (!current) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (current.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be changed', 400);
     if (current.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
     const updated = await this.prisma.$transaction(async (tx) => {
+      const adminAccess = dto.permissionIds === undefined ? null : await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
+      if (dto.permissionIds !== undefined && !adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
+      const nextPermissionIds = dto.permissionIds === undefined ? null : [...new Set([...dto.permissionIds, adminAccess!.id])];
+      if (nextPermissionIds) {
+        const valid = await tx.permission.count({ where: { id: { in: nextPermissionIds }, isActive: true } });
+        if (valid !== nextPermissionIds.length) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'One or more permissions are unavailable', 400);
+        await tx.rolePermission.deleteMany({ where: { roleId } });
+        await tx.rolePermission.createMany({ data: nextPermissionIds.map((permissionId) => ({ roleId, permissionId })) });
+      }
       const write = await tx.role.updateMany({ where: { id: roleId, updatedAt: current.updatedAt }, data: { ...(dto.name !== undefined ? { name: dto.name.trim() } : {}), ...(dto.description !== undefined ? { description: dto.description?.trim() ?? null } : {}), ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}), updatedAt: new Date() } });
       if (write.count !== 1) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
       const result = await tx.role.findUniqueOrThrow({ where: { id: roleId }, include: ROLE_INCLUDE });
-      if (dto.isActive === false) await this.invalidateRoleUsers(roleId, tx);
-      await this.audit(tx, actorUserId, 'ROLE_UPDATED', 'ROLE', roleId, this.serializeRole(current), this.serializeRole(result), dto.reason);
+      if (dto.isActive === false || nextPermissionIds) await this.invalidateRoleUsers(roleId, tx);
+      await this.audit(tx, actorUserId, nextPermissionIds ? 'ROLE_SAVED' : 'ROLE_UPDATED', 'ROLE', roleId, this.serializeRole(current), this.serializeRole(result), dto.reason, ipAddress, userAgent);
       return result;
     });
     return this.serializeRole(updated);
   }
 
-  async deleteRole(roleId: string, actorUserId: string, reason?: string) {
+  async deleteRole(roleId: string, dto: { expectedUpdatedAt: string; reason: string }, actorUserId: string, ipAddress?: string, userAgent?: string) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
     if (!role) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (role.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be deleted', 400);
     if (role._count.users) throw new DomainError(ErrorCode.ROLE_IN_USE, 'Role is assigned to users', 409);
+    if (role.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
     await this.prisma.$transaction(async (tx) => {
-      await tx.role.delete({ where: { id: roleId } });
-      await this.audit(tx, actorUserId, 'ROLE_DELETED', 'ROLE', roleId, this.serializeRole(role), null, reason);
+      const deleted = await tx.role.deleteMany({ where: { id: roleId, updatedAt: role.updatedAt } });
+      if (deleted.count !== 1) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
+      await this.audit(tx, actorUserId, 'ROLE_DELETED', 'ROLE', roleId, this.serializeRole(role), null, dto.reason, ipAddress, userAgent);
     });
     return { deleted: true };
   }
 
-  async replacePermissions(roleId: string, dto: ReplaceRolePermissionsDto, actorUserId: string) {
+  async replacePermissions(roleId: string, dto: ReplaceRolePermissionsDto, actorUserId: string, ipAddress?: string, userAgent?: string) {
     const role = await this.prisma.role.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
     if (!role) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (role.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System role permissions cannot be changed', 400);
@@ -88,7 +99,7 @@ export class AccessAdminService {
       if (ids.length) await tx.rolePermission.createMany({ data: ids.map((permissionId) => ({ roleId, permissionId })) });
       const result = await tx.role.update({ where: { id: roleId }, data: { updatedAt: new Date() }, include: ROLE_INCLUDE });
       await this.invalidateRoleUsers(roleId, tx);
-      await this.audit(tx, actorUserId, 'ROLE_PERMISSIONS_REPLACED', 'ROLE', roleId, this.serializeRole(role), this.serializeRole(result), dto.reason);
+      await this.audit(tx, actorUserId, 'ROLE_PERMISSIONS_REPLACED', 'ROLE', roleId, this.serializeRole(role), this.serializeRole(result), dto.reason, ipAddress, userAgent);
       return result;
     });
     return this.serializeRole(updated);
@@ -103,8 +114,8 @@ export class AccessAdminService {
     ]);
   }
 
-  private audit(client: Pick<PrismaService, 'authorizationAuditLog'>, actorUserId: string, action: string, targetType: string, targetId: string, beforeData: unknown, afterData: unknown, reason?: string) {
-    return client.authorizationAuditLog.create({ data: { actorUserId, action, targetType, targetId, beforeData: beforeData === null ? null : JSON.stringify(beforeData), afterData: afterData === null ? null : JSON.stringify(afterData), reason: reason?.trim() || null } });
+  private audit(client: Pick<PrismaService, 'authorizationAuditLog'>, actorUserId: string, action: string, targetType: string, targetId: string, beforeData: unknown, afterData: unknown, reason?: string, ipAddress?: string, userAgent?: string | string[]) {
+    return client.authorizationAuditLog.create({ data: { actorUserId, action, targetType, targetId, beforeData: beforeData === null ? null : JSON.stringify(beforeData), afterData: afterData === null ? null : JSON.stringify(afterData), reason: reason?.trim() || null, ipAddress: ipAddress ?? null, userAgent: Array.isArray(userAgent) ? userAgent.join(', ') : userAgent ?? null } });
   }
 
   private serializeRole(role: any) {

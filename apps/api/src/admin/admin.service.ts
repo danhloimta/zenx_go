@@ -42,10 +42,7 @@ export class AdminService {
       where: { id: actorUserId },
       include: { profile: { select: USER_PROFILE_SELECT }, roles: USER_LIST_INCLUDE.roles },
     });
-    if (
-      !user ||
-      !user.roles.some(({ role }) => Object.values(AdminRole).includes(role.code as AdminRole))
-    ) {
+    if (!user) {
       throw new DomainError(
         ErrorCode.ADMIN_ACCESS_REQUIRED,
         'Administrator access is required',
@@ -349,7 +346,7 @@ export class AdminService {
           data: { revokedAt: new Date() },
         });
       }
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.getUser(userId);
   }
 
@@ -407,7 +404,7 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.getUser(userId);
   }
 
@@ -482,7 +479,7 @@ export class AdminService {
           reason: dto.reason?.trim() || null,
         },
       });
-    });
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     return this.getUser(userId);
   }

@@ -376,6 +376,55 @@ describe('Admin API (SQL Server)', () => {
     expect(detail.wallet.balance).toBe('1234');
   });
 
+  it('lets a custom role enter admin through admin.access and gains permissions after one role save', async () => {
+    const suffix = Date.now();
+    const permissions = await http().get('/admin/access/permissions').set('Cookie', adminCookies);
+    expect(permissions.status).toBe(200);
+    const usersView = permissions.body.data.find((permission: { code: string }) => permission.code === 'users.view');
+    const createdRole = await http().post('/admin/access/roles').set('Cookie', adminCookies).send({
+      code: `VIEWER_${suffix}`,
+      name: 'Custom Viewer',
+      reason: 'Integration coverage for custom role access.',
+    });
+    expect(createdRole.status).toBe(201);
+    expect(createdRole.body.data.permissions.map((permission: { code: string }) => permission.code)).toContain('admin.access');
+
+    const viewerEmail = `viewer-${suffix}@example.com`;
+    const viewer = await prisma.user.create({
+      data: {
+        username: `viewer${suffix}`,
+        usernameNormalized: `viewer${suffix}`,
+        email: viewerEmail,
+        emailNormalized: viewerEmail,
+        passwordHash: await argon2.hash('ViewerPassword123!'),
+        status: 'ACTIVE',
+        profile: { create: { fullName: 'Custom Viewer', gender: 'UNSPECIFIED', termsVersion: 'test', privacyVersion: 'test', acceptedAt: new Date() } },
+        wallet: { create: { currency: 'ZENX', balance: 0n } },
+      },
+    });
+    await prisma.userRole.create({ data: { userId: viewer.id, roleId: createdRole.body.data.id } });
+
+    const viewerLogin = await http().post('/auth/login').send({ username: viewerEmail, password: 'ViewerPassword123!' });
+    expect(viewerLogin.status).toBe(201);
+    expect(viewerLogin.body.data.redirectTo).toBe('http://localhost:3000/admin');
+    const viewerCookies = cookieHeader(viewerLogin);
+    const customMe = await http().get('/admin/me').set('Cookie', viewerCookies);
+    expect(customMe.status).toBe(200);
+    expect((await http().get('/admin/users').set('Cookie', viewerCookies)).body.error.code).toBe('PERMISSION_REQUIRED');
+
+    const savedRole = await http().patch(`/admin/access/roles/${createdRole.body.data.id}`).set('Cookie', adminCookies).send({
+      expectedUpdatedAt: createdRole.body.data.updatedAt,
+      permissionIds: [usersView.id],
+      reason: 'Grant viewer access to user directory.',
+    });
+    expect(savedRole.status).toBe(200);
+    expect((await http().get('/admin/me').set('Cookie', viewerCookies)).status).toBe(401);
+
+    const refreshedLogin = await http().post('/auth/login').send({ username: viewerEmail, password: 'ViewerPassword123!' });
+    expect((await http().get('/admin/users').set('Cookie', cookieHeader(refreshedLogin))).status).toBe(200);
+    expect(await prisma.authorizationAuditLog.count({ where: { targetId: createdRole.body.data.id, action: 'ROLE_SAVED' } })).toBe(1);
+  });
+
   function http() {
     return {
       get: (path: string) =>
