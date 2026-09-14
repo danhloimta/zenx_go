@@ -24,22 +24,24 @@ async function main() {
     select: { id: true, email: true },
   });
   if (!user) throw new Error(`No user exists with email ${email}`);
+  const roleRecord = await prisma.role.findUnique({ where: { code: role } });
+  if (!roleRecord) throw new Error(`Role ${role} has not been seeded; apply database migrations first`);
 
   if (command === 'grant') {
     await prisma.userRole.upsert({
-      where: { userId_role: { userId: user.id, role } },
+      where: { userId_roleId: { userId: user.id, roleId: roleRecord.id } },
       update: {},
-      create: { userId: user.id, role },
+      create: { userId: user.id, roleId: roleRecord.id },
     });
     console.log(`Granted ${role} to ${user.email}`);
     return;
   }
 
   const activeSuperAdmins = await prisma.user.count({
-    where: { status: 'ACTIVE', roles: { some: { role: AdminRole.SUPER_ADMIN } } },
+    where: { status: 'ACTIVE', roles: { some: { role: { code: AdminRole.SUPER_ADMIN } } } },
   });
   const hasRole = await prisma.userRole.findUnique({
-    where: { userId_role: { userId: user.id, role } },
+    where: { userId_roleId: { userId: user.id, roleId: roleRecord.id } },
   });
   if (
     role === AdminRole.SUPER_ADMIN &&
@@ -50,7 +52,7 @@ async function main() {
   ) {
     throw new Error('Cannot revoke the last active SUPER_ADMIN');
   }
-  await prisma.userRole.deleteMany({ where: { userId: user.id, role } });
+  await prisma.userRole.deleteMany({ where: { userId: user.id, roleId: roleRecord.id } });
   console.log(`Revoked ${role} from ${user.email}`);
 }
 

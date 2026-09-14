@@ -45,7 +45,7 @@ const AGENT_SELECT = {
   username: true,
   status: true,
   profile: { select: { fullName: true } },
-  roles: { select: { role: true } },
+  roles: { select: { role: { select: { id: true, code: true, name: true } } } },
 } as const;
 const TICKET_SELECT = {
   id: true,
@@ -110,7 +110,7 @@ export class SupportAdminService {
     const users = await this.prisma.user.findMany({
       where: {
         status: 'ACTIVE',
-        roles: { some: { role: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] } } },
+        roles: { some: { role: { code: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] }, isActive: true } } },
       },
       orderBy: [{ username: 'asc' }, { id: 'asc' }],
       select: AGENT_SELECT,
@@ -597,7 +597,7 @@ export class SupportAdminService {
       where: {
         id: userId,
         status: 'ACTIVE',
-        roles: { some: { role: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] } } },
+        roles: { some: { role: { code: { in: [AdminRole.SUPPORT, AdminRole.SUPER_ADMIN] }, isActive: true } } },
       },
       select: { id: true },
     });

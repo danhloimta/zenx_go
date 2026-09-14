@@ -7,11 +7,15 @@ import { AdminService } from './admin.service';
 import { ContentAdminController } from './content/content.controller';
 import { ContentAdminService } from './content/content.service';
 import { FinanceModule } from './finance/finance.module';
+import { AuthorizationService } from './authorization.service';
+import { PermissionGuard } from './permission.guard';
+import { AccessAdminController } from './access.controller';
+import { AccessAdminService } from './access.service';
 
 @Module({
   imports: [AuthModule, AccountModule, FinanceModule],
-  controllers: [AdminController, ContentAdminController],
-  providers: [AdminService, AdminGuard, ContentAdminService],
+  controllers: [AdminController, ContentAdminController, AccessAdminController],
+  providers: [AdminService, AdminGuard, ContentAdminService, AuthorizationService, PermissionGuard, AccessAdminService],
   exports: [AdminGuard],
 })
 export class AdminModule {}

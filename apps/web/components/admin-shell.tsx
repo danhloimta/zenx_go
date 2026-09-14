@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createMongoAbility } from '@casl/ability';
 import {
   LayoutDashboard,
   LifeBuoy,
@@ -35,6 +36,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useIsFetching, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AdminAbilityProvider } from '@/lib/admin-ability';
 
 interface NavItem {
   href: string;
@@ -42,6 +44,7 @@ interface NavItem {
   icon: typeof LayoutDashboard;
   exact?: boolean;
   hasBadge?: boolean;
+  permission: { action: string; subject: string };
 }
 
 interface NavSection {
@@ -53,33 +56,34 @@ const allNavSections: NavSection[] = [
   {
     title: 'Hệ thống',
     items: [
-      { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard, exact: true },
-      { href: '/admin/users', label: 'Người dùng', icon: Users },
+      { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard, exact: true, permission: { action: 'read', subject: 'Dashboard' } },
+      { href: '/admin/users', label: 'Người dùng', icon: Users, permission: { action: 'read', subject: 'User' } },
+      { href: '/admin/access/roles', label: 'Vai trò & quyền', icon: ShieldCheck, permission: { action: 'read', subject: 'Role' } },
     ],
   },
   {
     title: 'Nội dung & Game',
     items: [
-      { href: '/admin/content', label: 'Tổng quan CMS', icon: Layers, exact: true },
-      { href: '/admin/content/games', label: 'Quản lý Game', icon: Gamepad2 },
-      { href: '/admin/content/genres', label: 'Thể loại game', icon: Tags },
-      { href: '/admin/content/articles', label: 'Bài viết & Tin tức', icon: FileText },
-      { href: '/admin/content/events', label: 'Sự kiện Game', icon: CalendarDays },
-      { href: '/admin/content/announcements', label: 'Thông báo Portal', icon: Megaphone },
+      { href: '/admin/content', label: 'Tổng quan CMS', icon: Layers, exact: true, permission: { action: 'read', subject: 'ContentDashboard' } },
+      { href: '/admin/content/games', label: 'Quản lý Game', icon: Gamepad2, permission: { action: 'read', subject: 'Game' } },
+      { href: '/admin/content/genres', label: 'Thể loại game', icon: Tags, permission: { action: 'manage', subject: 'Genre' } },
+      { href: '/admin/content/articles', label: 'Bài viết & Tin tức', icon: FileText, permission: { action: 'manage', subject: 'Article' } },
+      { href: '/admin/content/events', label: 'Sự kiện Game', icon: CalendarDays, permission: { action: 'manage', subject: 'Event' } },
+      { href: '/admin/content/announcements', label: 'Thông báo Portal', icon: Megaphone, permission: { action: 'manage', subject: 'Announcement' } },
     ],
   },
   {
     title: 'Tài chính',
     items: [
-      { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Landmark, exact: true },
-      { href: '/admin/finance/packages', label: 'Gói nạp ZENX Coin', icon: Coins },
-      { href: '/admin/finance/payments', label: 'Đơn nạp tiền', icon: Receipt },
+      { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Landmark, exact: true, permission: { action: 'read', subject: 'FinanceDashboard' } },
+      { href: '/admin/finance/packages', label: 'Gói nạp ZENX Coin', icon: Coins, permission: { action: 'manage', subject: 'CoinPackage' } },
+      { href: '/admin/finance/payments', label: 'Đơn nạp tiền', icon: Receipt, permission: { action: 'read', subject: 'Payment' } },
     ],
   },
   {
     title: 'Vận hành & Bảo mật',
     items: [
-      { href: '/admin/support', label: 'Hỗ trợ khách hàng', icon: LifeBuoy, hasBadge: true },
+      { href: '/admin/support', label: 'Hỗ trợ khách hàng', icon: LifeBuoy, hasBadge: true, permission: { action: 'read', subject: 'SupportDashboard' } },
     ],
   },
 ];
@@ -89,25 +93,16 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const admin = useAdminMe();
-  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
-  const navSections: NavSection[] = isSuperAdmin
-    ? allNavSections
-    : [
-        {
-          title: 'Vận hành & Hỗ trợ',
-          items: [
-            { href: '/admin/support', label: 'Hỗ trợ khách hàng', icon: LifeBuoy, hasBadge: true },
-          ],
-        },
-      ];
+  const ability = useMemo(() => createMongoAbility(admin.data?.abilityRules ?? []), [admin.data?.abilityRules]);
+  const navSections = allNavSections
+    .map((section) => ({ ...section, items: section.items.filter((item) => ability.can(item.permission.action, item.permission.subject)) }))
+    .filter((section) => section.items.length > 0);
 
   const isFetching = useIsFetching();
 
   const allItems = navSections.flatMap((s) => s.items);
 
-  const supportDashboard = useSupportAdminDashboard(
-    Boolean(admin.data && (isSuperAdmin || admin.data.roles.includes('SUPPORT'))),
-  );
+  const supportDashboard = useSupportAdminDashboard(Boolean(admin.data && ability.can('read', 'SupportDashboard')));
   const queryClient = useQueryClient();
   const logout = useMutation({
     mutationFn: api.auth.logout,
@@ -128,14 +123,10 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   }, [admin.error, pathname, router]);
 
   useEffect(() => {
-    if (admin.data && !isSuperAdmin && pathname === '/admin') router.replace('/admin/support');
-  }, [admin.data, isSuperAdmin, pathname, router]);
-
-  useEffect(() => {
-    if (admin.data && !isSuperAdmin && (pathname.startsWith('/admin/content') || pathname.startsWith('/admin/finance'))) {
-      router.replace('/admin/support');
-    }
-  }, [admin.data, isSuperAdmin, pathname, router]);
+    if (!admin.data || allItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))) return;
+    const fallback = allItems[0];
+    if (fallback) router.replace(fallback.href);
+  }, [admin.data, allItems, pathname, router]);
 
   if (admin.isLoading) {
     return (
@@ -182,6 +173,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   const adminName = admin.data.profile?.fullName || admin.data.username;
 
   return (
+    <AdminAbilityProvider rules={admin.data.abilityRules}>
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
       {/* Top Loading Progress Bar */}
       {isFetching > 0 ? (
@@ -341,7 +333,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
 
             <div className="flex items-center gap-2 rounded-full border border-emerald-200/80 bg-[#E8F7EC] px-3 py-1.5 text-xs font-bold text-[#00873E] shadow-2xs">
               <span className="size-2 rounded-full bg-[#00873E] animate-pulse" />
-              <span>{admin.data.roles.join(' · ')}</span>
+              <span>{admin.data.roles.map((role) => role.name).join(' · ')}</span>
             </div>
           </div>
         </header>
@@ -349,5 +341,6 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
         <main className="mx-auto max-w-[1440px] p-5 sm:p-8">{children}</main>
       </div>
     </div>
+    </AdminAbilityProvider>
   );
 }

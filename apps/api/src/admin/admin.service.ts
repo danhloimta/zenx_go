@@ -27,7 +27,7 @@ const USER_PROFILE_SELECT = {
 
 const USER_LIST_INCLUDE = {
   profile: { select: USER_PROFILE_SELECT },
-  roles: { select: { role: true } },
+  roles: { select: { role: { select: { id: true, code: true, name: true } } } },
 } as const;
 
 @Injectable()
@@ -40,11 +40,11 @@ export class AdminService {
   async me(actorUserId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: actorUserId },
-      include: { profile: { select: USER_PROFILE_SELECT }, roles: { select: { role: true } } },
+      include: { profile: { select: USER_PROFILE_SELECT }, roles: USER_LIST_INCLUDE.roles },
     });
     if (
       !user ||
-      !user.roles.some(({ role }) => Object.values(AdminRole).includes(role as AdminRole))
+      !user.roles.some(({ role }) => Object.values(AdminRole).includes(role.code as AdminRole))
     ) {
       throw new DomainError(
         ErrorCode.ADMIN_ACCESS_REQUIRED,
@@ -160,7 +160,7 @@ export class AdminService {
         where: { id: userId },
         include: {
           profile: { select: USER_PROFILE_SELECT },
-          roles: { select: { role: true } },
+          roles: USER_LIST_INCLUDE.roles,
           socialIdentities: { select: { provider: true, linkedAt: true, lastLoginAt: true } },
           wallet: { select: { currency: true, balance: true, updatedAt: true } },
           sensitiveProfile: {
@@ -362,7 +362,7 @@ export class AdminService {
       );
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: { select: { role: true } } },
+      include: { roles: USER_LIST_INCLUDE.roles },
     });
     if (!current) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     this.assertExpectedVersion(current.updatedAt, dto.expectedUpdatedAt);
@@ -381,10 +381,10 @@ export class AdminService {
     await this.prisma.$transaction(async (tx) => {
       if (
         (dto.status === AccountStatus.SUSPENDED || dto.status === AccountStatus.DELETED) &&
-        current.roles.some(({ role }) => role === AdminRole.SUPER_ADMIN)
+        current.roles.some(({ role }) => role.code === AdminRole.SUPER_ADMIN)
       ) {
         const activeAdmins = await tx.user.count({
-          where: { status: AccountStatus.ACTIVE, roles: { some: { role: AdminRole.SUPER_ADMIN } } },
+          where: { status: AccountStatus.ACTIVE, roles: { some: { role: { code: AdminRole.SUPER_ADMIN } } } },
         });
         if (activeAdmins <= 1)
           throw new DomainError(
@@ -414,14 +414,19 @@ export class AdminService {
   async updateRoles(userId: string, dto: AdminRolesUpdateDto, actorUserId: string) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: { select: { role: true } } },
+      include: { roles: USER_LIST_INCLUDE.roles },
     });
     if (!current) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     this.assertExpectedVersion(current.updatedAt, dto.expectedUpdatedAt);
 
-    const nextRoles = Array.from(new Set(dto.roles));
-    const wasSuperAdmin = current.roles.some(({ role }) => role === AdminRole.SUPER_ADMIN);
-    const willBeSuperAdmin = nextRoles.includes(AdminRole.SUPER_ADMIN);
+    const roleSelectors = Array.from(new Set(dto.roleIds ?? dto.roles ?? []));
+    const nextRoles = roleSelectors.length
+      ? await this.prisma.role.findMany({ where: { OR: [{ id: { in: roleSelectors } }, { code: { in: roleSelectors } }], isActive: true }, select: { id: true, code: true } })
+      : [];
+    if (nextRoles.length !== roleSelectors.length)
+      throw new DomainError(ErrorCode.ROLE_INACTIVE, 'One or more roles are inactive or unavailable', 400);
+    const wasSuperAdmin = current.roles.some(({ role }) => role.code === AdminRole.SUPER_ADMIN);
+    const willBeSuperAdmin = nextRoles.some((role) => role.code === AdminRole.SUPER_ADMIN);
 
     if (userId === actorUserId && wasSuperAdmin && !willBeSuperAdmin) {
       throw new DomainError(
@@ -433,7 +438,7 @@ export class AdminService {
 
     if (wasSuperAdmin && !willBeSuperAdmin && current.status === AccountStatus.ACTIVE) {
       const activeSuperAdmins = await this.prisma.user.count({
-        where: { status: AccountStatus.ACTIVE, roles: { some: { role: AdminRole.SUPER_ADMIN } } },
+        where: { status: AccountStatus.ACTIVE, roles: { some: { role: { code: AdminRole.SUPER_ADMIN } } } },
       });
       if (activeSuperAdmins <= 1) {
         throw new DomainError(
@@ -448,7 +453,7 @@ export class AdminService {
       await tx.userRole.deleteMany({ where: { userId } });
       if (nextRoles.length > 0) {
         await tx.userRole.createMany({
-          data: nextRoles.map((role) => ({ userId, role })),
+          data: nextRoles.map((role) => ({ userId, roleId: role.id, assignedByUserId: actorUserId })),
         });
       }
       const updated = await tx.user.updateMany({
@@ -465,6 +470,17 @@ export class AdminService {
       await tx.refreshSession.updateMany({
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
+      });
+      await tx.authorizationAuditLog.create({
+        data: {
+          actorUserId,
+          action: 'USER_ROLES_REPLACED',
+          targetType: 'USER',
+          targetId: userId,
+          beforeData: JSON.stringify(current.roles.map(({ role }) => role)),
+          afterData: JSON.stringify(nextRoles),
+          reason: dto.reason?.trim() || null,
+        },
       });
     });
 
@@ -683,7 +699,7 @@ export class AdminService {
       address: string | null;
       profileCompletedAt: Date | null;
     } | null;
-    roles?: { role: string }[];
+    roles?: { role: { id: string; code: string; name: string } }[];
     wallet?: { currency: string; balance: bigint; updatedAt: Date } | null;
   }) {
     return {

@@ -1,4 +1,4 @@
-import { AccountStatus, AdminRole, Gender } from '../common/domain';
+import { AccountStatus, Gender } from '../common/domain';
 import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
@@ -106,8 +106,8 @@ export class AdminUpdateSensitiveIdentityDto extends AdminExpectedUpdateDto {
 }
 
 export class AdminRolesUpdateDto extends AdminExpectedUpdateDto {
-  @IsArray()
-  @IsEnum(AdminRole, { each: true })
-  roles!: AdminRole[];
+  @IsOptional() @IsArray() @IsString({ each: true }) roleIds?: string[];
+  /** @deprecated compatibility with the pre-RBAC admin UI. */
+  @IsOptional() @IsArray() @IsString({ each: true }) roles?: string[];
+  @IsOptional() @IsString() @MaxLength(500) reason?: string;
 }
-

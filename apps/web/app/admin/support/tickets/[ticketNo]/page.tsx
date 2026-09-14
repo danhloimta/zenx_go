@@ -45,6 +45,7 @@ import {
 } from '@/lib/support';
 import { SupportMessageText } from '@/components/support-markdown';
 import { toast } from 'sonner';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 const statuses: SupportTicketStatus[] = [
   'NEW',
@@ -62,6 +63,11 @@ export default function SupportAdminTicketPage() {
   const agents = useSupportAdminAgents(Boolean(ticketQuery.data));
   const ticket = ticketQuery.data;
   const queryClient = useQueryClient();
+  const ability = useAdminAbility();
+  const canClaim = ability.can('claim', 'SupportTicket');
+  const canUpdate = ability.can('update', 'SupportTicket');
+  const canReply = ability.can('reply', 'SupportTicket');
+  const canInternalNote = ability.can('internal-note', 'SupportTicket');
 
   const [visibility, setVisibility] = useState<SupportMessageVisibility>('PUBLIC');
   const [body, setBody] = useState('');
@@ -252,7 +258,7 @@ export default function SupportAdminTicketPage() {
 
           {/* Quick Assign / Claim Action Button */}
           <div className="flex shrink-0 items-center gap-2.5">
-            {!ticket.assigneeUserId ? (
+            {!ticket.assigneeUserId && canClaim ? (
               <Button
                 onClick={() => claim.mutate()}
                 disabled={claim.isPending || isClosed}
@@ -432,7 +438,7 @@ export default function SupportAdminTicketPage() {
               <div className="border-t border-slate-100 pt-5">
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
                   <div className="flex items-center gap-2">
-                    <button
+                    {canReply ? <button
                       type="button"
                       onClick={() => setVisibility('PUBLIC')}
                       className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -443,8 +449,8 @@ export default function SupportAdminTicketPage() {
                       disabled={isClosed}
                     >
                       Phản hồi cho khách hàng
-                    </button>
-                    <button
+                    </button> : null}
+                    {canInternalNote ? <button
                       type="button"
                       onClick={() => setVisibility('INTERNAL')}
                       className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -455,7 +461,7 @@ export default function SupportAdminTicketPage() {
                       disabled={isClosed}
                     >
                       <Lock className="size-3.5" /> Ghi chú nội bộ (Staff only)
-                    </button>
+                    </button> : null}
                   </div>
 
                   <span className="text-[11px] text-slate-400">
@@ -478,7 +484,7 @@ export default function SupportAdminTicketPage() {
                       ? 'Nhập nội dung phản hồi, hướng dẫn giải quyết cho khách hàng…'
                       : 'Ghi chú nhanh thông tin kỹ thuật, log giao dịch hoặc tiến trình điều tra nội bộ…'
                   }
-                  disabled={isClosed}
+                  disabled={isClosed || (visibility === 'PUBLIC' ? !canReply : !canInternalNote)}
                 />
 
                 <div className="mt-3 flex items-center justify-between">
@@ -486,7 +492,7 @@ export default function SupportAdminTicketPage() {
                     {body.trim().length} ký tự
                   </span>
 
-                  <Button
+                  {(visibility === 'PUBLIC' ? canReply : canInternalNote) ? <Button
                     onClick={() => send.mutate()}
                     disabled={send.isPending || !body.trim() || isClosed}
                     className={`gap-2 ${
@@ -501,7 +507,7 @@ export default function SupportAdminTicketPage() {
                       : visibility === 'PUBLIC'
                         ? 'Gửi câu trả lời'
                         : 'Lưu ghi chú nội bộ'}
-                  </Button>
+                  </Button> : null}
                 </div>
               </div>
             </div>
@@ -637,7 +643,7 @@ export default function SupportAdminTicketPage() {
                   <Lock className="size-4 shrink-0" />
                   <span>Ticket đã đóng; không thể thay đổi workflow.</span>
                 </div>
-              ) : (
+              ) : canUpdate ? (
                 <Button
                   className="w-full h-10 gap-2 bg-[#00873E] font-bold text-white hover:bg-[#007033]"
                   onClick={() => update.mutate()}
@@ -646,7 +652,7 @@ export default function SupportAdminTicketPage() {
                   <CheckCircle2 className="size-4" />
                   {update.isPending ? 'Đang lưu workflow…' : 'Cập nhật Workflow'}
                 </Button>
-              )}
+              ) : null}
             </div>
           </section>
         </aside>

@@ -29,23 +29,25 @@ import { AccountStatusBadge } from '@/components/account-status-badge';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { AdminUserSummary } from '@zenx-go/api-client';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 export default function AdminDashboardPage() {
   const admin = useAdminMe();
   const router = useRouter();
-  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
-  const dashboard = useAdminDashboard(Boolean(admin.data && isSuperAdmin));
-  const supportDashboard = useSupportAdminDashboard(Boolean(admin.data && isSuperAdmin));
-  const contentDashboard = useAdminContentDashboard(Boolean(admin.data && isSuperAdmin));
+  const ability = useAdminAbility();
+  const canViewDashboard = ability.can('read', 'Dashboard');
+  const dashboard = useAdminDashboard(Boolean(admin.data && canViewDashboard));
+  const supportDashboard = useSupportAdminDashboard(Boolean(admin.data && ability.can('read', 'SupportDashboard')));
+  const contentDashboard = useAdminContentDashboard(Boolean(admin.data && ability.can('read', 'ContentDashboard')));
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
-    if (admin.data && !isSuperAdmin) router.replace('/admin/support');
-  }, [admin.data, isSuperAdmin, router]);
+    if (admin.data && !canViewDashboard) router.replace('/admin');
+  }, [admin.data, canViewDashboard, router]);
 
-  if (admin.data && !isSuperAdmin) return null;
+  if (admin.data && !canViewDashboard) return null;
   if (dashboard.isLoading) return <DashboardSkeleton />;
 
   if (dashboard.isError || !dashboard.data) {

@@ -27,8 +27,8 @@ import {
   Trash2,
   RotateCcw,
 } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { AdminRole, AdminUserDetail } from '@zenx-go/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { AdminUserDetail, RoleSummary } from '@zenx-go/api-client';
 import { useAdminMe, useAdminUser } from '@/hooks/use-admin';
 import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
@@ -42,6 +42,7 @@ import { Alert } from '@/components/ui/alert';
 import { UserAvatar } from '@/components/user-avatar';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { toast } from 'sonner';
+import { useAdminAbility } from '@/lib/admin-ability';
 
 type Action = 'password' | 'editIdentity' | 'deleteUser' | 'roles' | null;
 
@@ -50,8 +51,15 @@ export default function AdminUserDetailPage() {
   const params = useParams<{ userId: string }>();
   const userId = typeof params.userId === 'string' ? decodeURIComponent(params.userId) : '';
   const admin = useAdminMe();
-  const isSuperAdmin = admin.data?.roles.includes('SUPER_ADMIN') ?? false;
+  const ability = useAdminAbility();
+  const canAssignRoles = ability.can('assign-role', 'User');
   const query = useAdminUser(userId);
+  const roleOptions = useQuery({
+    queryKey: ['admin', 'access', 'roles', 'active'],
+    queryFn: () => api.admin.access.roles(true),
+    enabled: canAssignRoles,
+    retry: false,
+  });
   const user = query.data;
   const queryClient = useQueryClient();
   const [action, setAction] = useState<Action>(null);
@@ -125,10 +133,11 @@ export default function AdminUserDetailPage() {
   });
 
   const updateRolesMutation = useMutation({
-    mutationFn: (roles: AdminRole[]) =>
+    mutationFn: (input: { roleIds: string[]; reason: string }) =>
       api.admin.updateRoles(userId, {
         expectedUpdatedAt: user!.updatedAt,
-        roles,
+        roleIds: input.roleIds,
+        reason: input.reason,
       }),
     onSuccess: () => {
       toast.success('Đã cập nhật phân quyền tài khoản thành công.');
@@ -328,33 +337,33 @@ export default function AdminUserDetailPage() {
 
                 <button
                   type="button"
-                  onClick={() => isSuperAdmin && !isDeleted && setAction('roles')}
+                  onClick={() => canAssignRoles && !isDeleted && setAction('roles')}
                   className={`inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 shadow-2xs transition ${
-                    isSuperAdmin && !isDeleted
+                    canAssignRoles && !isDeleted
                       ? 'cursor-pointer hover:border-emerald-300 hover:bg-slate-50'
                       : 'cursor-default'
                   }`}
-                  title={isSuperAdmin && !isDeleted ? 'Nhấp để phân quyền vai trò' : undefined}
+                  title={canAssignRoles && !isDeleted ? 'Nhấp để phân quyền vai trò' : undefined}
                 >
                   <Shield className="size-3 text-[#00873E]" />
                   <span>Vai trò:</span>
                   {user.roles.length ? (
                     user.roles.map((role) => (
                       <span
-                        key={role}
+                        key={role.id}
                         className={`rounded px-1.5 py-0.2 text-[10px] font-bold ${
-                          role === 'SUPER_ADMIN'
+                          role.code === 'SUPER_ADMIN'
                             ? 'bg-emerald-50 text-[#00873E]'
                             : 'bg-violet-50 text-violet-700'
                         }`}
                       >
-                        {role}
+                        {role.name}
                       </span>
                     ))
                   ) : (
                     <span className="text-slate-400">Member</span>
                   )}
-                  {isSuperAdmin && !isDeleted && (
+                  {canAssignRoles && !isDeleted && (
                     <Pencil className="size-2.5 text-slate-400 hover:text-slate-700 ml-0.5" />
                   )}
                 </button>
@@ -370,7 +379,7 @@ export default function AdminUserDetailPage() {
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-slate-100 lg:border-t-0 lg:pt-0">
-            {!isDeleted && isSuperAdmin ? (
+            {!isDeleted && canAssignRoles ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -699,9 +708,10 @@ export default function AdminUserDetailPage() {
       {action === 'roles' ? (
         <UpdateRolesDialog
           user={user}
+          availableRoles={roleOptions.data ?? []}
           currentAdminId={admin.data?.id}
           onClose={() => setAction(null)}
-          onConfirm={(roles) => updateRolesMutation.mutate(roles)}
+          onConfirm={(roleIds, reason) => updateRolesMutation.mutate({ roleIds, reason })}
           pending={updateRolesMutation.isPending}
         />
       ) : null}
@@ -1310,33 +1320,39 @@ function DeleteUserDialog({
 
 function UpdateRolesDialog({
   user,
+  availableRoles,
   currentAdminId,
   onClose,
   onConfirm,
   pending,
 }: {
   user: AdminUserDetail;
+  availableRoles: RoleSummary[];
   currentAdminId?: string;
   onClose: () => void;
-  onConfirm: (roles: AdminRole[]) => void;
+  onConfirm: (roleIds: string[], reason: string) => void;
   pending: boolean;
 }) {
-  const [selectedRoles, setSelectedRoles] = useState<AdminRole[]>(user.roles);
+  const [selectedRoles, setSelectedRoles] = useState<RoleSummary[]>(user.roles);
+  const [reason, setReason] = useState('');
 
-  const toggleRole = (role: AdminRole) => {
+  const toggleRole = (role: RoleSummary) => {
     setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+      prev.some((entry) => entry.id === role.id) ? prev.filter((entry) => entry.id !== role.id) : [...prev, role],
     );
   };
 
   const isSelf = currentAdminId === user.id;
-  const isTargetSuperAdmin = user.roles.includes('SUPER_ADMIN');
-  const isRemovingOwnSuperAdmin = isSelf && isTargetSuperAdmin && !selectedRoles.includes('SUPER_ADMIN');
+  const superRole = availableRoles.find((role) => role.code === 'SUPER_ADMIN');
+  const supportRole = availableRoles.find((role) => role.code === 'SUPPORT');
+  const isTargetSuperAdmin = Boolean(superRole);
+  const isRemovingOwnSuperAdmin = isSelf && isTargetSuperAdmin && !selectedRoles.some((role) => role.code === 'SUPER_ADMIN');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isRemovingOwnSuperAdmin) return;
-    onConfirm(selectedRoles);
+    if (!reason.trim()) return;
+    onConfirm(selectedRoles.map((role) => role.id), reason.trim());
   };
 
   return (
@@ -1373,16 +1389,16 @@ function UpdateRolesDialog({
           {/* Option 1: SUPER_ADMIN */}
           <label
             className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
-              selectedRoles.includes('SUPER_ADMIN')
+              selectedRoles.some((role) => role.code === 'SUPER_ADMIN')
                 ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30'
                 : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
             }`}
           >
             <input
               type="checkbox"
-              checked={selectedRoles.includes('SUPER_ADMIN')}
-              onChange={() => toggleRole('SUPER_ADMIN')}
-              disabled={pending || (isSelf && isTargetSuperAdmin)}
+              checked={selectedRoles.some((role) => role.code === 'SUPER_ADMIN')}
+              onChange={() => superRole && toggleRole(superRole)}
+              disabled={pending || !superRole || (isSelf && isTargetSuperAdmin)}
               className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]"
             />
             <div className="flex-1">
@@ -1403,19 +1419,28 @@ function UpdateRolesDialog({
             </div>
           </label>
 
+          {availableRoles.filter((role) => !['SUPER_ADMIN', 'SUPPORT'].includes(role.code)).map((role) => (
+            <label key={role.id} className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${selectedRoles.some((entry) => entry.id === role.id) ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'}`}>
+              <input type="checkbox" checked={selectedRoles.some((entry) => entry.id === role.id)} onChange={() => toggleRole(role)} disabled={pending} className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]" />
+              <div className="flex-1"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-900">{role.name}</span><span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">{role.code}</span></div></div>
+            </label>
+          ))}
+
+          <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do thay đổi phân quyền" required disabled={pending} />
+
           {/* Option 2: SUPPORT */}
           <label
             className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
-              selectedRoles.includes('SUPPORT')
+              selectedRoles.some((role) => role.code === 'SUPPORT')
                 ? 'border-violet-500 bg-violet-50/40 ring-1 ring-violet-500/30'
                 : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
             }`}
           >
             <input
               type="checkbox"
-              checked={selectedRoles.includes('SUPPORT')}
-              onChange={() => toggleRole('SUPPORT')}
-              disabled={pending}
+              checked={selectedRoles.some((role) => role.code === 'SUPPORT')}
+              onChange={() => supportRole && toggleRole(supportRole)}
+              disabled={pending || !supportRole}
               className="mt-1 size-4 rounded text-violet-600 focus:ring-violet-500"
             />
             <div className="flex-1">
@@ -1441,7 +1466,7 @@ function UpdateRolesDialog({
             </Button>
             <Button
               type="submit"
-              disabled={pending || isRemovingOwnSuperAdmin}
+              disabled={pending || isRemovingOwnSuperAdmin || !reason.trim()}
               className="bg-[#00873E] hover:bg-[#007033] text-white font-semibold"
             >
               {pending ? 'Đang lưu…' : 'Lưu phân quyền'}

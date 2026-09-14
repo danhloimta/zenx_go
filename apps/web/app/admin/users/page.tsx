@@ -428,15 +428,15 @@ function UserTableRow({ user }: { user: AdminUserSummary }) {
           <div className="flex flex-wrap gap-1">
             {user.roles.map((role) => (
               <span
-                key={role}
+                key={role.id}
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
-                  role === 'SUPER_ADMIN'
+                  role.code === 'SUPER_ADMIN'
                     ? 'bg-emerald-50 text-[#00873E] border-emerald-200'
                     : 'bg-violet-50 text-violet-700 border-violet-200'
                 }`}
               >
                 <ShieldCheck className="size-3" />
-                {role}
+                {role.name}
               </span>
             ))}
           </div>

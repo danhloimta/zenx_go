@@ -41,7 +41,7 @@ export class AccountService {
           profile: true,
           socialIdentities: { select: { provider: true } },
           wallet: { select: { balance: true, currency: true } },
-          roles: { select: { role: true } },
+          roles: { select: { role: { select: { code: true } } } },
         },
       })
       .then((user) => ({
@@ -60,7 +60,7 @@ export class AccountService {
           facebook: user.socialIdentities.some((identity) => identity.provider === 'FACEBOOK'),
         },
         wallet: user.wallet,
-        roles: user.roles.map(({ role }) => role),
+        roles: user.roles.map(({ role }) => role.code),
       }));
   }
 

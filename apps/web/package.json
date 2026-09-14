@@ -11,6 +11,8 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@casl/ability": "7.0.1",
+    "@casl/react": "7.0.1",
     "@hookform/resolvers": "^5.1.1",
     "@tanstack/react-query": "^5.80.7",
     "@zenx-go/api-client": "workspace:*",

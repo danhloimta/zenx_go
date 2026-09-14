@@ -21,6 +21,7 @@
     "admin:role": "tsx scripts/admin-role.ts"
   },
   "dependencies": {
+    "@casl/ability": "7.0.1",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",

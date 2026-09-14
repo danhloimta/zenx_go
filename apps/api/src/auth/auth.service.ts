@@ -83,7 +83,7 @@ export class AuthService {
     const emailNormalized = normalizeEmail(identity);
     const user = await this.prisma.user.findFirst({
       where: { OR: [{ usernameNormalized }, { emailNormalized }] },
-      include: { profile: true, roles: { select: { role: true } } },
+      include: { profile: true, roles: { select: { role: { select: { code: true } } } } },
     });
     if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) {
       throw new DomainError(
@@ -100,7 +100,7 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
 
     const hasAdminRole = user.roles.some(({ role }) =>
-      Object.values(AdminRole).includes(role as AdminRole),
+      Object.values(AdminRole).includes(role.code as AdminRole),
     );
     const defaultReturnTo = hasAdminRole ? '/admin' : '/account';
     const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo || defaultReturnTo);

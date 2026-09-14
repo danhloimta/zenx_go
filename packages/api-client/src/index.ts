@@ -255,6 +255,10 @@ export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type SupportMessageVisibility = 'PUBLIC' | 'INTERNAL';
 export type SupportMessageAuthorType = 'CUSTOMER' | 'STAFF';
 export type AdminRole = 'SUPER_ADMIN' | 'SUPPORT';
+export interface RoleSummary { id: string; code: string; name: string; }
+export interface Permission { id: string; code: string; module: string; action: string; subject: string; name: string; description?: string | null; sortOrder: number; isActive: boolean; }
+export interface RoleDetail extends RoleSummary { description?: string | null; isSystem: boolean; isActive: boolean; createdAt: string; updatedAt: string; userCount: number; permissions: Permission[]; }
+export interface AbilityRule { action: string; subject: string; }
 
 export interface AuthUser {
   id: string;
@@ -351,7 +355,7 @@ export interface AccountMe extends AuthUser {
   };
 }
 
-export interface AdminUserSummary extends AuthUser {
+export interface AdminUserSummary extends Omit<AuthUser, 'roles'> {
   email: string;
   phone: string | null;
   emailVerified: boolean;
@@ -362,9 +366,10 @@ export interface AdminUserSummary extends AuthUser {
   createdAt: string;
   updatedAt: string;
   profile: UserProfile | null;
-  roles: AdminRole[];
+  roles: RoleSummary[];
   wallet?: WalletSummary & { updatedAt?: string };
 }
+export interface AdminMe extends AdminUserSummary { permissions: string[]; abilityRules: AbilityRule[]; }
 
 export interface AdminSensitiveSummary {
   identity: { configured: boolean; last4: string | null };
@@ -407,8 +412,15 @@ export interface AdminStatusUpdateRequest {
 
 export interface AdminRolesUpdateRequest {
   expectedUpdatedAt: string;
-  roles: AdminRole[];
+  roleIds?: string[];
+  /** @deprecated use roleIds */
+  roles?: AdminRole[];
+  reason?: string;
 }
+
+export interface CreateRoleRequest { code: string; name: string; description?: string; reason?: string; }
+export interface UpdateRoleRequest { expectedUpdatedAt: string; name?: string; description?: string | null; isActive?: boolean; reason?: string; }
+export interface ReplaceRolePermissionsRequest { expectedUpdatedAt: string; permissionIds: string[]; reason?: string; }
 
 export interface AdminResetPasswordRequest {
   expectedUpdatedAt: string;
@@ -1337,7 +1349,7 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       },
     },
     admin: {
-      me: () => client.get<AdminUserSummary>('/admin/me'),
+      me: () => client.get<AdminMe>('/admin/me'),
       dashboard: () => client.get<AdminDashboard>('/admin/dashboard'),
       users: (
         query: { page?: number; pageSize?: number; search?: string; status?: AccountStatus } = {},
@@ -1373,6 +1385,15 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           `/admin/users/${encodeURIComponent(userId)}/sensitive-profile/identity`,
           input,
         ),
+      access: {
+        roles: (active?: boolean) => client.get<RoleDetail[]>('/admin/access/roles', active === undefined ? undefined : { active }),
+        role: (roleId: string) => client.get<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}`),
+        permissions: () => client.get<Permission[]>('/admin/access/permissions'),
+        createRole: (input: CreateRoleRequest) => client.post<RoleDetail>('/admin/access/roles', input),
+        updateRole: (roleId: string, input: UpdateRoleRequest) => client.patch<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}`, input),
+        deleteRole: (roleId: string) => client.delete<{ deleted: boolean }>(`/admin/access/roles/${encodeURIComponent(roleId)}`),
+        replacePermissions: (roleId: string, input: ReplaceRolePermissionsRequest) => client.put<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}/permissions`, input),
+      },
 
       finance: {
         dashboard: () => client.get<AdminFinanceDashboard>('/admin/finance/dashboard'),

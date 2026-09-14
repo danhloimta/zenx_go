@@ -4,11 +4,7 @@ import { DomainError } from '../common/errors';
 
 describe('AdminGuard', () => {
   it('accepts a live SUPER_ADMIN role from the database', async () => {
-    const prisma = {
-      userRole: {
-        findMany: jest.fn().mockResolvedValue([{ role: 'SUPER_ADMIN' }, { role: 'FUTURE_ROLE' }]),
-      },
-    };
+    const authorization = { getAccess: jest.fn().mockResolvedValue({ roles: [{ code: 'SUPER_ADMIN' }], permissionCodes: [], abilityRules: [], ability: { can: () => true } }) };
     const request: any = { user: { sub: 'admin-id' } };
     const context = {
       switchToHttp: () => ({ getRequest: () => request }),
@@ -16,38 +12,37 @@ describe('AdminGuard', () => {
       getClass: () => ({}),
     } as unknown as ExecutionContext;
     await expect(
-      new AdminGuard(prisma as any, { getAllAndOverride: () => undefined } as any).canActivate(
+      new AdminGuard(authorization as any).canActivate(
         context,
       ),
     ).resolves.toBe(true);
-    expect(request.admin).toEqual({ roles: ['SUPER_ADMIN', 'FUTURE_ROLE'] });
+    expect(request.admin.roles).toEqual([{ code: 'SUPER_ADMIN' }]);
   });
 
   it('rejects users without SUPER_ADMIN', async () => {
-    const prisma = { userRole: { findMany: jest.fn().mockResolvedValue([{ role: 'EDITOR' }]) } };
+    const authorization = { getAccess: jest.fn().mockResolvedValue({ roles: [], permissionCodes: [], abilityRules: [], ability: { can: () => false } }) };
     const context = {
       switchToHttp: () => ({ getRequest: () => ({ user: { sub: 'user-id' } }) }),
       getHandler: () => ({}),
       getClass: () => ({}),
     } as unknown as ExecutionContext;
     await expect(
-      new AdminGuard(prisma as any, { getAllAndOverride: () => undefined } as any).canActivate(
+      new AdminGuard(authorization as any).canActivate(
         context,
       ),
     ).rejects.toBeInstanceOf(DomainError);
   });
 
-  it('accepts SUPPORT when a route explicitly requires the support role', async () => {
-    const prisma = { userRole: { findMany: jest.fn().mockResolvedValue([{ role: 'SUPPORT' }]) } };
+  it('accepts any active role and leaves permission checks to PermissionGuard', async () => {
+    const authorization = { getAccess: jest.fn().mockResolvedValue({ roles: [{ code: 'SUPPORT' }], permissionCodes: ['support.tickets.view'], abilityRules: [], ability: { can: () => true } }) };
     const request: any = { user: { sub: 'support-id' } };
     const context = {
       switchToHttp: () => ({ getRequest: () => request }),
       getHandler: () => ({}),
       getClass: () => ({}),
     } as unknown as ExecutionContext;
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(['SUPPORT']) };
     await expect(
-      new AdminGuard(prisma as any, reflector as any).canActivate(context),
+      new AdminGuard(authorization as any).canActivate(context),
     ).resolves.toBe(true);
   });
 });
