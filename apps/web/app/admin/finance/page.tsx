@@ -23,7 +23,7 @@ export default function AdminFinanceDashboardPage() {
 
   if (query.isLoading) {
     return (
-      <div className="space-y-6 max-w-7xl">
+      <div className="space-y-6 w-full">
         <Skeleton className="h-14 w-64 rounded-xl" />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Skeleton className="h-32 rounded-2xl" />
@@ -103,7 +103,7 @@ export default function AdminFinanceDashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>

@@ -89,6 +89,7 @@ export class AuthService {
           select: {
             role: {
               select: {
+                code: true,
                 isActive: true,
                 permissions: { select: { permission: { select: { code: true, isActive: true } } } },
               },
@@ -111,7 +112,7 @@ export class AuthService {
     if (user.status === AccountStatus.DELETED)
       throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
 
-    const hasAdminRole = user.roles.some(({ role }) => role.isActive && role.permissions.some(({ permission }) => permission.isActive && permission.code === 'admin.access'));
+    const hasAdminRole = user.roles.some(({ role }) => role.isActive && (role.code === 'SUPER_ADMIN' || role.permissions.some(({ permission }) => permission.isActive && permission.code === 'admin.access')));
     const defaultReturnTo = this.domainPolicy.portalUrl(hasAdminRole ? '/admin' : '/account');
     const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo || defaultReturnTo);
     return { ...(await this.issueTokens(user.id, user.username, user)), redirectTo };

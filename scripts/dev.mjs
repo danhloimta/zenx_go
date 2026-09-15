@@ -80,6 +80,7 @@ const turboCommand = process.platform === 'win32' ? `${rootDir}/node_modules/.bi
 const child = spawn(turboCommand, ['dev'], {
   cwd: rootDir,
   env: {
+    ...fileEnv,
     ...process.env,
     API_PORT: String(apiPort),
     PORT: String(webPort),

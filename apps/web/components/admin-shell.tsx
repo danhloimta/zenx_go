@@ -338,7 +338,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1440px] p-5 sm:p-8">{children}</main>
+        <main className="w-full min-w-0 p-5 sm:p-8">{children}</main>
       </div>
     </div>
     </AdminAbilityProvider>

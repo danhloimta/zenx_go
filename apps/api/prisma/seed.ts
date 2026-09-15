@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as argon2 from 'argon2';
 import { PrismaClient } from '@prisma/client';
 import { SecurityQuestionCode, SupportStatus } from '../src/common/domain';
 import { createPageConfig } from '../src/admin/content/game-templates';
@@ -6,6 +7,8 @@ import { createPageConfig } from '../src/admin/content/game-templates';
 const prisma = new PrismaClient();
 
 async function main() {
+  await seedRolesAndPermissions();
+  await seedUsers();
   await seedSecurityQuestions();
   await seedGames();
   await seedPortalContent();
@@ -135,6 +138,213 @@ async function main() {
           answer,
           sortOrder,
           status: SupportStatus.ACTIVE,
+        },
+      });
+    }
+  }
+}
+
+async function seedRolesAndPermissions() {
+  const superAdmin = await prisma.role.upsert({
+    where: { code: 'SUPER_ADMIN' },
+    update: {},
+    create: {
+      code: 'SUPER_ADMIN',
+      name: 'Super Admin',
+      description: 'Toàn quyền hệ thống',
+      isSystem: true,
+      isActive: true,
+    },
+  });
+
+  const supportRole = await prisma.role.upsert({
+    where: { code: 'SUPPORT' },
+    update: {},
+    create: {
+      code: 'SUPPORT',
+      name: 'Nhân viên hỗ trợ',
+      description: 'Vận hành hỗ trợ khách hàng',
+      isSystem: true,
+      isActive: true,
+    },
+  });
+
+  const permissions = [
+    { code: 'admin.access', module: 'admin', action: 'access', subject: 'Admin', name: 'Truy cập quản trị', sortOrder: 1 },
+    { code: 'admin.dashboard.view', module: 'admin', action: 'read', subject: 'Dashboard', name: 'Xem tổng quan', sortOrder: 2 },
+    { code: 'users.view', module: 'users', action: 'read', subject: 'User', name: 'Xem người dùng', sortOrder: 1 },
+    { code: 'users.profile.update', module: 'users', action: 'update-profile', subject: 'User', name: 'Cập nhật hồ sơ người dùng', sortOrder: 2 },
+    { code: 'users.status.update', module: 'users', action: 'update-status', subject: 'User', name: 'Cập nhật trạng thái người dùng', sortOrder: 3 },
+    { code: 'users.roles.assign', module: 'users', action: 'assign-role', subject: 'User', name: 'Gán role người dùng', sortOrder: 4 },
+    { code: 'users.sessions.revoke', module: 'users', action: 'revoke-session', subject: 'User', name: 'Thu hồi phiên người dùng', sortOrder: 5 },
+    { code: 'users.password.reset', module: 'users', action: 'reset-password', subject: 'User', name: 'Đặt lại mật khẩu', sortOrder: 6 },
+    { code: 'users.sensitive.view', module: 'users', action: 'view-sensitive', subject: 'User', name: 'Xem dữ liệu nhạy cảm', sortOrder: 7 },
+    { code: 'users.sensitive.update', module: 'users', action: 'update-sensitive', subject: 'User', name: 'Cập nhật dữ liệu nhạy cảm', sortOrder: 8 },
+    { code: 'roles.view', module: 'roles', action: 'read', subject: 'Role', name: 'Xem role', sortOrder: 1 },
+    { code: 'roles.create', module: 'roles', action: 'create', subject: 'Role', name: 'Tạo role', sortOrder: 2 },
+    { code: 'roles.update', module: 'roles', action: 'update', subject: 'Role', name: 'Cập nhật role', sortOrder: 3 },
+    { code: 'roles.delete', module: 'roles', action: 'delete', subject: 'Role', name: 'Xóa role', sortOrder: 4 },
+    { code: 'roles.permissions.assign', module: 'roles', action: 'assign-permission', subject: 'Role', name: 'Gán permission cho role', sortOrder: 5 },
+    { code: 'support.dashboard.view', module: 'support', action: 'read', subject: 'SupportDashboard', name: 'Xem tổng quan hỗ trợ', sortOrder: 1 },
+    { code: 'support.agents.view', module: 'support', action: 'read', subject: 'SupportAgent', name: 'Xem nhân viên hỗ trợ', sortOrder: 2 },
+    { code: 'support.tickets.view', module: 'support', action: 'read', subject: 'SupportTicket', name: 'Xem ticket', sortOrder: 3 },
+    { code: 'support.tickets.claim', module: 'support', action: 'claim', subject: 'SupportTicket', name: 'Nhận ticket', sortOrder: 4 },
+    { code: 'support.tickets.update', module: 'support', action: 'update', subject: 'SupportTicket', name: 'Cập nhật ticket', sortOrder: 5 },
+    { code: 'support.tickets.reply', module: 'support', action: 'reply', subject: 'SupportTicket', name: 'Phản hồi ticket', sortOrder: 6 },
+    { code: 'support.tickets.internal-note', module: 'support', action: 'internal-note', subject: 'SupportTicket', name: 'Ghi chú nội bộ', sortOrder: 7 },
+    { code: 'support.faq.manage', module: 'support', action: 'manage', subject: 'SupportFaq', name: 'Quản lý FAQ', sortOrder: 8 },
+    { code: 'content.dashboard.view', module: 'content', action: 'read', subject: 'ContentDashboard', name: 'Xem tổng quan nội dung', sortOrder: 1 },
+    { code: 'content.assets.upload', module: 'content', action: 'upload', subject: 'Asset', name: 'Tải asset', sortOrder: 2 },
+    { code: 'games.view', module: 'content', action: 'read', subject: 'Game', name: 'Xem game', sortOrder: 3 },
+    { code: 'games.manage', module: 'content', action: 'manage', subject: 'Game', name: 'Quản lý game', sortOrder: 4 },
+    { code: 'games.publish', module: 'content', action: 'publish', subject: 'Game', name: 'Xuất bản game', sortOrder: 5 },
+    { code: 'genres.manage', module: 'content', action: 'manage', subject: 'Genre', name: 'Quản lý thể loại', sortOrder: 6 },
+    { code: 'articles.manage', module: 'content', action: 'manage', subject: 'Article', name: 'Quản lý bài viết', sortOrder: 7 },
+    { code: 'events.manage', module: 'content', action: 'manage', subject: 'Event', name: 'Quản lý sự kiện', sortOrder: 8 },
+    { code: 'announcements.manage', module: 'content', action: 'manage', subject: 'Announcement', name: 'Quản lý thông báo', sortOrder: 9 },
+    { code: 'finance.dashboard.view', module: 'finance', action: 'read', subject: 'FinanceDashboard', name: 'Xem tổng quan tài chính', sortOrder: 1 },
+    { code: 'finance.packages.manage', module: 'finance', action: 'manage', subject: 'CoinPackage', name: 'Quản lý gói nạp', sortOrder: 2 },
+    { code: 'finance.payments.view', module: 'finance', action: 'read', subject: 'Payment', name: 'Xem payment', sortOrder: 3 },
+    { code: 'finance.payments.process', module: 'finance', action: 'process', subject: 'Payment', name: 'Xử lý payment', sortOrder: 4 },
+    { code: 'finance.payments.refund', module: 'finance', action: 'refund', subject: 'Payment', name: 'Hoàn tiền payment', sortOrder: 5 },
+    { code: 'finance.transactions.view', module: 'finance', action: 'read', subject: 'WalletTransaction', name: 'Xem giao dịch ví', sortOrder: 6 },
+    { code: 'finance.transactions.export', module: 'finance', action: 'export', subject: 'WalletTransaction', name: 'Xuất giao dịch ví', sortOrder: 7 },
+    { code: 'finance.wallet.adjust', module: 'finance', action: 'adjust', subject: 'Wallet', name: 'Điều chỉnh ví', sortOrder: 8 },
+  ];
+
+  for (const perm of permissions) {
+    const created = await prisma.permission.upsert({
+      where: { code: perm.code },
+      update: { name: perm.name, sortOrder: perm.sortOrder },
+      create: perm,
+    });
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: superAdmin.id, permissionId: created.id } },
+      update: {},
+      create: { roleId: superAdmin.id, permissionId: created.id },
+    });
+    if (perm.module === 'support' || perm.code === 'admin.access') {
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: supportRole.id, permissionId: created.id } },
+        update: {},
+        create: { roleId: supportRole.id, permissionId: created.id },
+      });
+    }
+  }
+
+  return { superAdmin, supportRole };
+}
+
+async function seedUsers() {
+  const { superAdmin, supportRole } = await seedRolesAndPermissions();
+
+  const accounts = [
+    {
+      username: 'admin',
+      email: 'admin@zenxgo.vn',
+      phone: '+84901000001',
+      fullName: 'Super Administrator',
+      password: 'AdminPassword123!',
+      roleId: superAdmin.id,
+      balance: 1_000_000n,
+    },
+    {
+      username: 'support',
+      email: 'support@zenxgo.vn',
+      phone: '+84901000002',
+      fullName: 'Hỗ Trợ Viên',
+      password: 'SupportPassword123!',
+      roleId: supportRole.id,
+      balance: 100_000n,
+    },
+    {
+      username: 'player1',
+      email: 'player1@zenxgo.vn',
+      phone: '+84901000003',
+      fullName: 'Người Chơi Mẫu',
+      password: 'PlayerPassword123!',
+      roleId: null,
+      balance: 50_000n,
+    },
+  ];
+
+  for (const acc of accounts) {
+    const usernameNormalized = acc.username.toLowerCase();
+    const emailNormalized = acc.email.toLowerCase();
+    const passwordHash = await argon2.hash(acc.password);
+
+    const user = await prisma.user.upsert({
+      where: { usernameNormalized },
+      update: {
+        email: acc.email,
+        emailNormalized,
+        phone: acc.phone,
+        phoneNormalized: acc.phone,
+        passwordHash,
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
+        phoneVerifiedAt: new Date(),
+      },
+      create: {
+        username: acc.username,
+        usernameNormalized,
+        email: acc.email,
+        emailNormalized,
+        phone: acc.phone,
+        phoneNormalized: acc.phone,
+        passwordHash,
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
+        phoneVerifiedAt: new Date(),
+        profile: {
+          create: {
+            fullName: acc.fullName,
+            gender: 'UNSPECIFIED',
+            termsVersion: '2026-01',
+            privacyVersion: '2026-01',
+            acceptedAt: new Date(),
+          },
+        },
+        wallet: {
+          create: {
+            currency: 'ZENX',
+            balance: acc.balance,
+          },
+        },
+      },
+    });
+
+    await prisma.userProfile.upsert({
+      where: { userId: user.id },
+      update: { fullName: acc.fullName },
+      create: {
+        userId: user.id,
+        fullName: acc.fullName,
+        gender: 'UNSPECIFIED',
+        termsVersion: '2026-01',
+        privacyVersion: '2026-01',
+        acceptedAt: new Date(),
+      },
+    });
+
+    await prisma.wallet.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        currency: 'ZENX',
+        balance: acc.balance,
+      },
+    });
+
+    if (acc.roleId) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: user.id, roleId: acc.roleId } },
+        update: {},
+        create: {
+          userId: user.id,
+          roleId: acc.roleId,
+          assignedAt: new Date(),
         },
       });
     }

@@ -58,7 +58,7 @@ export const appConfigValidationSchema = Joi.object({
     ConfigModule.forRoot({
       isGlobal: true,
       ignoreEnvFile: process.env.NODE_ENV === 'test',
-      envFilePath: process.env.NODE_ENV === 'test' ? ['.env.test', '.env.test.example'] : undefined,
+      envFilePath: process.env.NODE_ENV === 'test' ? ['.env.test', '.env.test.example'] : ['.env', '../../.env', '../.env'],
       load: [configuration],
       validationSchema: appConfigValidationSchema,
     }),

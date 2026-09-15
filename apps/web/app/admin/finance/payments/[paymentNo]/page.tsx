@@ -162,7 +162,7 @@ export default function AdminFinancePaymentDetailPage() {
   const userName = payment.user.profile?.fullName || payment.user.username;
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-5 w-full">
       {/* Compact Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-slate-100">
         <div className="flex items-center gap-2.5">

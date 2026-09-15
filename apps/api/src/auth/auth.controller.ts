@@ -15,25 +15,25 @@ export class AuthController {
   constructor(private readonly auth: AuthService, private readonly config: ConfigService, private readonly social: SocialService, private readonly domainPolicy: DomainPolicyService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
-    return this.auth.register(dto).then((tokens) => this.withCookies(response, tokens));
+  register(@Req() request: Request, @Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
+    return this.auth.register(dto).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-    return this.auth.login(dto).then((tokens) => this.withCookies(response, tokens));
+  login(@Req() request: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
+    return this.auth.login(dto).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
   }
 
   @Post('refresh')
   refresh(@Body() dto: RefreshDto, @Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    return this.auth.refresh(dto.refreshToken ?? request.cookies?.[REFRESH_COOKIE]).then((tokens) => this.withCookies(response, tokens));
+    return this.auth.refresh(dto.refreshToken ?? request.cookies?.[REFRESH_COOKIE]).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
   }
 
   @Post('logout')
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     await this.auth.logout(request.cookies?.[REFRESH_COOKIE]);
-    response.clearCookie(ACCESS_COOKIE, this.accessCookieOptions());
-    response.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions());
+    response.clearCookie(ACCESS_COOKIE, this.accessCookieOptions(request.headers.origin));
+    response.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions(request.headers.origin));
     return { loggedOut: true };
   }
 
@@ -154,27 +154,28 @@ export class AuthController {
     return 'oauth_failed';
   }
 
-  private withCookies(response: Response, tokens: { accessToken: string; refreshToken: string; user: unknown; redirectTo?: string }) {
-    response.cookie(ACCESS_COOKIE, tokens.accessToken, { ...this.accessCookieOptions(), maxAge: ACCESS_TTL_SECONDS * 1000 });
-    response.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...this.refreshCookieOptions(), maxAge: REFRESH_TTL_SECONDS * 1000 });
+  private withCookies(response: Response, tokens: { accessToken: string; refreshToken: string; user: unknown; redirectTo?: string }, requestOrigin?: string) {
+    response.cookie(ACCESS_COOKIE, tokens.accessToken, { ...this.accessCookieOptions(requestOrigin), maxAge: ACCESS_TTL_SECONDS * 1000 });
+    response.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...this.refreshCookieOptions(requestOrigin), maxAge: REFRESH_TTL_SECONDS * 1000 });
     return { user: tokens.user, ...(tokens.redirectTo ? { redirectTo: tokens.redirectTo } : {}) };
   }
 
-  private baseCookieOptions(includeDomain = true) {
+  private baseCookieOptions(includeDomain = true, requestOrigin?: string) {
+    const domain = includeDomain ? this.domainPolicy.sessionCookieDomain(requestOrigin) : undefined;
     return {
       httpOnly: true,
       secure: this.config.get<boolean>('cookieSecure') ?? false,
       sameSite: 'lax' as const,
-      ...(includeDomain && this.domainPolicy.sessionCookieDomain ? { domain: this.domainPolicy.sessionCookieDomain } : {}),
+      ...(domain ? { domain } : {}),
     };
   }
 
-  private accessCookieOptions() {
-    return { ...this.baseCookieOptions(), path: '/' };
+  private accessCookieOptions(requestOrigin?: string) {
+    return { ...this.baseCookieOptions(true, requestOrigin), path: '/' };
   }
 
-  private refreshCookieOptions() {
-    return { ...this.baseCookieOptions(), path: '/api/v1/auth' };
+  private refreshCookieOptions(requestOrigin?: string) {
+    return { ...this.baseCookieOptions(true, requestOrigin), path: '/api/v1/auth' };
   }
 
   private oauthStateCookieOptions() {

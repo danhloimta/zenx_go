@@ -107,7 +107,7 @@ export default function AdminContentEventsPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl">
+    <div className="space-y-4 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>

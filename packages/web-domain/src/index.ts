@@ -92,12 +92,15 @@ export function isAllowedOriginShape(
   if (!isAllowedProtocol(origin, policy) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) return null;
 
   const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) return null;
+
   const host = classifyWebHost(url.hostname, baseDomain);
-  if (!normalizedOrigin || host.kind === 'UNKNOWN' || host.kind === 'RESERVED') return null;
   if (host.kind === 'GAME' && policy.allowGameSubdomains === false) return null;
+  if (host.kind === 'RESERVED') return null;
 
   const explicitlyAllowed = explicitOrigins.some((allowed) => normalizeOrigin(allowed) === normalizedOrigin);
-  if (explicitlyAllowed) return host;
+  if (explicitlyAllowed) return host.kind === 'UNKNOWN' ? { kind: 'ROOT' } : host;
+  if (host.kind === 'UNKNOWN') return null;
   return host.kind === 'ROOT' || host.kind === 'WWW' || (host.kind === 'GAME' && policy.allowGameSubdomains !== false) ? host : null;
 }
 
@@ -121,14 +124,14 @@ export function parseReturnTo(
   }
   if (!isAllowedProtocol(value, policy) || url.username || url.password || url.hash || !url.pathname.startsWith('/') || url.pathname.startsWith('//')) return null;
 
-  const host = classifyWebHost(url.hostname, baseDomain);
-  if (host.kind === 'UNKNOWN' || host.kind === 'RESERVED') return null;
   const origin = normalizeOrigin(url.origin);
   if (!origin) return null;
-  const originAllowed = explicitOrigins.length === 0
-    ? true
-    : explicitOrigins.some((allowed) => normalizeOrigin(allowed) === origin);
-  if (!originAllowed && host.kind !== 'ROOT' && host.kind !== 'WWW' && !(host.kind === 'GAME' && policy.allowGameSubdomains !== false)) return null;
+  const host = classifyWebHost(url.hostname, baseDomain);
   if (host.kind === 'GAME' && policy.allowGameSubdomains === false) return null;
+  if (host.kind === 'RESERVED') return null;
+  const explicitlyAllowed = explicitOrigins.some((allowed) => normalizeOrigin(allowed) === origin);
+  if (explicitlyAllowed) return { url, host: host.kind === 'UNKNOWN' ? { kind: 'ROOT' } : host };
+  if (host.kind === 'UNKNOWN') return null;
+  if (explicitOrigins.length > 0 && !explicitlyAllowed && host.kind !== 'ROOT' && host.kind !== 'WWW') return null;
   return { url, host };
 }

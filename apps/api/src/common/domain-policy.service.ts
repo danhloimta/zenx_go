@@ -46,7 +46,15 @@ export class DomainPolicyService implements OnModuleInit {
     return this.config.get<string>('nodeEnv') === 'production';
   }
 
-  get sessionCookieDomain() {
+  sessionCookieDomain(requestOrigin?: string) {
+    if (!this.production && requestOrigin) {
+      try {
+        const hostname = new URL(requestOrigin).hostname.toLowerCase();
+        if (hostname === 'localhost' || hostname === '127.0.0.1') return undefined;
+      } catch {
+        // Ignore parsing error and fallback
+      }
+    }
     const configured = this.config.get<string>('cookieDomain');
     if (!configured) return undefined;
     return `.${configured.replace(/^\.+|\.+$/g, '').toLowerCase()}`;
