@@ -56,7 +56,7 @@
 - OAuth state ký bằng secret, có mode `login`/`link`, return URL được domain policy validate.
 - Với mode `login`, cả endpoint start và callback đọc mới singleton `AuthSettings` từ database và từ chối provider đang tắt. Không cache quyết định nên thay đổi có hiệu lực ở request kế tiếp, kể cả callback của flow đã bắt đầu.
 - `GET /auth/provider-availability` trả projection public `{ google, facebook }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
-- Thiếu row singleton hoặc lỗi database trả `SETTINGS_UNAVAILABLE`; settings tắt trả `SOCIAL_PROVIDER_DISABLED`. Hai trường hợp đều không tiếp tục social login/registration.
+- Với JSON settings APIs, thiếu row singleton hoặc lỗi database trả HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. Với OAuth navigation start/callback, các internal domain code `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` được chuyển thành HTTP `302` redirect với query lần lượt `social_error=settings_unavailable` / `social_error=provider_disabled`; không code uppercase nào được dùng làm query value.
 - Identity đã thuộc account khác bị từ chối; email trùng không tự động link.
 - Unlink không được làm mất login method cuối nếu account chưa có password và không còn social identity khác.
 - Enforcement chỉ áp dụng mode `login`; `mode=link`, unlink và password flows giữ nguyên hành vi.
@@ -73,7 +73,7 @@
 | `SCR-ACCOUNT-PROFILE`  | `/account/profile`          | Contact cards, basic profile form, avatar upload, social/password summary và sensitive-profile card. | `/account/me`, `/account/*`, `/account/sensitive-profile/*`; `apps/web/app/account/profile/page.tsx`; account E2E |
 | `SCR-ACCOUNT-SECURITY` | `/account/security`         | Email/phone/password security status và shortcut actions.                                            | `/account/me`; `apps/web/app/account/security/page.tsx`; account E2E                                              |
 | `SCR-ACCOUNT-PASSWORD` | `/account/change-password`  | Strength checklist, current/new password, social-only first password.                                | `POST /account/change-password`; `apps/web/app/account/change-password/page.tsx`; account E2E                     |
-| `SCR-ACCOUNT-SOCIAL`   | `/account/social`           | Link/unlink Google/Facebook, provider status và lỗi OAuth.                                           | `/auth/google                                                                                                     | facebook`, `/account/social/*`; `apps/web/app/account/social/page.tsx`; social/account E2E |
+| `SCR-ACCOUNT-SOCIAL`   | `/account/social`           | Link/unlink Google/Facebook, provider status và lỗi OAuth.                                           | `/auth/google                                                                                                     | facebook`, `/account/social/*`; `apps/web/app/account/social/page.tsx`; link initiation E2E, unlink API integration |
 
 ### Basic profile data
 

@@ -144,7 +144,7 @@ CCCD được lưu AES-256-GCM ở `SensitiveProfile`; admin detail chỉ nhận
 - `GET /auth/provider-availability` là public dependency của login/register, trả `{ google, facebook }` và `Cache-Control: no-store`.
 - `GET /admin/settings/auth-providers` trả `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một boolean.
 - Update dùng optimistic concurrency trên singleton `id=1`; stale write trả `409 STALE_AUTH_SETTINGS_UPDATE` để UI reload/merge có chủ đích.
-- Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. Missing singleton hoặc database failure fail closed với `503 SETTINGS_UNAVAILABLE`; provider bị tắt trả `SOCIAL_PROVIDER_DISABLED` qua OAuth error redirect.
+- Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. JSON settings APIs fail closed với HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. OAuth start/callback chuyển internal `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` thành HTTP `302` redirect với lowercase query `social_error=settings_unavailable` / `social_error=provider_disabled`.
 - Enforcement chỉ áp dụng login/registration. Password login/reset/change, OAuth `mode=link` và unlink giữ nguyên hành vi.
 - Phase 1 không lưu OAuth credentials/secrets, không cấu hình hoặc health-check provider, và không chứng minh provider production readiness.
 
@@ -295,8 +295,8 @@ Operational checklist:
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, `apps/api/src/auth-settings/auth-settings.service.spec.ts`, `apps/api/src/auth/auth.controller.spec.ts`, content Markdown/URL validation specs. |
 | Integration | `apps/api/test/integration/admin.integration.spec.ts`, `auth-settings.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`, `finance-admin.integration.spec.ts`: auth settings RBAC/CAS/enforcement plus existing access/workflow/CMS/finance coverage. |
-| Browser     | `apps/web/e2e/admin.spec.ts`, `auth-settings-admin.spec.ts`, `auth-provider-availability.spec.ts`, `auth-subdomain.spec.ts`, `account-screens.spec.ts`, support/content/finance specs: admin settings UI, public availability, OAuth return and account link/unlink regressions. |
-| Regression  | Existing auth/account/support/payment/game integration and browser suites.                                                                                                                                         |
+| Browser     | `apps/web/e2e/admin.spec.ts`, `auth-settings-admin.spec.ts`, `auth-provider-availability.spec.ts`, `auth-subdomain.spec.ts`, `account-screens.spec.ts`, support/content/finance specs: admin settings UI, public availability, OAuth return và account link initiation. |
+| Regression  | API integration covers actual social unlink; existing auth/account/support/payment/game integration and browser suites cover their stated boundaries.                                                              |
 
 ## Known gaps before production
 
