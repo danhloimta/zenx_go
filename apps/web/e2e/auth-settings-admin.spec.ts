@@ -112,6 +112,103 @@ test('settings load failure can be retried', async ({ page, request }) => {
   await expect(page.getByRole('checkbox', { name: 'Google' })).toBeVisible();
 });
 
+test('background revalidation does not overwrite dirty settings edits', async ({
+  context,
+  page,
+  request,
+}) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const admin = await createRoleAccount(request, `settings-dirty-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+
+  const baseline = await readSettings(request, adminCookie);
+  const external = await request.patch(`${apiBase}/admin/settings/auth-providers`, {
+    headers: authenticatedHeaders(adminCookie),
+    data: {
+      expectedUpdatedAt: baseline.updatedAt,
+      facebookLoginRegistrationEnabled: false,
+    },
+  });
+  expect(external.status()).toBe(200);
+  await page.getByRole('checkbox', { name: 'Google' }).uncheck();
+
+  let releaseRevalidation!: () => void;
+  const revalidationReleased = new Promise<void>((resolveRelease) => {
+    releaseRevalidation = resolveRelease;
+  });
+  let revalidationStarted = false;
+  await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    revalidationStarted = true;
+    await revalidationReleased;
+    await route.continue();
+  });
+
+  await context.setOffline(true);
+  await context.setOffline(false);
+  await expect.poll(() => revalidationStarted).toBe(true);
+  await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'GET' &&
+      candidate.url().endsWith('/api/v1/admin/settings/auth-providers'),
+  );
+  releaseRevalidation();
+  await response;
+
+  await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
+});
+
+test('failed stale conflict reload stays truthful and can retry server state', async ({
+  page,
+  request,
+}) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const admin = await createRoleAccount(request, `settings-conflict-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+
+  const baseline = await readSettings(request, adminCookie);
+  const external = await request.patch(`${apiBase}/admin/settings/auth-providers`, {
+    headers: authenticatedHeaders(adminCookie),
+    data: {
+      expectedUpdatedAt: baseline.updatedAt,
+      facebookLoginRegistrationEnabled: false,
+    },
+  });
+  expect(external.status()).toBe(200);
+
+  let failNextGet = true;
+  await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
+    if (route.request().method() !== 'GET' || !failNextGet) return route.continue();
+    failNextGet = false;
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: null,
+        error: { code: 'SETTINGS_UNAVAILABLE', message: 'Unavailable' },
+      }),
+    });
+  });
+
+  await page.getByRole('checkbox', { name: 'Google' }).uncheck();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText(/không thể tải dữ liệu mới nhất/i)).toBeVisible();
+  await expect(page.getByText('Dữ liệu mới nhất đã được tải lại.')).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
+
+  await page.getByRole('button', { name: 'Tải lại dữ liệu' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).not.toBeChecked();
+  await expect(page.getByText('Dữ liệu mới nhất đã được tải lại.')).toBeVisible();
+});
+
 async function createRoleAccount(
   request: APIRequestContext,
   username: string,

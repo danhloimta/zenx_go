@@ -11,6 +11,7 @@ export function useAdminAuthSettings() {
     queryKey: adminAuthSettingsQueryKey,
     queryFn: api.admin.authSettings.get,
     retry: false,
+    staleTime: 0,
   });
 }
 

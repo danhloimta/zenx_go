@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ApiError } from '@zenx-go/api-client';
+import { ApiError, type AdminAuthSettings } from '@zenx-go/api-client';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,21 +14,37 @@ type FormState = {
   facebook: boolean;
 };
 
+type FormBaseline = FormState & { updatedAt: string };
+
 export default function AdminAuthSettingsPage() {
   const settings = useAdminAuthSettings();
   const updateSettings = useUpdateAdminAuthSettings();
   const [form, setForm] = useState<FormState | null>(null);
-  const [notice, setNotice] = useState<{ kind: 'success' | 'error' | 'conflict'; text: string } | null>(null);
+  const [baseline, setBaseline] = useState<FormBaseline | null>(null);
+  const [notice, setNotice] = useState<{
+    kind: 'success' | 'error' | 'conflict';
+    text: string;
+    canReload?: boolean;
+  } | null>(null);
+  const [isConflictReloading, setIsConflictReloading] = useState(false);
 
   useEffect(() => {
-    if (!settings.data) return;
-    setForm({
-      google: settings.data.googleLoginRegistrationEnabled,
-      facebook: settings.data.facebookLoginRegistrationEnabled,
-    });
-  }, [settings.data]);
+    if (!settings.data || !settings.isSuccess || settings.fetchStatus !== 'idle') return;
+    if (form && baseline && isDirty(form, baseline)) return;
+    const next = formStateFrom(settings.data);
+    if (
+      baseline?.updatedAt === settings.data.updatedAt &&
+      form &&
+      form.google === next.google &&
+      form.facebook === next.facebook
+    ) {
+      return;
+    }
+    setForm(next);
+    setBaseline({ ...next, updatedAt: settings.data.updatedAt });
+  }, [baseline, form, settings.data, settings.dataUpdatedAt, settings.fetchStatus, settings.isSuccess]);
 
-  if (settings.isLoading || !form) {
+  if (settings.isLoading || !form || !baseline) {
     if (settings.isError) {
       return (
         <Alert>
@@ -48,16 +64,16 @@ export default function AdminAuthSettingsPage() {
   }
 
   const save = () => {
-    if (!settings.data) return;
     setNotice(null);
     updateSettings.mutate(
       {
-        expectedUpdatedAt: settings.data.updatedAt,
+        expectedUpdatedAt: baseline.updatedAt,
         googleLoginRegistrationEnabled: form.google,
         facebookLoginRegistrationEnabled: form.facebook,
       },
       {
-        onSuccess: () => {
+        onSuccess: (updated) => {
+          replaceFormWith(updated);
           setNotice({
             kind: 'success',
             text: 'Đã lưu cài đặt đăng nhập mạng xã hội.',
@@ -65,11 +81,20 @@ export default function AdminAuthSettingsPage() {
         },
         onError: async (error) => {
           if (error instanceof ApiError && error.code === 'STALE_AUTH_SETTINGS_UPDATE') {
-            setNotice({
-              kind: 'conflict',
-              text: 'Cài đặt đã được quản trị viên khác thay đổi. Dữ liệu mới nhất đã được tải lại.',
-            });
-            await settings.refetch();
+            const result = await settings.refetch();
+            if (result.isSuccess && result.data) {
+              replaceFormWith(result.data);
+              setNotice({
+                kind: 'conflict',
+                text: 'Cài đặt đã được quản trị viên khác thay đổi. Dữ liệu mới nhất đã được tải lại.',
+              });
+            } else {
+              setNotice({
+                kind: 'conflict',
+                text: 'Cài đặt đã được quản trị viên khác thay đổi nhưng không thể tải dữ liệu mới nhất. Hãy thử lại.',
+                canReload: true,
+              });
+            }
             return;
           }
           setNotice({
@@ -81,7 +106,30 @@ export default function AdminAuthSettingsPage() {
     );
   };
 
+  const replaceFormWith = (serverSettings: AdminAuthSettings) => {
+    const next = formStateFrom(serverSettings);
+    setForm(next);
+    setBaseline({ ...next, updatedAt: serverSettings.updatedAt });
+  };
+
+  const reloadAfterConflict = async () => {
+    setIsConflictReloading(true);
+    const result = await settings.refetch();
+    setIsConflictReloading(false);
+    if (result.isSuccess && result.data) {
+      replaceFormWith(result.data);
+      setNotice({ kind: 'conflict', text: 'Dữ liệu mới nhất đã được tải lại.' });
+      return;
+    }
+    setNotice({
+      kind: 'conflict',
+      text: 'Không thể tải dữ liệu mới nhất. Hãy thử lại.',
+      canReload: true,
+    });
+  };
+
   const pending = updateSettings.isPending;
+  const controlsDisabled = pending || isConflictReloading;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -95,7 +143,18 @@ export default function AdminAuthSettingsPage() {
                 : 'mb-5'
           }
         >
-          {notice.text}
+          <p>{notice.text}</p>
+          {notice.canReload ? (
+            <Button
+              className="mt-4 border-amber-300 bg-white text-amber-900 hover:bg-amber-50"
+              variant="outline"
+              size="sm"
+              disabled={isConflictReloading}
+              onClick={reloadAfterConflict}
+            >
+              {isConflictReloading ? 'Đang tải…' : 'Tải lại dữ liệu'}
+            </Button>
+          ) : null}
         </Alert>
       ) : null}
 
@@ -115,7 +174,7 @@ export default function AdminAuthSettingsPage() {
             label="Google"
             description="Cho phép người dùng đăng nhập hoặc đăng ký bằng Google."
             checked={form.google}
-            disabled={pending}
+            disabled={controlsDisabled}
             onCheckedChange={(checked) => {
               setNotice(null);
               setForm((current) => current ? { ...current, google: checked } : current);
@@ -126,14 +185,14 @@ export default function AdminAuthSettingsPage() {
             label="Facebook"
             description="Cho phép người dùng đăng nhập hoặc đăng ký bằng Facebook."
             checked={form.facebook}
-            disabled={pending}
+            disabled={controlsDisabled}
             onCheckedChange={(checked) => {
               setNotice(null);
               setForm((current) => current ? { ...current, facebook: checked } : current);
             }}
           />
           <div className="flex justify-end border-t border-slate-100 pt-5">
-            <Button onClick={save} disabled={pending}>
+            <Button onClick={save} disabled={controlsDisabled}>
               {pending ? 'Đang lưu…' : 'Lưu thay đổi'}
             </Button>
           </div>
@@ -141,6 +200,17 @@ export default function AdminAuthSettingsPage() {
       </Card>
     </div>
   );
+}
+
+function formStateFrom(settings: AdminAuthSettings): FormState {
+  return {
+    google: settings.googleLoginRegistrationEnabled,
+    facebook: settings.facebookLoginRegistrationEnabled,
+  };
+}
+
+function isDirty(form: FormState, baseline: FormState) {
+  return form.google !== baseline.google || form.facebook !== baseline.facebook;
 }
 
 function ProviderCheckbox({
