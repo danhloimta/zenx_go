@@ -17,6 +17,11 @@ jest.setTimeout(30_000);
 const prisma = new PrismaClient();
 const repoRoot = resolve(__dirname, '../../../..');
 
+process.env.ALLOW_TEST_OAUTH = 'true';
+process.env.GOOGLE_CLIENT_ID = 'integration-google-client';
+process.env.GOOGLE_CLIENT_SECRET = 'integration-google-secret';
+process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3000/api/v1/auth/google/callback';
+
 describe('Auth settings persistence', () => {
   afterAll(async () => {
     await prisma.authSettings.update({
@@ -243,6 +248,82 @@ describe('Auth settings API (SQL Server)', () => {
         .set('Cookie', adminCookies);
       expect(adminRead.status).toBe(503);
       expect(adminRead.body.error.code).toBe('SETTINGS_UNAVAILABLE');
+    } finally {
+      await prisma.authSettings.create({ data: saved });
+    }
+  });
+
+  it('blocks disabled login starts before creating OAuth state but leaves link start available', async () => {
+    await prisma.authSettings.update({
+      where: { id: 1 },
+      data: { googleLoginRegistrationEnabled: false },
+    });
+
+    const loginStart = await http().get('/auth/google');
+    expect(loginStart.status).toBe(302);
+    expect(loginStart.headers.location).toContain('social_error=provider_disabled');
+    expect(loginStart.headers['set-cookie']).toBeUndefined();
+
+    const linkStart = await http()
+      .get('/auth/google?mode=link')
+      .set('Cookie', adminCookies);
+    expect(linkStart.status).toBe(302);
+    expect(linkStart.headers.location).toContain('accounts.google.com');
+    expect(linkStart.headers['set-cookie']).toEqual(
+      expect.arrayContaining([expect.stringContaining('zenx_oauth_state_google=')]),
+    );
+  });
+
+  it('rechecks settings after valid callback state and blocks stale enabled policy', async () => {
+    await prisma.authSettings.update({
+      where: { id: 1 },
+      data: { googleLoginRegistrationEnabled: true },
+    });
+    const start = await http().get('/auth/google');
+    const state = new URL(start.headers.location).searchParams.get('state');
+    const stateCookie = cookieHeader(start);
+    expect(state).toEqual(expect.any(String));
+
+    await prisma.authSettings.update({
+      where: { id: 1 },
+      data: { googleLoginRegistrationEnabled: false },
+    });
+    const callback = await http()
+      .get(`/auth/google/callback?state=${encodeURIComponent(state!)}&code=unused`)
+      .set('Cookie', stateCookie);
+
+    expect(callback.status).toBe(302);
+    expect(callback.headers.location).toContain('social_error=provider_disabled');
+  });
+
+  it('maps unavailable settings while preserving invalid-state precedence', async () => {
+    await prisma.authSettings.update({
+      where: { id: 1 },
+      data: { googleLoginRegistrationEnabled: true },
+    });
+    const start = await http().get('/auth/google');
+    const state = new URL(start.headers.location).searchParams.get('state');
+    const stateCookie = cookieHeader(start);
+    const saved = await prisma.authSettings.findUniqueOrThrow({ where: { id: 1 } });
+    await prisma.authSettings.delete({ where: { id: 1 } });
+
+    try {
+      const unavailableStart = await http().get('/auth/google');
+      expect(unavailableStart.status).toBe(302);
+      expect(unavailableStart.headers.location).toContain('social_error=settings_unavailable');
+      expect(unavailableStart.headers['set-cookie']).toBeUndefined();
+
+      const unavailableCallback = await http()
+        .get(`/auth/google/callback?state=${encodeURIComponent(state!)}&code=unused`)
+        .set('Cookie', stateCookie);
+      expect(unavailableCallback.status).toBe(302);
+      expect(unavailableCallback.headers.location).toContain('social_error=settings_unavailable');
+
+      const invalidCallback = await http()
+        .get('/auth/google/callback?state=tampered&code=unused')
+        .set('Cookie', stateCookie);
+      expect(invalidCallback.status).toBe(302);
+      expect(invalidCallback.headers.location).toContain('social_error=invalid_state');
     } finally {
       await prisma.authSettings.create({ data: saved });
     }
