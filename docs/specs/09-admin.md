@@ -2,9 +2,9 @@
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-07
+> Last verified: 2026-09-15
 >
-> Verified commit: `788f781`
+> Verified commit: `7b087f4`
 >
 > Phạm vi: Account operations (Phase 1), Support operations (Phase 2), Content CMS (Phase 3) và Finance Operations (Phase 4)
 
@@ -29,6 +29,7 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
 | Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game, genre, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 | Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
+| Auth provider settings            | `IMPLEMENTED`     | `/admin/settings` bật/tắt login-registration Google/Facebook với fresh-read enforcement và optimistic concurrency. |
 
 ## Access model
 
@@ -40,6 +41,8 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | ------------- | --------------------------------------------------------------------------------------- | --------------------------- |
 | `SUPER_ADMIN` | Toàn quyền trên mọi endpoint admin, gồm finance.                                           | CLI hoặc UI user-role. |
 | `SUPPORT`     | Support queue, conversation và FAQ.                                                        | CLI hoặc UI user-role. |
+
+Permission `settings.auth.manage` ánh xạ CASL `manage AuthSettings`. Migration/seed cấp mặc định permission này cho `SUPER_ADMIN`; `SUPPORT` không được cấp nên không thấy menu và không truy cập screen/API settings.
 
 Role và permission được đọc trực tiếp từ database bởi `AdminGuard`/`PermissionGuard` cho mỗi request. Không lưu permission trong access JWT; thay role hoặc permission sẽ revoke refresh session và tăng `authVersion`.
 
@@ -77,6 +80,7 @@ Khi admin đặt mật khẩu tạm:
 | `SCR-ADMIN-PACKAGES`  | `/admin/finance/packages` | CRUD gói nạp, active/inactive và xóa gói chưa từng dùng.              | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` |
 | `SCR-ADMIN-PAYMENTS`  | `/admin/finance/payments*` | Search/detail và command success/fail/expire/cancel/refund.            | `GET /admin/finance/payments*`, payment commands |
 | `SCR-ADMIN-LEDGER`    | `/admin/finance/transactions` | Ledger toàn hệ thống, filter và CSV export.                            | `GET /admin/finance/transactions*`            |
+| `SCR-ADMIN-SETTINGS`  | `/admin/settings`       | Bật/tắt Google/Facebook login-registration; loading/error/dirty/save/stale-reload states. | `GET/PATCH /admin/settings/auth-providers` |
 
 `AdminShell` là layout riêng, không dùng player `AppShell`. Mọi screen có loading/error/empty state và mutation pending state cơ bản.
 
@@ -135,6 +139,15 @@ Rules:
 
 CCCD được lưu AES-256-GCM ở `SensitiveProfile`; admin detail chỉ nhận summary masked trước khi reveal.
 
+## Authentication provider settings
+
+- `GET /auth/provider-availability` là public dependency của login/register, trả `{ google, facebook }` và `Cache-Control: no-store`.
+- `GET /admin/settings/auth-providers` trả `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một boolean.
+- Update dùng optimistic concurrency trên singleton `id=1`; stale write trả `409 STALE_AUTH_SETTINGS_UPDATE` để UI reload/merge có chủ đích.
+- Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. Missing singleton hoặc database failure fail closed với `503 SETTINGS_UNAVAILABLE`; provider bị tắt trả `SOCIAL_PROVIDER_DISABLED` qua OAuth error redirect.
+- Enforcement chỉ áp dụng login/registration. Password login/reset/change, OAuth `mode=link` và unlink giữ nguyên hành vi.
+- Phase 1 không lưu OAuth credentials/secrets, không cấu hình hoặc health-check provider, và không chứng minh provider production readiness.
+
 ## API contract
 
 Base path: `/api/v1`.
@@ -150,6 +163,8 @@ Base path: `/api/v1`.
 | `API-ADMIN-REVOKE-SESSIONS`  | `POST /admin/users/:userId/revoke-sessions`          | Access + `SUPER_ADMIN` | —                                                               | `{ revoked: true }`.                       |
 | `API-ADMIN-RESET-PASSWORD`   | `POST /admin/users/:userId/reset-password`           | Access + `SUPER_ADMIN` | Temporary password, confirmation, `expectedUpdatedAt`           | `{ reset: true }`.                         |
 | `API-ADMIN-SENSITIVE-REVEAL` | `POST /admin/users/:userId/sensitive-profile/reveal` | Access + `SUPER_ADMIN` | —                                                               | Identity plaintext or `null`.              |
+| `API-ADMIN-AUTH-SETTINGS-GET` | `GET /admin/settings/auth-providers`                 | Access + `settings.auth.manage` | —                                                     | Auth settings + `updatedAt`.               |
+| `API-ADMIN-AUTH-SETTINGS-PATCH` | `PATCH /admin/settings/auth-providers`             | Access + `settings.auth.manage` | `expectedUpdatedAt` + ≥1 provider boolean              | Updated auth settings.                     |
 
 All JSON responses follow `{ data, error }`. Browser mutations remain protected by `OriginGuard`.
 
@@ -199,6 +214,10 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 
 Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `202609030005_support_opening_messages`, `202609040001_remove_admin_audit`, `202609050004_finance_operations`.
 
+### `AuthSettings`
+
+`AuthSettings` maps to `auth_settings` with `id=1`, `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled` and `updatedAt`. Migration `202609150001_auth_settings_phase1` creates the table with database defaults `true`, enforces `CHECK (id = 1)`, inserts row `id=1`, registers `settings.auth.manage`, and grants it to the system `SUPER_ADMIN` role. The seed upserts the same singleton and permission/default grant; `SUPPORT` remains excluded.
+
 ### Support data model
 
 - `SupportTicket` thêm priority, assignee và các activity/resolved/closed timestamps.
@@ -235,6 +254,8 @@ Operational checklist:
 3. Grant `SUPER_ADMIN` to the smallest possible number of users.
 4. Open `/admin`, verify dashboard and user search.
 5. Mở `/admin/access/roles`, kiểm tra `SUPER_ADMIN`/`SUPPORT` và permission catalog sau migration.
+6. Mở `/admin/settings`, đổi từng provider, save, reload và xác nhận persisted state.
+7. Xác nhận provider tắt biến mất ở login/register; cả OAuth start và callback từ chối ngay ở request kế tiếp. Bật lại provider sau kiểm tra.
 
 ## Error codes
 
@@ -248,6 +269,8 @@ Operational checklist:
 | `ADMIN_CONTACT_VERIFICATION_REQUIRED` | New email/phone lacks explicit verified choice.             |
 | `ADMIN_NO_CHANGES`                    | Profile request contains no changes.                        |
 | `ADMIN_STATUS_TRANSITION_INVALID`     | Status is not editable by Phase 1 admin flow.               |
+| `SETTINGS_UNAVAILABLE`                | Singleton settings thiếu hoặc database read/write lỗi; public/admin settings fail closed (`503`). |
+| `STALE_AUTH_SETTINGS_UPDATE`          | `expectedUpdatedAt` không còn khớp; admin phải reload/resolve conflict (`409`). |
 | `COIN_PACKAGE_CODE_EXISTS`             | Mã gói nạp đã tồn tại.                                      |
 | `COIN_PACKAGE_IN_USE`                  | Gói nạp đã có payment history.                             |
 | `COIN_PACKAGE_MUST_BE_INACTIVE`        | Phải ngừng bán trước khi xóa gói.                           |
@@ -270,9 +293,9 @@ Operational checklist:
 
 | Layer       | Coverage                                                                                                                                                                                                           |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, content Markdown/URL validation specs. |
-| Integration | `apps/api/test/integration/admin.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`, `finance-admin.integration.spec.ts`: access boundaries, queue/workflow, CMS draft/publish, payment transitions, refund, ledger idempotency và conflict. |
-| Browser     | `apps/web/e2e/admin.spec.ts`, `support-admin.spec.ts`, `content-admin.spec.ts`, `finance-admin.spec.ts`: admin/support/CMS/finance flows trên Chromium. |
+| Unit        | `apps/api/src/admin/admin.guard.spec.ts`, `apps/api/src/auth/auth.guard.spec.ts`, `apps/api/src/auth-settings/auth-settings.service.spec.ts`, `apps/api/src/auth/auth.controller.spec.ts`, content Markdown/URL validation specs. |
+| Integration | `apps/api/test/integration/admin.integration.spec.ts`, `auth-settings.integration.spec.ts`, `support-admin.integration.spec.ts`, `content-admin.integration.spec.ts`, `finance-admin.integration.spec.ts`: auth settings RBAC/CAS/enforcement plus existing access/workflow/CMS/finance coverage. |
+| Browser     | `apps/web/e2e/admin.spec.ts`, `auth-settings-admin.spec.ts`, `auth-provider-availability.spec.ts`, `auth-subdomain.spec.ts`, `account-screens.spec.ts`, support/content/finance specs: admin settings UI, public availability, OAuth return and account link/unlink regressions. |
 | Regression  | Existing auth/account/support/payment/game integration and browser suites.                                                                                                                                         |
 
 ## Known gaps before production
@@ -291,5 +314,6 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.
 - User create/delete và chỉnh sửa sensitive profile.
+- Generic settings infrastructure, cache, activity log, OAuth credential/secret UI or storage, provider configuration/health checks, OTP/DOB/CCCD/wallet changes, và mọi claim về provider production readiness.
 
 Các phần trên sẽ được tách thành phase riêng để tránh mở rộng phạm vi CMS cơ bản.

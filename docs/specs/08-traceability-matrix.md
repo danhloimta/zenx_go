@@ -2,9 +2,9 @@
 
 > Loại tài liệu: canonical tracking matrix
 >
-> Last verified: 2026-09-07
+> Last verified: 2026-09-15
 >
-> Verified commit: `788f781`
+> Verified commit: `7b087f4`
 
 Matrix này nối yêu cầu/feature với màn hình, API, source và test. Status lấy từ source tại commit đã ghi, không phải trạng thái mong muốn trong roadmap.
 
@@ -14,7 +14,7 @@ Matrix này nối yêu cầu/feature với màn hình, API, source và test. Sta
 | `FEAT-AUTH-001`     | Register                           | `SCR-AUTH-REGISTER`, `SCR-ACCOUNT-COMPLETE`                                                | `API-AUTH-REGISTER`, `API-OTP-SEND`, `API-OTP-VERIFY`                                                                                                                                                                                        | `apps/api/src/auth`, `apps/web/app/auth/register`                                                          | vertical integration, account E2E                          | `IMPLEMENTED` |
 | `FEAT-AUTH-002`     | Login/session/logout               | `SCR-AUTH-LOGIN`, `SCR-ACCOUNT-HOME`                                                       | `API-AUTH-LOGIN`, `API-AUTH-REFRESH`, `API-AUTH-LOGOUT`, `API-AUTH-ME`                                                                                                                                                                       | auth service/controller, AuthGuard, AppShell                                                               | vertical integration, auth-subdomain E2E                   | `IMPLEMENTED` |
 | `FEAT-AUTH-003`     | Forgot/reset password              | `SCR-AUTH-FORGOT`, `SCR-AUTH-RESET`, `SCR-ACCOUNT-PASSWORD`                                | `API-AUTH-FORGOT`, `API-AUTH-RESET`                                                                                                                                                                                                          | auth reset DTO/service, auth pages                                                                         | vertical integration, account E2E                          | `IMPLEMENTED` |
-| `FEAT-AUTH-004`     | OAuth login                        | `SCR-AUTH-LOGIN`, `SCR-ACCOUNT-SOCIAL`                                                     | `API-AUTH-GOOGLE-START`, `API-AUTH-GOOGLE-CALLBACK`, `API-AUTH-FACEBOOK-START`, `API-AUTH-FACEBOOK-CALLBACK`                                                                                                                                 | social service, OAuth controller/state                                                                     | social service specs, auth-subdomain E2E                   | `PARTIAL`     |
+| `FEAT-AUTH-004`     | OAuth login                        | `SCR-AUTH-LOGIN`, `SCR-AUTH-REGISTER`, `SCR-ACCOUNT-SOCIAL`, `SCR-ADMIN-SETTINGS`                         | `API-AUTH-PROVIDER-AVAILABILITY`, `API-AUTH-GOOGLE-START`, `API-AUTH-GOOGLE-CALLBACK`, `API-AUTH-FACEBOOK-START`, `API-AUTH-FACEBOOK-CALLBACK`, `API-ADMIN-AUTH-SETTINGS-GET`, `API-ADMIN-AUTH-SETTINGS-PATCH` | social service, OAuth controller/state, auth-settings service/controllers, admin settings page | `auth-settings.service.spec.ts`, `auth.controller.spec.ts`, `auth-settings.integration.spec.ts`, `auth-settings-admin.spec.ts`, `auth-provider-availability.spec.ts`, `auth-subdomain.spec.ts`, `account-screens.spec.ts` | `PARTIAL`     |
 | `FEAT-OTP-001`      | OTP delivery/verification          | `SCR-AUTH-REGISTER`, account contact/sensitive flows                                       | `API-OTP-SEND`, `API-OTP-VERIFY`                                                                                                                                                                                                             | `apps/api/src/otp`                                                                                         | OTP unit/integration                                       | `MOCK`        |
 | `FEAT-ACCOUNT-001`  | Account summary/contact/avatar     | `SCR-ACCOUNT-HOME`, `SCR-ACCOUNT-PROFILE`, `SCR-ACCOUNT-SECURITY`                          | `API-ACCOUNT-ME`, `API-ACCOUNT-UPDATE`, `API-ACCOUNT-AVATAR`, `API-ACCOUNT-EMAIL`, `API-ACCOUNT-PHONE`                                                                                                                                       | `apps/api/src/account/account.service.ts`, account pages                                                   | vertical integration, account E2E                          | `IMPLEMENTED` |
 | `FEAT-ACCOUNT-002`  | Profile onboarding                 | `SCR-ACCOUNT-COMPLETE`, `SCR-ACCOUNT-PROFILE`                                              | `API-ACCOUNT-COMPLETE`                                                                                                                                                                                                                       | complete-profile page/service/AppShell redirect                                                            | vertical integration, account E2E                          | `IMPLEMENTED` |
@@ -51,8 +51,8 @@ Matrix này nối yêu cầu/feature với màn hình, API, source và test. Sta
 
 ## Coverage summary
 
-- Screens: 54 `page.tsx` files represented in [screen catalog](./06-screen-catalog.md).
-- Controller methods: 99 unique API routes represented in [API catalog](./07-api-data-catalog.md).
+- Screens: 55 `page.tsx` files represented in [screen catalog](./06-screen-catalog.md).
+- Controller methods: 102 unique API routes represented in [API catalog](./07-api-data-catalog.md).
 - Every feature row has a source boundary and test evidence; explicit gaps are recorded in domain documents.
 - The SePay webhook is a single route represented by `API-PAYMENT-SEPAY-WEBHOOK`; no second alias tracking ID is created.
 

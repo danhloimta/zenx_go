@@ -2,9 +2,9 @@
 
 > Loại tài liệu: canonical screen inventory
 >
-> Last verified: 2026-09-07
+> Last verified: 2026-09-15
 >
-> Verified commit: `788f781`
+> Verified commit: `7b087f4`
 
 Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`. Route game ghi public URL trước, internal rewrite sau. `Public` nghĩa không yêu cầu session; `Auth` được AppShell/middleware bảo vệ hoặc redirect khi cần.
 
@@ -28,8 +28,8 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 
 | ID                  | Route                   | Auth  | Status        | Mục đích / hành động chính                                                  | Source                                       | API/data                                        | Test                                                |
 | ------------------- | ----------------------- | ----- | ------------- | --------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------- | --------------------------------------------------- |
-| `SCR-AUTH-LOGIN`    | `/auth/login`           | Guest | `IMPLEMENTED` | Username/email password login, Google/Facebook, return path và error state. | `apps/web/app/auth/login/page.tsx`           | `/auth/login`, `/auth/google`, `/auth/facebook` | `account-screens.spec.ts`, `auth-subdomain.spec.ts` |
-| `SCR-AUTH-REGISTER` | `/auth/register`        | Guest | `IMPLEMENTED` | Register form, phone OTP, terms/privacy acceptance.                         | `apps/web/app/auth/register/page.tsx`        | `/otp/send`, `/otp/verify`, `/auth/register`    | `account-screens.spec.ts`, `vertical-slice.spec.ts` |
+| `SCR-AUTH-LOGIN`    | `/auth/login`           | Guest | `IMPLEMENTED` | Username/email password login, availability-gated Google/Facebook, return path và error state. | `apps/web/app/auth/login/page.tsx`           | `/auth/login`, `/auth/provider-availability`, `/auth/google`, `/auth/facebook` | `account-screens.spec.ts`, `auth-subdomain.spec.ts`, `auth-provider-availability.spec.ts` |
+| `SCR-AUTH-REGISTER` | `/auth/register`        | Guest | `IMPLEMENTED` | Register form, phone OTP, terms/privacy acceptance và provider availability notice. | `apps/web/app/auth/register/page.tsx`        | `/otp/send`, `/otp/verify`, `/auth/register`, `/auth/provider-availability` | `account-screens.spec.ts`, `vertical-slice.spec.ts`, `auth-provider-availability.spec.ts` |
 | `SCR-AUTH-FORGOT`   | `/auth/forgot-password` | Guest | `IMPLEMENTED` | Nhập email và gửi password-reset OTP.                                       | `apps/web/app/auth/forgot-password/page.tsx` | `/auth/forgot-password`                         | `vertical-slice.spec.ts`                            |
 | `SCR-AUTH-RESET`    | `/auth/reset-password`  | Guest | `IMPLEMENTED` | Verify reset code, password strength và đặt password mới.                   | `apps/web/app/auth/reset-password/page.tsx`  | `/otp/verify`, `/auth/reset-password`           | `vertical-slice.spec.ts`                            |
 
@@ -76,6 +76,7 @@ Mỗi row tương ứng đúng một `page.tsx` hiện có trong `apps/web/app`.
 | `SCR-ADMIN-HOME`      | `/admin`                | `SUPER_ADMIN` | `IMPLEMENTED` | KPI user và user mới.                                                           | `apps/web/app/admin/page.tsx`                | `/admin/me`, `/admin/dashboard` | `admin.spec.ts` |
 | `SCR-ADMIN-USERS`     | `/admin/users`          | `SUPER_ADMIN` | `IMPLEMENTED` | Tìm kiếm, lọc status, phân trang và mở chi tiết user.                          | `apps/web/app/admin/users/page.tsx`          | `GET /admin/users`              | `admin.spec.ts` |
 | `SCR-ADMIN-USER`      | `/admin/users/[userId]` | `SUPER_ADMIN` | `IMPLEMENTED` | Xem/sửa hồ sơ, status, session, mật khẩu tạm, CCCD reveal và wallet read-only. | `apps/web/app/admin/users/[userId]/page.tsx` | `/admin/users/:userId/*`        | `admin.spec.ts` |
+| `SCR-ADMIN-SETTINGS`  | `/admin/settings`       | `settings.auth.manage` / `manage AuthSettings` | `IMPLEMENTED` | Bật/tắt Google/Facebook login-registration, xử lý dirty form, stale conflict và retry. | `apps/web/app/admin/settings/page.tsx` | `GET/PATCH /admin/settings/auth-providers` | `auth-settings-admin.spec.ts`, `auth-provider-availability.spec.ts` |
 
 ### Admin Support — Phase 2
 

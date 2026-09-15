@@ -2,9 +2,9 @@
 
 > Loại tài liệu: canonical domain specification
 >
-> Last verified: 2026-09-03
+> Last verified: 2026-09-15
 >
-> Verified commit: `788f781`
+> Verified commit: `7b087f4`
 
 ## Feature inventory
 
@@ -54,9 +54,13 @@
 
 - Google/Facebook provider identity được lưu riêng, unique theo `(provider, providerUserId)`.
 - OAuth state ký bằng secret, có mode `login`/`link`, return URL được domain policy validate.
+- Với mode `login`, cả endpoint start và callback đọc mới singleton `AuthSettings` từ database và từ chối provider đang tắt. Không cache quyết định nên thay đổi có hiệu lực ở request kế tiếp, kể cả callback của flow đã bắt đầu.
+- `GET /auth/provider-availability` trả projection public `{ google, facebook }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
+- Thiếu row singleton hoặc lỗi database trả `SETTINGS_UNAVAILABLE`; settings tắt trả `SOCIAL_PROVIDER_DISABLED`. Hai trường hợp đều không tiếp tục social login/registration.
 - Identity đã thuộc account khác bị từ chối; email trùng không tự động link.
 - Unlink không được làm mất login method cuối nếu account chưa có password và không còn social identity khác.
-- Provider credentials thiếu thì UI/API trả `not_configured`; đây là `PARTIAL` theo môi trường, không phải lỗi màn hình.
+- Enforcement chỉ áp dụng mode `login`; `mode=link`, unlink và password flows giữ nguyên hành vi.
+- Provider credentials thiếu thì UI/API trả `not_configured`; `FEAT-AUTH-004` vẫn `PARTIAL` vì Phase 1 không lưu credentials, cấu hình hay health-check provider và không chứng minh production readiness.
 
 ## Basic account/profile
 
@@ -109,7 +113,7 @@ Avatar upload giới hạn 2 MB, chỉ JPEG/PNG/WebP và kiểm tra file signatu
 
 ## Test evidence
 
-- Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, `apps/api/src/otp/otp.service.spec.ts`, `apps/api/src/social/social.service.spec.ts`, `apps/api/src/config/config.module.spec.ts`.
-- Integration: `apps/api/test/integration/vertical-slice.integration.spec.ts`, `sensitive-profile.integration.spec.ts`.
-- Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`.
+- Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, `apps/api/src/otp/otp.service.spec.ts`, `apps/api/src/social/social.service.spec.ts`, `apps/api/src/auth-settings/auth-settings.service.spec.ts`, `apps/api/src/auth/auth.controller.spec.ts`, `apps/api/src/config/config.module.spec.ts`.
+- Integration: `apps/api/test/integration/vertical-slice.integration.spec.ts`, `sensitive-profile.integration.spec.ts`, `auth-settings.integration.spec.ts`.
+- Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`, `auth-provider-availability.spec.ts`.
 - Test gap: provider OAuth thật chưa có credentials trong local/test; email/SMS delivery thật chưa được kiểm thử ngoài mock seam.

@@ -2,9 +2,9 @@
 
 > Loại tài liệu: canonical API/data inventory
 >
-> Last verified: 2026-09-07
+> Last verified: 2026-09-15
 >
-> Verified commit: `788f781`
+> Verified commit: `7b087f4`
 
 ## Global contract
 
@@ -28,10 +28,11 @@
 | `API-AUTH-FORGOT`            | `POST /auth/forgot-password`  | Public                      | `IMPLEMENTED` | Email input; response accepted không lộ account existence.                          | auth service; vertical integration                           |
 | `API-AUTH-RESET`             | `POST /auth/reset-password`   | Public + verification token | `IMPLEMENTED` | Email/token/new password; reset password và revoke sessions.                        | auth service; vertical integration                           |
 | `API-AUTH-ME`                | `GET /auth/me`                | Access                      | `IMPLEMENTED` | Trả userId/username từ access session.                                              | auth controller; vertical integration                        |
-| `API-AUTH-GOOGLE-START`      | `GET /auth/google`            | Public hoặc link session    | `PARTIAL`     | OAuth mode/returnTo; redirect provider hoặc `not_configured`.                       | auth controller/social service; social E2E                   |
-| `API-AUTH-GOOGLE-CALLBACK`   | `GET /auth/google/callback`   | OAuth state                 | `PARTIAL`     | code/state/error; verify state, exchange profile, login/link và redirect.           | auth controller; social E2E                                  |
-| `API-AUTH-FACEBOOK-START`    | `GET /auth/facebook`          | Public hoặc link session    | `PARTIAL`     | OAuth mode/returnTo; redirect provider hoặc `not_configured`.                       | auth controller/social service; social E2E                   |
-| `API-AUTH-FACEBOOK-CALLBACK` | `GET /auth/facebook/callback` | OAuth state                 | `PARTIAL`     | code/state/error; verify state, exchange profile, login/link và redirect.           | auth controller; social E2E                                  |
+| `API-AUTH-PROVIDER-AVAILABILITY` | `GET /auth/provider-availability` | Public                  | `IMPLEMENTED` | Fresh DB projection `{ google, facebook }`; `Cache-Control: no-store`; fail closed `503 SETTINGS_UNAVAILABLE`. | auth-settings service/controller; auth-settings integration; provider-availability E2E |
+| `API-AUTH-GOOGLE-START`      | `GET /auth/google`            | Public hoặc link session    | `PARTIAL`     | OAuth mode/returnTo; mode `login` reads settings and rejects disabled/unavailable; mode `link` unchanged; redirect provider hoặc `not_configured`. | auth/settings/social services; auth-settings integration; social/provider E2E |
+| `API-AUTH-GOOGLE-CALLBACK`   | `GET /auth/google/callback`   | OAuth state                 | `PARTIAL`     | Verify state; mode `login` re-reads settings before exchange and rejects disabled/unavailable; link path unchanged. | auth/settings/social services; auth-settings integration; social/provider E2E |
+| `API-AUTH-FACEBOOK-START`    | `GET /auth/facebook`          | Public hoặc link session    | `PARTIAL`     | OAuth mode/returnTo; mode `login` reads settings and rejects disabled/unavailable; mode `link` unchanged; redirect provider hoặc `not_configured`. | auth/settings/social services; auth-settings integration; social/provider E2E |
+| `API-AUTH-FACEBOOK-CALLBACK` | `GET /auth/facebook/callback` | OAuth state                 | `PARTIAL`     | Verify state; mode `login` re-reads settings before exchange and rejects disabled/unavailable; link path unchanged. | auth/settings/social services; auth-settings integration; social/provider E2E |
 
 ## Account API
 
@@ -169,6 +170,8 @@
 | `API-ADMIN-REVOKE-SESSIONS`  | `POST /admin/users/:userId/revoke-sessions`          | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Tăng `authVersion` và revoke refresh sessions.                                        | admin service; admin integration        |
 | `API-ADMIN-RESET-PASSWORD`   | `POST /admin/users/:userId/reset-password`           | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Hash mật khẩu tạm, bắt đổi lần login tiếp theo và revoke sessions.                    | admin service; admin integration        |
 | `API-ADMIN-SENSITIVE-REVEAL` | `POST /admin/users/:userId/sensitive-profile/reveal` | Access + `SUPER_ADMIN` | `IMPLEMENTED` | Trả CCCD plaintext; không secret/ciphertext.                                         | admin service; admin integration        |
+| `API-ADMIN-AUTH-SETTINGS-GET` | `GET /admin/settings/auth-providers`                 | Access + `settings.auth.manage` | `IMPLEMENTED` | Fresh singleton read; booleans + ISO `updatedAt`; `503 SETTINGS_UNAVAILABLE` on missing row/DB failure. | auth-settings controller/service; auth-settings integration |
+| `API-ADMIN-AUTH-SETTINGS-PATCH` | `PATCH /admin/settings/auth-providers`             | Access + `settings.auth.manage` | `IMPLEMENTED` | `expectedUpdatedAt` + ít nhất một boolean; optimistic update; `409 STALE_AUTH_SETTINGS_UPDATE`, `503 SETTINGS_UNAVAILABLE`. | auth-settings controller/service; auth-settings integration |
 
 ## Platform API
 
@@ -192,6 +195,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `User` / `users`                                                  | Identity login, email/phone, status, verification timestamps, authVersion, forced-password flag, password hash. | Public account fields đã lọc; không passwordHash.                          |
 | `UserRole` / `user_roles`                                         | User-to-role assignments; Phase 1 `SUPER_ADMIN`, Phase 2 thêm `SUPPORT`.                                        | Chỉ admin authorization; không public.                                     |
+| `AuthSettings` / `auth_settings`                                  | Singleton `id=1`; Google/Facebook login-registration booleans default `true` và `updatedAt`.                    | Public chỉ nhận `{ google, facebook }`; admin nhận hai field đầy đủ + `updatedAt`; không lưu OAuth secrets/config. |
 | `UserProfile` / `user_profiles`                                   | Basic profile, avatar, DOB/gender/city/address, terms/privacy.                                                  | `AccountMe.profile`; không sensitive identity.                             |
 | `SensitiveProfile` / `sensitive_profiles`                         | AES-GCM CCCD payload/metadata, Argon2 code/answer hashes, version/lockout.                                      | Summary masked hoặc reveal sau sensitive token.                            |
 | `SecurityQuestion` / `security_questions`                         | Code, Vietnamese label, sort order, active flag.                                                                | Active options qua account questions endpoint.                             |
@@ -214,6 +218,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 - Auth/session: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_SUSPENDED`, `VERIFICATION_TOKEN_INVALID`.
 - Identity uniqueness: `USERNAME_ALREADY_EXISTS`, `EMAIL_ALREADY_EXISTS`, `PHONE_ALREADY_EXISTS`, `CITIZEN_ID_ALREADY_EXISTS`.
 - OTP: `OTP_INVALID`, `OTP_EXPIRED`, `OTP_RATE_LIMITED`, `OTP_ALREADY_USED`.
+- Auth settings: `SETTINGS_UNAVAILABLE` (`503`, fail closed), `SOCIAL_PROVIDER_DISABLED` (OAuth error redirect), `STALE_AUTH_SETTINGS_UPDATE` (`409`).
 - Sensitive profile: `INVALID_SENSITIVE_PROFILE`, `INVALID_SENSITIVE_CHALLENGE`, `SENSITIVE_CHALLENGE_LOCKED`, `SENSITIVE_PROFILE_OTP_UNAVAILABLE`, `SENSITIVE_ACCESS_TOKEN_INVALID`, `SENSITIVE_SECURITY_REQUIRED`.
 - Wallet/payment: `INSUFFICIENT_BALANCE`, `PAYMENT_NOT_FOUND`, `PAYMENT_FAILED`, `INVALID_PAYMENT_CALLBACK`, `PAYMENT_ALREADY_PROCESSED` và các filter/idempotency errors.
 - Content/support: `GAME_NOT_FOUND`, `GAME_ARTICLE_NOT_FOUND`, `PORTAL_EVENT_NOT_FOUND`, `SUPPORT_CATEGORY_NOT_FOUND`, `SUPPORT_TICKET_NOT_FOUND`.
