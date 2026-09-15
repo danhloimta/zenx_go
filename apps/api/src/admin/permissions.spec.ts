@@ -16,4 +16,12 @@ describe('permission registry', () => {
       subject: 'Admin',
     });
   });
+
+  it('maps auth settings management to its narrow CASL subject', () => {
+    expect(PERMISSIONS.AUTH_SETTINGS_MANAGE).toEqual({
+      code: 'settings.auth.manage',
+      action: 'manage',
+      subject: 'AuthSettings',
+    });
+  });
 });
