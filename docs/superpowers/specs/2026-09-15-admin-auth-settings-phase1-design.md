@@ -1,368 +1,136 @@
-# Admin authentication settings — Phase 1 design
+# Thiết kế Phase 1 — Bật/tắt đăng nhập Google và Facebook
 
-> Status: approved design for implementation
+> Ngày: 2026-09-15
 >
-> Date: 2026-09-15
->
-> Scope: admin control of Google and Facebook login/registration availability
+> Trạng thái: Thiết kế đã duyệt, chờ triển khai
 
-## Summary
+## Hành vi người dùng
 
-Phase 1 adds two independent, database-backed switches:
+Đây là Phase 1 trong lộ trình sáu phase của AdminCP. Tài liệu chỉ mô tả việc quản trị viên bật/tắt đăng nhập và đăng ký bằng Google, Facebook.
 
-- Google login/registration enabled
-- Facebook login/registration enabled
+Hai nhà cung cấp được điều khiển độc lập:
 
-Both switches default to enabled, preserving current behavior after migration. An enabled switch permits the existing social `mode=login` flow, which either logs in a linked identity or creates an account for a new provider identity. A disabled switch removes that provider from the public login and registration screens and causes the backend to reject both OAuth initiation and callback completion for that login/registration flow.
+| Cấu hình | Khi bật | Khi tắt |
+| --- | --- | --- |
+| Google | Hiện nút Google; cho phép đăng nhập/đăng ký | Ẩn nút Google; máy chủ từ chối luồng Google |
+| Facebook | Hiện nút Facebook; cho phép đăng nhập/đăng ký | Ẩn nút Facebook; máy chủ từ chối luồng Facebook |
 
-The backend decision is authoritative. Each relevant public read, OAuth start, and OAuth callback request reads the singleton row from the current database state. There is no application cache, process-local copy, event bus, or replica-invalidation mechanism in this phase.
+Mặc định cả hai đều bật. Yêu cầu mới luôn đọc cơ sở dữ liệu nên thay đổi áp dụng ngay, không dùng bộ nhớ đệm.
 
-Account link and unlink behavior is explicitly unchanged. The existing `mode=link` flow and account social-management screens continue to work regardless of the login/registration switches.
+Ẩn nút chỉ là trình bày. Máy chủ quyết định cuối cùng và chặn cả URL OAuth mở trực tiếp.
 
-## Goals
+## Mục tiêu và phạm vi
 
-- Let an authorized administrator independently enable or disable Google and Facebook as login/registration methods at `/admin/settings`.
-- Stop disabled providers at the backend, including direct navigation to OAuth routes.
-- Reject a callback that arrives after its provider was disabled, even if its OAuth state was issued while the provider was enabled.
-- Expose only the two safe availability booleans to unauthenticated clients.
-- Preserve current behavior on rollout by creating the settings row with both providers enabled.
-- Fit the existing NestJS, Prisma/SQL Server, Next.js, API-client, React Query, and CASL conventions.
+- Bật/tắt riêng Google và Facebook tại `/admin/settings`.
+- Mỗi công tắc áp dụng cho đăng nhập và đăng ký.
+- Chặn khi bắt đầu OAuth và nhận callback.
+- Chỉ công khai hai giá trị đúng/sai an toàn.
+- Không đổi liên kết/hủy liên kết tài khoản.
 
-## Non-goals
+Luồng hiện tại dùng `mode=login` để đăng nhập hoặc tạo tài khoản mới. Hai công tắc chỉ kiểm soát mode này.
 
-Phase 1 does not include:
+Máy chủ kiểm tra cơ sở dữ liệu tại hai điểm:
 
-- a key/value store, setting registry, categories, dynamic schemas, or general-purpose settings infrastructure;
-- storing, editing, validating, or exposing Google/Facebook client IDs, client secrets, redirect URIs, or other OAuth credentials;
-- changing password registration, password login, password reset, OTP delivery, or session behavior;
-- changing account link/unlink routes, `/account/social`, or the social controls embedded in account profile screens;
-- production OTP-provider work;
-- activity or audit logging for settings changes;
-- DOB, CCCD, wallet, payment, content, support, or unrelated account-lifecycle corrections;
-- caching, pub/sub, polling infrastructure, or multi-replica cache invalidation;
-- scheduling, environment-specific overrides, provider health checks, or provider credential status in the settings UI;
-- separate login and registration switches for the same provider.
+1. **Bắt đầu OAuth:** trước khi tạo state, ghi cookie hoặc chuyển sang Google/Facebook.
+2. **Callback OAuth:** sau khi xác thực state, trước khi đổi mã ủy quyền, lấy hồ sơ, đăng nhập hoặc tạo tài khoản.
 
-## Existing behavior and terminology
+Nếu nhà cung cấp bị tắt sau khi tạo state, callback vẫn bị từ chối.
 
-`GET /api/v1/auth/google` and `GET /api/v1/auth/facebook` currently start OAuth. Their signed state has `mode=login` or `mode=link`. Despite the name, `mode=login` also creates a new local account when the provider identity is not linked and its email does not collide with an existing account. Consequently, each Phase 1 switch controls **both login and registration** by governing `mode=login`.
+`mode=link`, unlink và các màn hình liên quan không đổi.
 
-The public register page calls the same `mode=login` start route as the login page. No new OAuth mode or registration endpoint is introduced.
+## Dữ liệu tối thiểu
 
-## Architecture
+Thêm singleton định kiểu `AuthSettings`, bảng `auth_settings`, chỉ có dòng `id = 1`:
 
-### Responsibility boundaries
+| Trường | Kiểu | Mặc định | Ý nghĩa |
+| --- | --- | --- | --- |
+| `googleLoginRegistrationEnabled` | boolean | `true` | Cho phép Google trong `mode=login` |
+| `facebookLoginRegistrationEnabled` | boolean | `true` | Cho phép Facebook trong `mode=login` |
+| `updatedAt` | datetime | hiện tại | Chống ghi đè thay đổi mới hơn |
 
-1. `AuthSettingsService` owns reading and conditionally updating the one typed settings row. It returns typed values and never handles OAuth credentials.
-2. The admin controller exposes the full Phase 1 settings representation, including `updatedAt`, behind admin authentication and one CASL permission.
-3. The public auth controller exposes a read-only projection containing only provider booleans.
-4. The OAuth controller asks `AuthSettingsService` whether the provider is allowed for `mode=login` at both the start and callback boundaries. `SocialService` remains responsible for signed state, provider exchange, profile mapping, login/registration, link, and unlink behavior.
-5. The shared API client defines the request/response types used by both admin and public web screens.
-6. The web UI consumes the public projection for presentation and the admin representation for editing. UI visibility never substitutes for backend enforcement.
+Ràng buộc cơ sở dữ liệu chỉ cho phép `id = 1`. Không thêm key/value, JSON hay hạ tầng cấu hình tổng quát.
 
-The settings service may live in a small auth-settings module imported where needed. It must not become a generic configuration abstraction or absorb environment configuration.
+OAuth client ID, client secret, redirect URI và bí mật khác chỉ nằm trong biến môi trường; không lưu, trả qua API hoặc hiển thị.
 
-### Request flows
+## API và phân quyền
 
-Public rendering:
+Phản hồi JSON tiếp tục dùng dạng `{ data, error }` dưới `/api/v1`.
 
-1. Login or register UI requests the public availability projection.
-2. While that request is pending, no social provider button or social-divider copy is rendered.
-3. A provider button is rendered only when its returned boolean is `true`.
-4. Password login and password registration remain usable independently of this request.
+### API công khai
 
-OAuth start for `mode=login`:
+`GET /auth/provider-availability` không yêu cầu đăng nhập và chỉ trả:
 
-1. Validate/resolve the existing safe `returnTo` behavior.
-2. Read the singleton row from the database.
-3. If the selected provider is disabled, reject locally. Do not create OAuth state, set an OAuth-state cookie, or redirect/contact the provider.
-4. If enabled, continue the existing authorization URL and state-cookie flow.
+- `google: boolean`
+- `facebook: boolean`
 
-OAuth callback:
+Hai giá trị chỉ phản ánh quyết định bật/tắt, không tiết lộ bí mật, thông tin xác thực, URL, người cập nhật hay `updatedAt`. Phản hồi dùng `Cache-Control: no-store`.
 
-1. Verify the signed provider state and state cookie using the existing logic. This establishes the trustworthy mode; the query string must not select the policy path.
-2. Consume or clear the used state cookie as the existing callback does.
-3. If verified state is `mode=login`, read the singleton row from the database and reject when that provider is disabled.
-4. Only after the check succeeds may the backend exchange the authorization code, fetch a profile, log in an identity, or create a local account.
-5. If verified state is `mode=link`, continue the existing callback unchanged and do not apply these switches.
+### API quản trị
 
-This callback check means a state issued before an admin change does not bypass the new state. “Immediate” means every newly handled relevant request observes the current primary-database row without a cache. A request that has already passed its authoritative check is not cancelled mid-flight; Phase 1 does not introduce distributed cancellation or a long-held database lock around an external provider exchange.
+`GET /admin/settings/auth-providers` trả hai trường bật/tắt và `updatedAt`.
 
-## Data model and defaults
+`PATCH /admin/settings/auth-providers` nhận ít nhất một trường bật/tắt cùng `expectedUpdatedAt`, rồi trả đủ trạng thái mới.
 
-Add exactly one Prisma model representing a singleton table:
+Đọc và ghi yêu cầu `settings.auth.manage`, tương ứng CASL `manage AuthSettings`. `SUPER_ADMIN` có quyền; `SUPPORT` không có mặc định. Menu, trang và API đều kiểm tra.
 
-```prisma
-model AuthSettings {
-  id                                   Int      @id
-  googleLoginRegistrationEnabled      Boolean  @default(true) @map("google_login_registration_enabled")
-  facebookLoginRegistrationEnabled    Boolean  @default(true) @map("facebook_login_registration_enabled")
-  updatedAt                            DateTime @updatedAt @map("updated_at")
+Chỉ ghi khi `updatedAt` khớp `expectedUpdatedAt`. Nếu dữ liệu đã đổi, trả `409 STALE_AUTH_SETTINGS_UPDATE`; giao diện tải lại, không tự ghi đè.
 
-  @@map("auth_settings")
-}
-```
+## Giao diện
 
-The only valid identity is `id = 1`. The SQL Server migration must:
+### AdminCP
 
-- create `dbo.auth_settings` with the two `BIT NOT NULL DEFAULT 1` columns and `updated_at DATETIME2 NOT NULL`;
-- add a check constraint requiring `id = 1`, so singleton cardinality is enforced by the database rather than convention alone;
-- insert row `id = 1` with both booleans set to `1` in the same migration transaction;
-- add the new `settings.auth.manage` permission described below and associate it with the `SUPER_ADMIN` system role for role-matrix consistency.
+Thêm mục “Cài đặt” trong nhóm “Hệ thống” và trang `/admin/settings`. Trang có một khối “Đăng nhập & đăng ký mạng xã hội”, hai công tắc Google/Facebook và nút lưu.
 
-The normal development seed must also idempotently create row `id = 1` when missing, using both booleans as `true`, but use `update: {}` for an existing row so rerunning seed never overwrites administrator choices. The migration is the production default/bootstrap mechanism; runtime reads must not create or repair the row.
+Nội dung nói rõ công tắc không ảnh hưởng liên kết/hủy liên kết. Trang thể hiện tải, lỗi/thử lại, đang lưu, thành công và xung đột.
 
-`updatedAt` is concurrency metadata, not a user-facing setting. No `updatedBy`, history, JSON payload, key/value child table, credential field, or nullable provider flag is added.
+Trang không hiển thị thông tin xác thực, lịch sử hay cấu hình ngoài Phase 1.
 
-## Authorization
+### Trang công khai
 
-Add one permission, the smallest capability needed for this screen and both endpoints:
+`/auth/login` và `/auth/register` đọc API công khai:
 
-| Code | Module | CASL action | CASL subject | Purpose |
-| --- | --- | --- | --- | --- |
-| `settings.auth.manage` | `settings` | `manage` | `AuthSettings` | View and update login/registration provider switches |
+- Chỉ hiện nút khi giá trị của nhà cung cấp là `true`.
+- Nếu cả hai tắt, ẩn phần phân cách đăng nhập mạng xã hội.
+- Trong lúc tải hoặc khi đọc lỗi, không hiện nút mạng xã hội.
+- Biểu mẫu dùng mật khẩu vẫn hoạt động bình thường.
 
-Both admin read and update endpoints require `AuthGuard`, `AdminGuard`, and `PermissionGuard` with this permission. This follows the current rule that a custom role also needs `admin.access` to enter AdminCP. `SUPER_ADMIN` remains unrestricted through `manage all`; its persisted permission association keeps the role-management matrix complete. `SUPPORT` does not receive this permission by default.
+## Khi nhà cung cấp tắt hoặc cấu hình lỗi
 
-The admin navigation item and `/admin/settings` route gate use `ability.can('manage', 'AuthSettings')`. Hiding the item is convenience only; the API remains the enforcement point.
+Điểm bắt đầu hoặc callback `mode=login` đã tắt chuyển hướng với `social_error=provider_disabled`. Máy chủ không gọi nhà cung cấp, đổi mã, đăng nhập hay tạo tài khoản.
 
-## API contracts
+Callback có state sai vẫn trả lỗi state hiện có. Xác thực state trước để tham số giả không thể nhận là `mode=link`.
 
-All JSON endpoints use the existing `{ data, error }` envelope under `/api/v1`.
+Nếu dòng `AuthSettings` bị thiếu hoặc không đọc được:
 
-### Public provider availability
+- API công khai và quản trị trả `503 SETTINGS_UNAVAILABLE`.
+- Điểm bắt đầu/callback `mode=login` đóng an toàn với `social_error=settings_unavailable`.
+- Trang công khai ẩn nút mạng xã hội.
+- Đăng nhập/đăng ký bằng mật khẩu vẫn dùng được.
+- `mode=link` và unlink giữ hành vi hiện tại.
 
-`GET /auth/provider-availability`
+Nhà cung cấp bật nhưng thiếu thông tin xác thực vẫn dùng lỗi `not_configured`; công tắc không thể hiện tình trạng kỹ thuật.
 
-- Authentication: none.
-- Response `200`:
+## Migration và mặc định
 
-```json
-{
-  "data": {
-    "google": true,
-    "facebook": true
-  },
-  "error": null
-}
-```
+Migration SQL Server tạo bảng singleton, ràng buộc `id = 1`, hai cột mặc định bật, `updatedAt`, quyền `settings.auth.manage` và một dòng mặc định. Migration không sửa user, social identity, session hoặc credential hiện có.
 
-The booleans mean “admin allows login/registration.” They intentionally do not reveal or infer whether credentials are configured, secret values, redirect URIs, provider health, timestamps, administrator identity, or any other setting. An enabled but environmentally unconfigured provider retains the current `not_configured` behavior when its start route is used.
+Seed phát triển tạo dòng mặc định nếu thiếu nhưng không cập nhật dòng đã có, tránh ghi đè lựa chọn của quản trị viên. Ứng dụng khi chạy không tự tạo lại dòng bị thiếu.
 
-Use response headers appropriate for a fresh read (`Cache-Control: no-store`), and do not give this React Query request a nonzero `staleTime` or persistence. HTTP/CDN caching must not weaken immediate UI reflection.
+## Kiểm thử chấp nhận
 
-### Admin read
+- Migration tạo một dòng với Google và Facebook đều bật; chạy lại seed không đổi giá trị đã lưu.
+- Người thiếu `settings.auth.manage` không thấy trang và bị API từ chối; người có quyền đọc, lưu được hai công tắc.
+- Hai người lưu cùng `expectedUpdatedAt`: chỉ lần đầu thành công, lần sau nhận `STALE_AUTH_SETTINGS_UPDATE`.
+- Trang đăng nhập và đăng ký hiển thị đúng bốn tổ hợp bật/tắt, không hiện nút trong lúc tải.
+- Nhà cung cấp tắt bị chặn ở cả điểm bắt đầu và callback `mode=login`, kể cả state tạo trước khi tắt; không gọi nhà cung cấp hoặc đổi người dùng.
+- `mode=link` và unlink vẫn hoạt động khi đăng nhập/đăng ký của cùng nhà cung cấp bị tắt.
+- Lỗi cơ sở dữ liệu đóng đăng nhập/đăng ký mạng xã hội nhưng không chặn luồng mật khẩu.
+- API công khai chỉ trả hai boolean, không dùng bộ nhớ đệm; không phản hồi nào chứa bí mật OAuth.
 
-`GET /admin/settings/auth-providers`
+## Ngoài phạm vi
 
-- Authentication: access session plus `settings.auth.manage`.
-- Response `200`:
-
-```json
-{
-  "data": {
-    "googleLoginRegistrationEnabled": true,
-    "facebookLoginRegistrationEnabled": true,
-    "updatedAt": "2026-09-15T08:00:00.000Z"
-  },
-  "error": null
-}
-```
-
-### Admin update
-
-`PATCH /admin/settings/auth-providers`
-
-- Authentication: access session plus `settings.auth.manage`.
-- Protected by the existing global `OriginGuard` for browser mutation requests.
-- Request:
-
-```json
-{
-  "googleLoginRegistrationEnabled": false,
-  "facebookLoginRegistrationEnabled": true,
-  "expectedUpdatedAt": "2026-09-15T08:00:00.000Z"
-}
-```
-
-Rules:
-
-- `expectedUpdatedAt` is required and must be an ISO date-time.
-- Each provider field is optional to allow a partial update, but at least one must be present.
-- Supplied provider values must be booleans; unknown fields are removed by the existing global validation policy.
-- Update row `id = 1` with an atomic predicate on `updatedAt`; do not implement read-then-unconditional-write.
-- A successful update returns the same shape as the admin read with the new `updatedAt`.
-- Sending a value equal to its current value is allowed and still produces a successful representation; the implementation may avoid changing `updatedAt` only if it can do so without weakening the concurrency predicate. The simplest implementation updates the row and advances `updatedAt`.
-- A stale predicate returns `409 STALE_AUTH_SETTINGS_UPDATE`; the UI refetches and asks the operator to review the newer values instead of automatically retrying the mutation.
-
-## OAuth rejection and failure behavior
-
-OAuth start and callback are browser navigation routes and retain the existing redirect-based error transport. Add `provider_disabled` as the public `social_error` value.
-
-When a `mode=login` start or callback is disabled:
-
-- redirect through the existing safe destination logic with `social_error=provider_disabled` (falling back to `/auth/login`);
-- show neutral copy such as “Đăng nhập/đăng ký bằng nhà cung cấp này hiện đã tắt.”;
-- do not contact the provider on start, and do not exchange the code or mutate a user/social identity on callback;
-- do not identify which administrator made the change or expose internal configuration.
-
-Provider cancellation, invalid state, unlinked existing email, missing credentials, and provider failures retain their current distinct outcomes. State validation precedes the callback availability check, so malformed or forged callbacks still return `invalid_state` rather than becoming a settings oracle.
-
-Settings data is security-relevant policy. If the singleton row is missing or its database read fails:
-
-- public availability returns `503 SETTINGS_UNAVAILABLE` and no guessed/default booleans;
-- admin read/update returns `503 SETTINGS_UNAVAILABLE` unless the database layer already produces the repository's standard database failure envelope;
-- OAuth `mode=login` start/callback fails closed via `social_error=settings_unavailable`, before provider contact, token exchange, login, or registration;
-- link/unlink flows retain their existing behavior because these switches do not govern them;
-- password login and registration remain available.
-
-The public login/register UI treats an availability-load failure as social providers unavailable for that render: it keeps both buttons and the social divider hidden while leaving password forms usable. It may show a small retryable status, but it must not substitute hard-coded `true` values. AdminCP keeps the last form unsaved, reports the error, and offers refetch/retry; it must not claim the update succeeded.
-
-## AdminCP UI
-
-Add `/admin/settings` and one navigation item, “Cài đặt”, under the existing “Hệ thống” section. Both are visible only with `manage AuthSettings`.
-
-The page contains one “Đăng nhập & đăng ký mạng xã hội” card with:
-
-- a Google switch labelled as controlling Google login and registration;
-- a Facebook switch labelled as controlling Facebook login and registration;
-- concise help text that account linking/unlinking is unaffected;
-- loading skeleton, read error with retry, save-pending state, success feedback, and stale-update feedback;
-- one explicit save action rather than saving each toggle immediately.
-
-The form initializes from the admin read response, submits both current booleans with `expectedUpdatedAt`, disables duplicate submission while pending, and refreshes its baseline from the successful response. Navigating away with unsaved changes may use the browser's existing simple confirmation pattern; no reusable form framework is required.
-
-The page does not display credential configuration, credential health, raw row IDs, audit history, environment names, or unrelated settings.
-
-## Public UI
-
-Both `/auth/login` and `/auth/register` request `GET /auth/provider-availability` through the shared API client.
-
-- Render Google only when `google === true`.
-- Render Facebook only when `facebook === true`.
-- Remove the “social” divider/heading when neither provider is visible.
-- Do not render disabled buttons, placeholders named after a disabled provider, or links that can initiate it.
-- Preserve the existing password forms, return path handling, and social error toast behavior.
-- Add provider-neutral messages for `provider_disabled` and `settings_unavailable`; existing Google-specific fallback text should not be reused for Facebook.
-
-No account page or account social-management component consumes the public availability projection in Phase 1.
-
-## Migration, deployment, and rollback
-
-### Forward migration
-
-The change is additive: create the singleton table and seed row, add the permission, then deploy API/API-client/web support. The migration must be transactional following existing SQL Server migration conventions. Existing users, social identities, sessions, and OAuth credentials are untouched.
-
-For a rolling or multi-replica deployment, administrators must not be allowed to disable a provider until every serving API replica contains both start and callback enforcement. The safe release sequence is:
-
-1. Apply the additive migration.
-2. Deploy and verify all API replicas with settings reads and OAuth enforcement.
-3. Deploy the API client and web UI, including AdminCP.
-4. Only then permit operators to change the defaults.
-
-This activation ordering prevents an old replica from accepting a disabled provider during a mixed-version rollout without adding invalidation infrastructure.
-
-### Rollback
-
-The additive database objects are backward compatible with the previous application. If application rollback is required, first re-enable both providers while the new admin/API path is still available, then roll back all application replicas. Leaving the unused table and permission in place is the preferred immediate rollback because it avoids destructive schema work.
-
-If a later maintenance change removes the database objects, do so only after all new-code replicas are gone: remove role-permission associations, remove `settings.auth.manage`, then drop `auth_settings`. SQL Server/Prisma migrations have no automatic down migration in this repository, so rollback is an explicit operational procedure. Dropping the table discards only these two operator choices; it does not affect accounts or social identities.
-
-## Test strategy
-
-### Policy/service unit tests
-
-- Default row serialization returns both booleans and admin metadata correctly.
-- Provider mapping is exhaustive for `GOOGLE` and `FACEBOOK` and selects only its own field.
-- Missing row becomes `SETTINGS_UNAVAILABLE`; it is not auto-created or treated as enabled.
-- Partial update accepts either or both booleans, rejects an empty payload, and performs an optimistic conditional update.
-- Stale `expectedUpdatedAt` returns `STALE_AUTH_SETTINGS_UPDATE`.
-- Public projection contains exactly `google` and `facebook` booleans.
-
-### Controller/OAuth tests
-
-- Public read is unauthenticated, enveloped, and marked `no-store`.
-- Admin read/update reject no session, no admin access, and missing `manage AuthSettings` permission.
-- `SUPER_ADMIN` and an authorized custom role can read/update; `SUPPORT` cannot by default.
-- Disabled Google and disabled Facebook each reject direct `mode=login` start before state/cookie/provider work.
-- A callback whose signed state is `mode=login` is rejected before code exchange when disabled.
-- A state issued while enabled is rejected if the setting is disabled before callback handling.
-- Invalid callback state remains `invalid_state` even when the provider is disabled.
-- `mode=link` start/callback and unlink continue to work while the corresponding login/registration switch is disabled.
-- Settings read failure is fail-closed for login/registration and does not block password auth.
-- Existing enabled-provider, missing-credential, return-to, cookie, login, and first-time-account flows remain green.
-
-Use mocks/spies at the provider adapter to prove disabled paths make no token/userinfo calls and at Prisma to prove no social identity/user mutation follows rejection.
-
-### Migration/integration tests
-
-- Apply migrations to an empty test database and assert row `id = 1` exists with both flags enabled.
-- Assert the database check constraint rejects any second singleton identity.
-- Run seed twice after changing a flag and prove seed does not overwrite the change.
-- Exercise admin update followed immediately by public read, direct start, and callback against the same test database.
-- Exercise concurrent admin updates and prove exactly one writer wins for the same `expectedUpdatedAt`.
-- Verify permission seeding and custom-role authorization through the real guards.
-
-### Web/browser tests
-
-- Login and register show both providers at defaults.
-- Each page hides only Google, only Facebook, and then the complete social section when both are disabled.
-- No provider button flashes while availability is loading.
-- Availability failure leaves password auth usable and does not show social buttons.
-- Admin settings is absent from navigation and route-gated without permission.
-- An authorized admin loads settings, changes one or both switches, saves, and sees the returned state.
-- Stale admin submission preserves unsaved choices, displays conflict feedback, and can refetch.
-- A direct disabled start and an in-flight-state callback surface the neutral disabled message and create no account.
-- Account social link/unlink controls remain present and functional while login/registration is disabled.
-
-### Proportionate verification commands
-
-Implementation should run at minimum:
-
-```bash
-pnpm --filter api lint
-pnpm --filter api typecheck
-pnpm --filter api test
-pnpm --filter api test:integration
-pnpm --filter web lint
-pnpm --filter web typecheck
-pnpm --filter web test:e2e
-```
-
-If full browser or database tests cannot run, the implementation handoff must identify the exact skipped command and environment limitation; typecheck/unit results alone do not prove callback enforcement or migration defaults.
-
-## Documentation updates required with implementation
-
-Because canonical documents describe implemented source rather than future design, update them in the implementation change set after behavior exists:
-
-- `docs/specs/02-auth-account.md`: provider policy, immediate backend checks, unchanged link/unlink boundary, and test evidence;
-- `docs/specs/06-screen-catalog.md`: `/admin/settings` plus availability consumption on login/register;
-- `docs/specs/07-api-data-catalog.md`: public availability and admin settings endpoints/data boundary;
-- `docs/specs/08-traceability-matrix.md`: feature-to-screen/API/source/test mapping;
-- `docs/specs/09-admin.md`: permission, screen, API, data model, migration, operations, and known limits;
-- `docs/specs/README.md` only if the canonical index or inventory count changes;
-- root/environment documentation only if implementation changes setup (it should not, because credentials remain environment secrets).
-
-Update each affected document's verification date/commit according to repository convention. Do not mark the feature `IMPLEMENTED` before its code and proportional tests exist.
-
-## Acceptance checklist
-
-- [ ] One typed `AuthSettings` singleton exists; no general settings mechanism exists.
-- [ ] Migration and idempotent seed default both providers to enabled and preserve later admin choices.
-- [ ] One narrow CASL permission controls admin read, update, navigation, and route gate.
-- [ ] Public projection exposes exactly two safe booleans and is not cached.
-- [ ] Login/register UI hides disabled providers without affecting password auth.
-- [ ] Direct OAuth `mode=login` start and callback reject disabled providers from fresh DB state.
-- [ ] Disabled callbacks perform no provider exchange, login, identity creation, or account creation.
-- [ ] Existing `mode=link` and unlink behavior/screens are unchanged.
-- [ ] Credentials remain environment-only and are absent from schema and responses.
-- [ ] Missing/unreadable settings fail closed for social login/registration.
-- [ ] Migration, rollback, unit, integration, and browser evidence is recorded.
-- [ ] Canonical documentation is updated only when implementation is complete.
-
-## Residual risks and deliberate limits
-
-- “Immediate” is request-boundary consistency, not cancellation of a callback that already passed its database check. Closing that very small in-flight interval would require stronger transaction/distributed coordination outside Phase 1.
-- During a mixed-version API rollout, an old replica cannot enforce a setting it does not know about. The documented activation sequence is therefore mandatory before an operator changes defaults.
-- The public booleans represent administrator policy, not provider configuration or health. A provider can be enabled yet fail with the existing `not_configured` or provider error.
-- Database unavailability removes social login/registration until settings can be read, by design; password authentication remains the recovery path.
+- Các phase 2–6 của lộ trình cấu hình AdminCP.
+- Cấu hình key/value, cache, pub/sub hoặc đồng bộ nhiều replica.
+- Tách riêng công tắc đăng nhập và đăng ký cho cùng nhà cung cấp.
+- Sửa thông tin xác thực, kiểm tra sức khỏe nhà cung cấp hoặc ghi đè theo môi trường.
+- Thay đổi link/unlink, OTP thực tế, nhật ký hoạt động, DOB, CCCD, wallet hay vòng đời khác.
