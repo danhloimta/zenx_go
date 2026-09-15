@@ -1,18 +1,24 @@
-import { IsBoolean, IsDateString, IsDefined, IsOptional, ValidateIf } from 'class-validator';
+import { Exclude } from 'class-transformer';
+import { IsBoolean, IsDateString, IsDefined, ValidateIf } from 'class-validator';
 
 export class AdminAuthSettingsUpdateDto {
   @IsDateString()
   expectedUpdatedAt!: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   googleLoginRegistrationEnabled?: boolean;
 
-  @ValidateIf(
-    (value: AdminAuthSettingsUpdateDto) =>
-      value.googleLoginRegistrationEnabled === undefined,
-  )
-  @IsDefined()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsBoolean()
   facebookLoginRegistrationEnabled?: boolean;
+
+  @Exclude()
+  @ValidateIf(
+    (value: AdminAuthSettingsUpdateDto) =>
+      value.googleLoginRegistrationEnabled === undefined &&
+      value.facebookLoginRegistrationEnabled === undefined,
+  )
+  @IsDefined()
+  private readonly providerSettingRequired?: never;
 }

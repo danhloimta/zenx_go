@@ -198,6 +198,37 @@ describe('Auth settings API (SQL Server)', () => {
     expect(nonBoolean.status).toBe(400);
   });
 
+  it.each([
+    {
+      name: 'Facebook string alongside valid Google',
+      settings: {
+        googleLoginRegistrationEnabled: true,
+        facebookLoginRegistrationEnabled: 'false',
+      },
+    },
+    {
+      name: 'Facebook null alongside valid Google',
+      settings: {
+        googleLoginRegistrationEnabled: true,
+        facebookLoginRegistrationEnabled: null,
+      },
+    },
+    {
+      name: 'Google null',
+      settings: { googleLoginRegistrationEnabled: null },
+    },
+  ])('rejects $name before persistence', async ({ settings }) => {
+    const current = await prisma.authSettings.findUniqueOrThrow({ where: { id: 1 } });
+
+    const response = await http()
+      .patch('/admin/settings/auth-providers')
+      .set('Cookie', adminCookies)
+      .send({ expectedUpdatedAt: current.updatedAt.toISOString(), ...settings });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).not.toBe('SETTINGS_UNAVAILABLE');
+  });
+
   it('returns SETTINGS_UNAVAILABLE when the singleton row is absent', async () => {
     const saved = await prisma.authSettings.findUniqueOrThrow({ where: { id: 1 } });
     await prisma.authSettings.delete({ where: { id: 1 } });
