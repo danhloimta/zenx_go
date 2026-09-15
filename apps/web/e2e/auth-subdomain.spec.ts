@@ -63,9 +63,9 @@ test.describe('cross-subdomain authentication', () => {
     test(`OAuth ${provider} returns to the originating game path`, async ({ page }) => {
       test.setTimeout(45_000);
       const returnTo = `http://orion.lvh.me:3300/?from=${provider.toLowerCase()}`;
-      await page.goto(`http://orion.lvh.me:3300/?from=${provider.toLowerCase()}`);
-      await page.getByRole('link', { name: 'Tài khoản', exact: true }).click();
+      await gotoLogin(page, returnTo);
       await expect(page).toHaveURL(/\/auth\/login\?returnTo=/);
+      await expect(page.getByRole('link', { name: provider, exact: true })).toBeVisible();
       await page.getByRole('link', { name: provider, exact: true }).click();
 
       await expect(page).toHaveURL(returnTo);
@@ -98,7 +98,9 @@ async function registerAccount(page: Page, label: string): Promise<Account> {
   await page.locator('input[type="checkbox"]').nth(0).check();
   await page.getByRole('button', { name: 'Đăng ký tài khoản' }).click();
   await expect(page).toHaveURL(/\/account\/complete-profile/);
-  await page.getByLabel('Họ và tên').fill(`Cross ${label}`);
+  const fullName = page.getByLabel('Họ và tên');
+  await expect(fullName).not.toHaveValue('');
+  await fullName.fill(`Cross ${label}`);
   await page.getByLabel('Ngày sinh').fill('2000-01-01');
   await page.getByLabel('Tỉnh / Thành phố').fill('Ho Chi Minh City');
   await page.getByRole('button', { name: 'Hoàn tất hồ sơ' }).click();

@@ -6,6 +6,15 @@ import { api } from '@/lib/api';
 
 export const adminAuthSettingsQueryKey = ['admin', 'auth-settings'] as const;
 
+export function useAuthProviderAvailability() {
+  return useQuery({
+    queryKey: ['auth', 'provider-availability'],
+    queryFn: api.auth.providerAvailability,
+    retry: false,
+    staleTime: 0,
+  });
+}
+
 export function useAdminAuthSettings() {
   return useQuery({
     queryKey: adminAuthSettingsQueryKey,
