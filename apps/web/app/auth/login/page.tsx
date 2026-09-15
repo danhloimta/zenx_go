@@ -41,7 +41,9 @@ function LoginForm() {
   const queryReturnTo = getReturnToCandidate(searchParams.get('returnTo') ?? searchParams.get('next'));
   const [returnTo, setReturnTo] = useState<string | undefined>(queryReturnTo);
   const providers = useAuthProviderAvailability();
-  const availability = !providers.isFetching && providers.isSuccess ? providers.data : undefined;
+  const availability = !providers.isFetching && !providers.isPaused && providers.isSuccess
+    ? providers.data
+    : undefined;
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', password: '' },

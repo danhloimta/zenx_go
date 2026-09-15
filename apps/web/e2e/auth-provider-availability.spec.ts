@@ -105,6 +105,39 @@ test('cached providers fail closed during a stale query refetch', async ({ page 
   await expectSocialProjection(page, 'Hoặc đăng ký bằng tài khoản', { google: true, facebook: true });
 });
 
+for (const authPage of authPages) {
+  test(`${authPage.path} fails closed while cached provider refetch is paused offline`, async ({
+    context,
+    page,
+  }) => {
+    await mockAvailability(page, { google: true, facebook: true });
+    const availabilityResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/auth/provider-availability'),
+    );
+    await page.goto(authPage.path);
+    await availabilityResponse;
+    await expectSocialProjection(page, authPage.divider, { google: true, facebook: true });
+
+    const otherPage = authPage.path === '/auth/login'
+      ? { path: '/auth/register', link: 'Tạo tài khoản' }
+      : { path: '/auth/login', link: 'Đăng nhập ngay' };
+    await page.getByRole('link', { name: otherPage.link, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${otherPage.path}$`));
+    await expectSocialProjection(page, otherPage.path === '/auth/login' ? 'Hoặc đăng nhập với' : 'Hoặc đăng ký bằng tài khoản', {
+      google: true,
+      facebook: true,
+    });
+
+    await context.setOffline(true);
+    const targetLink = authPage.path === '/auth/login' ? 'Đăng nhập ngay' : 'Tạo tài khoản';
+    await page.getByRole('link', { name: targetLink, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${authPage.path}$`));
+
+    await expectSocialProjection(page, authPage.divider, { google: false, facebook: false });
+    await expect(page.getByRole('textbox', { name: authPage.passwordField, exact: true })).toBeEnabled();
+  });
+}
+
 for (const { code, message } of [
   { code: 'provider_disabled', message: 'Phương thức đăng nhập này hiện không khả dụng.' },
   { code: 'settings_unavailable', message: 'Phương thức đăng nhập này hiện không khả dụng.' },

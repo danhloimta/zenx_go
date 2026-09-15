@@ -29,6 +29,12 @@ export function useUpdateAdminAuthSettings() {
   return useMutation({
     mutationFn: (input: AdminAuthSettingsUpdateRequest) => api.admin.authSettings.update(input),
     retry: false,
+    onMutate: async () => {
+      await queryClient.cancelQueries({
+        queryKey: adminAuthSettingsQueryKey,
+        exact: true,
+      });
+    },
     onSuccess: (settings) => {
       queryClient.setQueryData(adminAuthSettingsQueryKey, settings);
     },

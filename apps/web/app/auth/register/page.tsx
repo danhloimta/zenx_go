@@ -63,7 +63,9 @@ export default function RegisterPage() {
   const [otpSent, setOtpSent] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
   const providers = useAuthProviderAvailability();
-  const availability = !providers.isFetching && providers.isSuccess ? providers.data : undefined;
+  const availability = !providers.isFetching && !providers.isPaused && providers.isSuccess
+    ? providers.data
+    : undefined;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),

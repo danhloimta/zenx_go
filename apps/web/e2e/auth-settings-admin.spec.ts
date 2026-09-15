@@ -162,6 +162,66 @@ test('background revalidation does not overwrite dirty settings edits', async ({
   await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
 });
 
+test('successful save fences an older settings response', async ({
+  context,
+  page,
+  request,
+}) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const admin = await createRoleAccount(request, `settings-fence-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+
+  const olderSettingsResponse = await request.get(`${apiBase}/admin/settings/auth-providers`, {
+    headers: authenticatedHeaders(adminCookie),
+  });
+  expect(olderSettingsResponse.status()).toBe(200);
+  const olderSettingsPayload = await olderSettingsResponse.json();
+  let releaseOlderResponse!: () => void;
+  const olderResponseReleased = new Promise<void>((resolveRelease) => {
+    releaseOlderResponse = resolveRelease;
+  });
+  let olderRequestStarted = false;
+  await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
+    if (route.request().method() !== 'GET' || olderRequestStarted) return route.continue();
+    olderRequestStarted = true;
+    await olderResponseReleased;
+    await route.fulfill({
+      status: olderSettingsResponse.status(),
+      contentType: 'application/json',
+      body: JSON.stringify(olderSettingsPayload),
+    });
+  });
+
+  await context.setOffline(true);
+  await context.setOffline(false);
+  await expect.poll(() => olderRequestStarted).toBe(true);
+
+  await page.getByRole('checkbox', { name: 'Google' }).uncheck();
+  const patchResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'PATCH' &&
+      candidate.url().endsWith('/api/v1/admin/settings/auth-providers'),
+  );
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await patchResponse;
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
+
+  const olderGetResponse = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'GET' &&
+      candidate.url().endsWith('/api/v1/admin/settings/auth-providers'),
+  );
+  releaseOlderResponse();
+  await olderGetResponse;
+  await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
+
+  await page.unroute('**/api/v1/admin/settings/auth-providers');
+});
+
 test('failed stale conflict reload stays truthful and can retry server state', async ({
   page,
   request,
