@@ -81,19 +81,24 @@ export default function AdminAuthSettingsPage() {
         },
         onError: async (error) => {
           if (error instanceof ApiError && error.code === 'STALE_AUTH_SETTINGS_UPDATE') {
-            const result = await settings.refetch();
-            if (result.isSuccess && result.data) {
-              replaceFormWith(result.data);
-              setNotice({
-                kind: 'conflict',
-                text: 'Cài đặt đã được quản trị viên khác thay đổi. Dữ liệu mới nhất đã được tải lại.',
-              });
-            } else {
-              setNotice({
-                kind: 'conflict',
-                text: 'Cài đặt đã được quản trị viên khác thay đổi nhưng không thể tải dữ liệu mới nhất. Hãy thử lại.',
-                canReload: true,
-              });
+            setIsConflictReloading(true);
+            try {
+              const result = await settings.refetch();
+              if (result.isSuccess && result.data) {
+                replaceFormWith(result.data);
+                setNotice({
+                  kind: 'conflict',
+                  text: 'Cài đặt đã được quản trị viên khác thay đổi. Dữ liệu mới nhất đã được tải lại.',
+                });
+              } else {
+                setNotice({
+                  kind: 'conflict',
+                  text: 'Cài đặt đã được quản trị viên khác thay đổi nhưng không thể tải dữ liệu mới nhất. Hãy thử lại.',
+                  canReload: true,
+                });
+              }
+            } finally {
+              setIsConflictReloading(false);
             }
             return;
           }

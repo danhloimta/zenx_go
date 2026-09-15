@@ -209,6 +209,61 @@ test('failed stale conflict reload stays truthful and can retry server state', a
   await expect(page.getByText('Dữ liệu mới nhất đã được tải lại.')).toBeVisible();
 });
 
+test('automatic stale conflict reload locks controls and replaces the form baseline', async ({
+  page,
+  request,
+}) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const admin = await createRoleAccount(request, `settings-lock-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+
+  const baseline = await readSettings(request, adminCookie);
+  const external = await request.patch(`${apiBase}/admin/settings/auth-providers`, {
+    headers: authenticatedHeaders(adminCookie),
+    data: {
+      expectedUpdatedAt: baseline.updatedAt,
+      facebookLoginRegistrationEnabled: false,
+    },
+  });
+  expect(external.status()).toBe(200);
+
+  let releaseReload!: () => void;
+  const reloadReleased = new Promise<void>((resolveRelease) => {
+    releaseReload = resolveRelease;
+  });
+  let reloadStarted = false;
+  await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    reloadStarted = true;
+    await reloadReleased;
+    await route.continue();
+  });
+
+  await page.getByRole('checkbox', { name: 'Google' }).uncheck();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect.poll(() => reloadStarted).toBe(true);
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeDisabled();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Lưu thay đổi|Đang lưu…/ })).toBeDisabled();
+
+  const response = page.waitForResponse(
+    (candidate) =>
+      candidate.request().method() === 'GET' &&
+      candidate.url().endsWith('/api/v1/admin/settings/auth-providers'),
+  );
+  releaseReload();
+  await response;
+  await expect(page.getByText(/đã được quản trị viên khác thay đổi/i)).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Facebook' })).not.toBeChecked();
+
+  await page.getByRole('checkbox', { name: 'Facebook' }).check();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+});
+
 async function createRoleAccount(
   request: APIRequestContext,
   username: string,
