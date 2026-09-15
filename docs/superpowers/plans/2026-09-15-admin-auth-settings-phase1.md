@@ -575,35 +575,40 @@ git commit -m "feat: respect auth provider availability in public ui"
 - Modify: `docs/specs/06-screen-catalog.md`
 - Modify: `docs/specs/07-api-data-catalog.md`
 - Modify: `docs/specs/08-traceability-matrix.md`
+- Modify: `docs/specs/09-admin.md`
 
 **Interfaces:**
 - Consumes: completed endpoint, screen, persistence, RBAC, and verification names from Tasks 1–6.
 - Produces: durable catalog/traceability entries marking Phase 1 behavior and evidence implemented; no Phase 2–6 claims.
 
-- [ ] **Step 1: Run a documentation red check against stale catalog claims.**
+- [ ] **Step 1: Record broader OAuth status and verify Phase 1 settings documentation is absent.**
 
 Run:
 
 ```bash
-rg -n "FEAT-AUTH-004.*PARTIAL|API-AUTH-(GOOGLE|FACEBOOK).*(START|CALLBACK).*PARTIAL|SCR-ADMIN-SETTINGS|provider-availability|settings/auth-providers|AuthSettings" docs/specs
+rg -n "FEAT-AUTH-004|API-AUTH-(GOOGLE|FACEBOOK).*(START|CALLBACK)|SCR-ADMIN-SETTINGS|provider-availability|settings/auth-providers|AuthSettings" docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md docs/specs/09-admin.md
 ```
 
-Expected: OAuth entries are still `PARTIAL`, and the new screen, endpoints, singleton, permission, and test evidence are absent.
+Expected: `FEAT-AUTH-004` and the four provider OAuth rows are `PARTIAL`; the new settings screen, endpoints, singleton, permission, and test evidence are absent. Record these broader statuses so Task 7 preserves them unless separate implementation evidence satisfies the canonical status definition independently of Phase 1 toggles.
 
 - [ ] **Step 2: Update only Phase 1 documentation.**
 
-In `02-auth-account.md`, document current DB enforcement at login-mode start/callback, fail-closed behavior, and unchanged link/unlink/password flows; mark `FEAT-AUTH-004` implemented. In `06-screen-catalog.md`, add `SCR-ADMIN-SETTINGS` at `/admin/settings`, update login/register dependencies to include availability, and name both new E2E files. In `07-api-data-catalog.md`, add the public GET and two admin settings methods with exact auth/error/cache behavior, add `AuthSettings / auth_settings` to the data catalog, and mark the four OAuth rows implemented with settings enforcement evidence. In `08-traceability-matrix.md`, connect `FEAT-AUTH-004` to the settings screen/APIs/service and the unit, integration, and E2E files from this plan.
+In `02-auth-account.md`, document the implemented database toggle enforcement at login-mode start/callback, fail-closed behavior, and unchanged link/unlink/password flows. Preserve the existing `FEAT-AUTH-004` status unless evidence independent of this Phase 1 change satisfies the canonical status definition; the toggles do not establish provider credentials or production readiness. In `06-screen-catalog.md`, add `SCR-ADMIN-SETTINGS` at `/admin/settings`, update login/register dependencies to include availability, and name both new E2E files. In `07-api-data-catalog.md`, add the public GET and two admin settings methods with exact auth/error/cache behavior, add `AuthSettings / auth_settings` to the data catalog, and update the four OAuth rows' behavior/evidence to mention implemented settings enforcement while preserving their broader existing status unless independently justified. In `08-traceability-matrix.md`, connect `FEAT-AUTH-004` to the settings screen/APIs/service and the unit, integration, and E2E files from this plan without upgrading the broader feature status based only on toggles.
+
+In `09-admin.md`, add the implemented `/admin/settings` screen to current status and Admin surface; document `settings.auth.manage` / CASL `manage AuthSettings`, `SUPER_ADMIN` default grant and `SUPPORT` exclusion; add `GET/PATCH /admin/settings/auth-providers` plus the public availability dependency; document singleton `AuthSettings` fields, `id=1` constraint, optimistic `expectedUpdatedAt`, migration/seed behavior, `SETTINGS_UNAVAILABLE` and `STALE_AUTH_SETTINGS_UPDATE`; and add an operational check for the page and immediate start/callback enforcement. State explicitly that Phase 1 stores no OAuth secrets, does not configure or health-check providers, does not prove provider production readiness, and does not change password or link/unlink behavior.
 
 - [ ] **Step 3: Verify documentation names and prohibited scope.**
 
 Run:
 
 ```bash
-rg -n "SCR-ADMIN-SETTINGS|provider-availability|settings/auth-providers|settings.auth.manage|AuthSettings|auth-settings.integration.spec.ts|auth-provider-availability.spec.ts" docs/specs
-rg -n "cache|activity log|OTP|DOB|CCCD|wallet|mode=link|unlink" docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md
+rg -n "FEAT-AUTH-004.*PARTIAL" docs/specs/02-auth-account.md docs/specs/08-traceability-matrix.md
+rg -n "API-AUTH-(GOOGLE|FACEBOOK).*(START|CALLBACK).*PARTIAL" docs/specs/07-api-data-catalog.md
+rg -n "SCR-ADMIN-SETTINGS|provider-availability|settings/auth-providers|settings.auth.manage|AuthSettings|auth-settings.integration.spec.ts|auth-provider-availability.spec.ts" docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md docs/specs/09-admin.md
+rg -n "credentials|production readiness|cache|activity log|OTP|DOB|CCCD|wallet|mode=link|unlink" docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md docs/specs/09-admin.md
 ```
 
-Expected: the first command shows consistent exact names across catalogs; the second shows only explicit unchanged/out-of-scope statements, not new settings mechanisms or claims.
+Expected: the first status command finds both `FEAT-AUTH-004` rows as `PARTIAL`; the second finds all four OAuth API rows as `PARTIAL`; the third shows consistent exact Phase 1 names across all five catalogs; the fourth shows explicit operational limitations and unchanged/out-of-scope statements, not new settings mechanisms or provider-readiness claims.
 
 - [ ] **Step 4: Run the complete proportional release gate.**
 
@@ -626,7 +631,7 @@ Expected: unit, type, lint, integration, build, targeted Phase 1 E2E, OAuth retu
 Run:
 
 ```bash
-rg -n "clientSecret|client_id|redirectUri|authorizationUrl|tokenUrl|userInfoUrl" apps/api/src/auth-settings apps/web/app/admin/settings packages/api-client/src/index.ts
+rg -n "clientSecret|client_id|redirectUri|authorizationUrl|tokenUrl|userInfoUrl" apps/api/src/auth-settings apps/web/app/admin/settings packages/api-client/src/index.ts docs/specs/09-admin.md
 git diff --check
 git status --short
 ```
@@ -636,7 +641,7 @@ Expected: secret/config search has no matches in auth-settings/AdminCP code (exi
 - [ ] **Step 6: Commit the durable documentation.**
 
 ```bash
-git add docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md
+git add docs/specs/02-auth-account.md docs/specs/06-screen-catalog.md docs/specs/07-api-data-catalog.md docs/specs/08-traceability-matrix.md docs/specs/09-admin.md
 git commit -m "docs: record auth settings phase 1"
 ```
 
