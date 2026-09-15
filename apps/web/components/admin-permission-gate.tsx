@@ -1,9 +1,11 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAdminAbility } from '@/lib/admin-ability';
 
 const routePermissions: Array<{ prefix: string; action: string; subject: string }> = [
+  { prefix: '/admin/settings', action: 'manage', subject: 'AuthSettings' },
   { prefix: '/admin/content/genres', action: 'manage', subject: 'Genre' },
   { prefix: '/admin/content/articles', action: 'manage', subject: 'Article' },
   { prefix: '/admin/content/events', action: 'manage', subject: 'Event' },
@@ -23,9 +25,16 @@ const routePermissions: Array<{ prefix: string; action: string; subject: string 
 
 export function AdminPermissionGate({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
+  const router = useRouter();
   const ability = useAdminAbility();
   const required = routePermissions.find((entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`));
-  if (required && !ability.can(required.action, required.subject)) {
+  const denied = Boolean(required && !ability.can(required.action, required.subject));
+  const redirectDeniedSettings = denied && required?.subject === 'AuthSettings';
+  useEffect(() => {
+    if (!redirectDeniedSettings) return;
+    router.replace(ability.can('read', 'SupportDashboard') ? '/admin/support' : '/admin');
+  }, [ability, redirectDeniedSettings, router]);
+  if (denied) {
     return <main className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">Bạn không có quyền truy cập màn hình này.</main>;
   }
   return <>{children}</>;
