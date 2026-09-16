@@ -88,7 +88,7 @@ export default function GameOperationsPage() {
   const reloadServerOperations = async () => {
     const result = await operations.refetch();
     const server = result.data;
-    if (!server) return;
+    if (!result.isSuccess || !server) return;
     const next = { enabled: server.operationalStatus === 'MAINTENANCE', message: server.maintenanceMessage ?? '', expectedEndsAt: toLocalInput(server.maintenanceEndsAt) };
     setEnabled(next.enabled);
     setMessage(next.message);
