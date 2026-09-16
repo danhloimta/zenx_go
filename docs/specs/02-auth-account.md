@@ -68,6 +68,14 @@
 
 ## Basic account/profile
 
+## Game SSO MVP
+
+- A game registers one confidential SSO client with an exact callback URI. Browser authorization uses `GET /game-sso/authorize`; the game server exchanges the 60-second single-use code through `POST /game-sso/exchange` with HTTP Basic client credentials.
+- A successful exchange records the account as a player of that game. A blocked game-player cannot receive or exchange a new code; this does not revoke a session already created by the game server.
+- The public game shell renders **Chơi ngay** only while that client's `isActive` flag is true. It creates a fresh browser `state`, persists it per game in `sessionStorage`, and forwards it unchanged to the exact callback URI.
+- Client secrets are visible once after creation or rotation. They must be copied into the game-server secret manager, never returned by read APIs, stored in audit metadata, or written to application/proxy logs. Authorization codes and HTTP Basic credentials follow the same no-log rule.
+- Browser E2E uses a local mock game server which accepts the callback, performs the exchange server-to-server, and keeps only assertion-safe `state`, status and minimal returned identity in memory. It never retains or emits an authorization code, secret or Basic header.
+
 ### Screens
 
 | Screen ID              | Route                       | Hành vi chính                                                                                        | API/source/test                                                                                                   |
@@ -126,5 +134,5 @@ Avatar upload giới hạn 2 MB, chỉ JPEG/PNG/WebP và kiểm tra file signatu
 
 - Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, `apps/api/src/otp/otp.service.spec.ts`, `apps/api/src/social/social.service.spec.ts`, `apps/api/src/auth-settings/auth-settings.service.spec.ts`, `apps/api/src/auth/auth.controller.spec.ts`, `apps/api/src/config/config.module.spec.ts`.
 - Integration: `apps/api/test/integration/vertical-slice.integration.spec.ts`, `sensitive-profile.integration.spec.ts`, `auth-settings.integration.spec.ts`.
-- Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`, `auth-provider-availability.spec.ts`.
+- Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`, `auth-provider-availability.spec.ts`, `game-admin.spec.ts` (callback/state, exchange and block/unblock lifecycle).
 - Test gap: provider OAuth thật chưa có credentials trong local/test; email/SMS delivery thật chưa được kiểm thử ngoài mock seam.

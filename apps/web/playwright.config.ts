@@ -29,6 +29,14 @@ export default defineConfig({
       env: { ...process.env, OAUTH_MOCK_PORT: '4400' },
     },
     {
+      command: 'node apps/web/e2e/mock-game-sso-server.mjs',
+      cwd: '../..',
+      url: 'http://127.0.0.1:4500/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { ...process.env, GAME_SSO_MOCK_PORT: '4500' },
+    },
+    {
       command: 'pnpm --filter api start',
       cwd: '../..',
       url: `${e2eApiBaseUrl}/health`,

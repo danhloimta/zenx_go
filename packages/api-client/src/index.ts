@@ -281,7 +281,7 @@ export type SupportMessageAuthorType = 'CUSTOMER' | 'STAFF';
 export type AdminRole = 'SUPER_ADMIN' | 'SUPPORT';
 export interface RoleSummary { id: string; code: string; name: string; }
 export interface Permission { id: string; code: string; module: string; action: string; subject: string; name: string; description?: string | null; sortOrder: number; isActive: boolean; }
-export interface RoleDetail extends RoleSummary { description?: string | null; isSystem: boolean; isActive: boolean; createdAt: string; updatedAt: string; userCount: number; permissions: Permission[]; }
+export interface RoleDetail extends RoleSummary { description?: string | null; isSystem: boolean; isActive: boolean; scopeType: 'PLATFORM' | 'GAME'; createdAt: string; updatedAt: string; userCount: number; permissions: Permission[]; }
 export interface AbilityRule { action: string; subject: string; }
 
 export interface AuthUser {
@@ -395,6 +395,19 @@ export interface AdminUserSummary extends Omit<AuthUser, 'roles'> {
   wallet?: WalletSummary & { updatedAt?: string };
 }
 export interface AdminMe extends AdminUserSummary { permissions: string[]; abilityRules: AbilityRule[]; }
+export interface GameAdminContext {
+  game: { id: string; code: string; name: string; subdomain: string; logoUrl: string | null; operationalStatus: string; isPublic: boolean };
+  roles: RoleSummary[];
+  abilityRules: AbilityRule[];
+  isSuperAdmin: boolean;
+}
+export interface GamePlayer {
+  id: string; userId: string; user: { id: string; username: string; profile: { fullName: string; avatarUrl?: string | null } | null };
+  status: 'ACTIVE' | 'BLOCKED'; firstLoginAt: string; lastLoginAt: string; loginCount: number; blockedAt: string | null; blockReason: string | null; updatedAt: string;
+}
+export interface GameAdminDashboard { totals: { totalPlayers: number; newToday: number; new7d: number; new30d: number; active7d: number; active30d: number; returning: number; totalSsoLogins: number }; recentPlayers: GamePlayer[]; }
+export interface GameAuditEntry { id: string; action: string; targetType: string; targetId: string | null; reason: string | null; beforeData: unknown; afterData: unknown; actor: { id: string; username: string; displayName: string } | null; createdAt: string; }
+export interface GameSsoClient { id: string; clientId: string; redirectUri: string; isActive: boolean; createdAt: string; updatedAt: string; clientSecret?: string; }
 
 export interface AdminSensitiveSummary {
   identity: { configured: boolean; last4: string | null };
@@ -1028,6 +1041,7 @@ export interface GameSummary {
   sortOrder: number;
   genres: GameGenre[];
   platforms: string[];
+  sso: null | { authorizeUrl: string };
 }
 
 export interface GameArticleSummary {
@@ -1399,6 +1413,28 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         return `${clientBasePath(options.baseUrl)}/auth/${provider}${suffix ? `?${suffix}` : ''}`;
       },
     },
+    gameAdmin: {
+      context: (subdomain: string) => client.get<GameAdminContext>(`/game-admin/context/by-subdomain/${encodeURIComponent(subdomain)}`),
+      dashboard: (gameId: string) => client.get<GameAdminDashboard>(`/game-admin/games/${encodeURIComponent(gameId)}/dashboard`),
+      players: (gameId: string, query: { page?: number; pageSize?: number; search?: string; status?: 'ACTIVE' | 'BLOCKED' } = {}) => client.get<Paginated<GamePlayer>>(`/game-admin/games/${encodeURIComponent(gameId)}/players`, query),
+      player: (gameId: string, userId: string) => client.get<GamePlayer>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}`),
+      updatePlayerStatus: (gameId: string, userId: string, input: { status: 'ACTIVE' | 'BLOCKED'; expectedUpdatedAt: string; reason: string }) => client.patch<GamePlayer>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/status`, input),
+      audit: (gameId: string, query: { page?: number; pageSize?: 20 | 50; action?: string; actorUserId?: string; from?: string; to?: string } = {}) => client.get<Paginated<GameAuditEntry>>(`/game-admin/games/${encodeURIComponent(gameId)}/audit`, query),
+      content: {
+        presentation: (gameId: string) => client.get<AdminContentGame>(`/game-admin/games/${encodeURIComponent(gameId)}/presentation`),
+        updatePresentation: (gameId: string, input: AdminContentGamePresentationUpdateRequest) => client.patch<AdminContentGame>(`/game-admin/games/${encodeURIComponent(gameId)}/presentation`, input),
+        articles: (gameId: string, query: { page?: number; pageSize?: number; search?: string; category?: GameArticleCategory; status?: ContentPublishStatus; deletedOnly?: boolean } = {}) => client.get<Paginated<AdminContentArticle>>(`/game-admin/games/${encodeURIComponent(gameId)}/articles`, query),
+        article: (gameId: string, articleId: string) => client.get<AdminContentArticle>(`/game-admin/games/${encodeURIComponent(gameId)}/articles/${encodeURIComponent(articleId)}`),
+        createArticle: (gameId: string, input: Omit<AdminContentArticleCreateRequest, 'gameId'>) => client.post<AdminContentArticle>(`/game-admin/games/${encodeURIComponent(gameId)}/articles`, input),
+        updateArticle: (gameId: string, articleId: string, input: AdminContentArticleUpdateRequest) => client.patch<AdminContentArticle>(`/game-admin/games/${encodeURIComponent(gameId)}/articles/${encodeURIComponent(articleId)}`, input),
+        deleteArticle: (gameId: string, articleId: string) => client.delete<void>(`/game-admin/games/${encodeURIComponent(gameId)}/articles/${encodeURIComponent(articleId)}`),
+        restoreArticle: (gameId: string, articleId: string) => client.post<AdminContentArticle>(`/game-admin/games/${encodeURIComponent(gameId)}/articles/${encodeURIComponent(articleId)}/restore`),
+        events: (gameId: string, query: { page?: number; pageSize?: number; search?: string; status?: ContentPublishStatus } = {}) => client.get<Paginated<AdminContentEvent>>(`/game-admin/games/${encodeURIComponent(gameId)}/events`, query),
+        event: (gameId: string, eventId: string) => client.get<AdminContentEvent>(`/game-admin/games/${encodeURIComponent(gameId)}/events/${encodeURIComponent(eventId)}`),
+        createEvent: (gameId: string, input: Omit<AdminContentEventCreateRequest, 'gameId'>) => client.post<AdminContentEvent>(`/game-admin/games/${encodeURIComponent(gameId)}/events`, input),
+        updateEvent: (gameId: string, eventId: string, input: AdminContentEventUpdateRequest) => client.patch<AdminContentEvent>(`/game-admin/games/${encodeURIComponent(gameId)}/events/${encodeURIComponent(eventId)}`, input),
+      },
+    },
     admin: {
       me: () => client.get<AdminMe>('/admin/me'),
       dashboard: () => client.get<AdminDashboard>('/admin/dashboard'),
@@ -1451,6 +1487,13 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
         updateRole: (roleId: string, input: UpdateRoleRequest) => client.patch<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}`, input),
         deleteRole: (roleId: string, input: DeleteRoleRequest) => client.request<{ deleted: boolean }>(`/admin/access/roles/${encodeURIComponent(roleId)}`, { method: 'DELETE', body: input }),
         replacePermissions: (roleId: string, input: ReplaceRolePermissionsRequest) => client.put<RoleDetail>(`/admin/access/roles/${encodeURIComponent(roleId)}/permissions`, input),
+      },
+      gamesManagement: {
+        admins: (gameId: string) => client.get<Array<{ id: string; user: { id: string; username: string }; role: RoleSummary; assignedAt: string }>>(`/admin/games/${encodeURIComponent(gameId)}/admins`),
+        replaceAdmins: (gameId: string, userId: string, input: { roleIds: string[]; reason: string }) => client.put<{ userId: string; roles: RoleSummary[] }>(`/admin/games/${encodeURIComponent(gameId)}/admins/${encodeURIComponent(userId)}`, input),
+        ssoClient: (gameId: string) => client.get<GameSsoClient | null>(`/admin/games/${encodeURIComponent(gameId)}/sso-client`),
+        updateSsoClient: (gameId: string, input: { redirectUri: string; isActive: boolean }) => client.patch<GameSsoClient>(`/admin/games/${encodeURIComponent(gameId)}/sso-client`, input),
+        rotateSsoSecret: (gameId: string) => client.post<GameSsoClient>(`/admin/games/${encodeURIComponent(gameId)}/sso-client/rotate-secret`),
       },
 
       finance: {

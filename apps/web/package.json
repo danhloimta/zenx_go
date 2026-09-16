@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "e2e:build": "cross-env NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_BASE_URL=/api/v1 API_PROXY_ORIGIN=http://127.0.0.1:4300 PUBLIC_BASE_DOMAIN=lvh.me PUBLIC_WEB_ORIGIN=http://lvh.me:3300 next build",
+    "test:e2e": "pnpm run e2e:build && playwright test"
   },
   "dependencies": {
     "@casl/ability": "7.0.1",

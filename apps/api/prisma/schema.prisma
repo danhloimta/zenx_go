@@ -45,6 +45,11 @@ model User {
   roles                  UserRole[]
   assignedRoleChanges    UserRole[]               @relation("UserRoleAssignedBy")
   authorizationAuditLogs AuthorizationAuditLog[]  @relation("AuthorizationAuditActor")
+  gameRoleAssignments   GameRoleAssignment[]     @relation("GameRoleAssignmentUser")
+  assignedGameRoles     GameRoleAssignment[]     @relation("GameRoleAssignmentAssignedBy")
+  gamePlayers           GamePlayer[]             @relation("GamePlayerUser")
+  blockedGamePlayers    GamePlayer[]             @relation("GamePlayerBlockedBy")
+  gameSsoCodes          GameSsoAuthorizationCode[]
   assignedSupportTickets SupportTicket[]          @relation("SupportTicketAssignee")
   supportMessages        SupportTicketMessage[]   @relation("SupportMessageAuthor")
   supportReadStates      SupportTicketReadState[] @relation("SupportReadUser")
@@ -97,10 +102,12 @@ model Role {
   description String?          @db.NVarChar(500)
   isSystem    Boolean          @default(false) @map("is_system")
   isActive    Boolean          @default(true) @map("is_active")
+  scopeType   String           @default("PLATFORM") @map("scope_type") @db.VarChar(16)
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   users       UserRole[]
   permissions RolePermission[]
+  gameAssignments GameRoleAssignment[]
 
   @@index([isActive, code])
   @@map("roles")
@@ -116,6 +123,7 @@ model Permission {
   description String?          @db.NVarChar(500)
   sortOrder   Int              @default(0) @map("sort_order")
   isActive    Boolean          @default(true) @map("is_active")
+  scopeType   String           @default("PLATFORM") @map("scope_type") @db.VarChar(16)
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   roles       RolePermission[]
@@ -143,6 +151,7 @@ model AuthorizationAuditLog {
   action      String    @db.VarChar(64)
   targetType  String    @map("target_type") @db.VarChar(32)
   targetId    String?   @map("target_id") @db.UniqueIdentifier
+  gameId      String?   @map("game_id") @db.UniqueIdentifier
   beforeData  String?   @map("before_data") @db.NVarChar(Max)
   afterData   String?   @map("after_data") @db.NVarChar(Max)
   reason      String?   @db.NVarChar(500)
@@ -150,9 +159,11 @@ model AuthorizationAuditLog {
   userAgent   String?   @map("user_agent") @db.NVarChar(512)
   createdAt   DateTime  @default(now()) @map("created_at")
   actor       User?     @relation("AuthorizationAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  game        Game?     @relation(fields: [gameId], references: [id], onDelete: SetNull)
 
   @@index([targetType, targetId, createdAt])
   @@index([actorUserId, createdAt])
+  @@index([gameId, createdAt])
   @@map("authorization_audit_logs")
 }
 
@@ -194,11 +205,90 @@ model Game {
   articles          GameArticle[]
   milestones        GameMilestone[]
   events            GameEvent[]
+  roleAssignments   GameRoleAssignment[]
+  players           GamePlayer[]
+  ssoClient         GameSsoClient?
+  ssoCodes          GameSsoAuthorizationCode[]
+  authorizationAuditLogs AuthorizationAuditLog[]
 
   @@index([isPublic, sortOrder])
   @@index([subdomain, isPublic])
   @@index([lifecycleStatus, isPublic])
   @@map("games")
+}
+
+model GameRoleAssignment {
+  id               String   @id @default(uuid()) @db.UniqueIdentifier
+  userId           String   @map("user_id") @db.UniqueIdentifier
+  gameId           String   @map("game_id") @db.UniqueIdentifier
+  roleId           String   @map("role_id") @db.UniqueIdentifier
+  assignedByUserId String?  @map("assigned_by_user_id") @db.UniqueIdentifier
+  assignedAt       DateTime @default(now()) @map("assigned_at")
+  user             User     @relation("GameRoleAssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  role             Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedBy       User?    @relation("GameRoleAssignmentAssignedBy", fields: [assignedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([userId, gameId, roleId])
+  @@index([gameId, userId])
+  @@index([roleId, userId])
+  @@map("game_role_assignments")
+}
+
+model GamePlayer {
+  id              String   @id @default(uuid()) @db.UniqueIdentifier
+  userId          String   @map("user_id") @db.UniqueIdentifier
+  gameId          String   @map("game_id") @db.UniqueIdentifier
+  status          String   @default("ACTIVE") @db.VarChar(16)
+  firstLoginAt    DateTime @default(now()) @map("first_login_at")
+  lastLoginAt     DateTime @default(now()) @map("last_login_at")
+  loginCount      Int      @default(1) @map("login_count")
+  blockedAt       DateTime? @map("blocked_at")
+  blockedByUserId String?  @map("blocked_by_user_id") @db.UniqueIdentifier
+  blockReason     String?  @map("block_reason") @db.NVarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation("GamePlayerUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  blockedBy       User?    @relation("GamePlayerBlockedBy", fields: [blockedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([userId, gameId])
+  @@index([gameId, lastLoginAt])
+  @@index([gameId, status, lastLoginAt])
+  @@map("game_players")
+}
+
+model GameSsoClient {
+  id               String   @id @default(uuid()) @db.UniqueIdentifier
+  gameId           String   @unique @map("game_id") @db.UniqueIdentifier
+  clientId         String   @unique @map("client_id") @db.VarChar(96)
+  clientSecretHash String   @map("client_secret_hash") @db.NVarChar(255)
+  redirectUri      String   @map("redirect_uri") @db.NVarChar(2048)
+  isActive         Boolean  @default(false) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  game             Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  authorizationCodes GameSsoAuthorizationCode[]
+
+  @@map("game_sso_clients")
+}
+
+model GameSsoAuthorizationCode {
+  id           String   @id @default(uuid()) @db.UniqueIdentifier
+  codeHash     String   @unique @map("code_hash") @db.Char(64)
+  clientId     String   @map("client_id") @db.UniqueIdentifier
+  userId       String   @map("user_id") @db.UniqueIdentifier
+  gameId       String   @map("game_id") @db.UniqueIdentifier
+  redirectUri  String   @map("redirect_uri") @db.NVarChar(2048)
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  client       GameSsoClient @relation(fields: [clientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game         Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientId])
+  @@index([expiresAt])
+  @@map("game_sso_authorization_codes")
 }
 
 model Genre {

@@ -13,11 +13,20 @@ import { AuthorizationService } from './authorization.service';
 import { PermissionGuard } from './permission.guard';
 import { AccessAdminController } from './access.controller';
 import { AccessAdminService } from './access.service';
+import { GameAccessService } from './game-access.service';
+import { GameAccessGuard } from './game-access.guard';
+import { GamePermissionGuard } from './game-permission.guard';
+import { GameAdminService } from './game-admin.service';
+import { GameAdminController } from './game-admin.controller';
+import { GameManagementService } from './game-management.service';
+import { GameManagementController } from './game-management.controller';
+import { GameContentService } from './game-content.service';
+import { GameContentController } from './game-content.controller';
 
 @Module({
   imports: [AuthModule, AuthSettingsModule, AccountModule, FinanceModule],
-  controllers: [AdminController, ContentAdminController, AccessAdminController, AdminAuthSettingsController],
-  providers: [AdminService, AdminGuard, ContentAdminService, AuthorizationService, PermissionGuard, AccessAdminService],
-  exports: [AdminGuard, AuthorizationService, PermissionGuard],
+  controllers: [AdminController, ContentAdminController, AccessAdminController, AdminAuthSettingsController, GameAdminController, GameManagementController, GameContentController],
+  providers: [AdminService, AdminGuard, ContentAdminService, AuthorizationService, PermissionGuard, AccessAdminService, GameAccessService, GameAccessGuard, GamePermissionGuard, GameAdminService, GameManagementService, GameContentService],
+  exports: [AdminGuard, AuthorizationService, PermissionGuard, GameAccessService],
 })
 export class AdminModule {}

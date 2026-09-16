@@ -10,6 +10,7 @@ import { Marked } from 'marked';
 const GAME_INCLUDE = {
   genres: { include: { genre: true } },
   platforms: true,
+  ssoClient: { select: { clientId: true, redirectUri: true, isActive: true } },
 };
 
 function gameDetailInclude(now: Date) {
@@ -65,6 +66,12 @@ export class GameService {
     return this.publicGameDetail(game);
   }
 
+  async adminBySubdomain(subdomain: string) {
+    const game = await this.prisma.game.findUnique({ where: { subdomain: subdomain.trim().toLowerCase() }, select: { id: true, subdomain: true } });
+    if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
+    return game;
+  }
+
   async articles(slug: string) {
     const game = await this.prisma.game.findFirst({ where: { slug: slug.trim().toLowerCase(), isPublic: true }, select: { id: true } });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
@@ -113,6 +120,9 @@ export class GameService {
   }
 
   private publicGameSummary(game: any) {
+    const sso = game.ssoClient?.isActive
+      ? { authorizeUrl: `/api/v1/game-sso/authorize?${new URLSearchParams({ client_id: game.ssoClient.clientId, redirect_uri: game.ssoClient.redirectUri }).toString()}` }
+      : null;
     return {
       code: game.code,
       name: game.name,
@@ -144,6 +154,7 @@ export class GameService {
       platforms: game.platforms
         .map((entry: any) => entry.platform)
         .sort((left: string, right: string) => platformRank(left) - platformRank(right)),
+      sso,
     };
   }
 
@@ -261,4 +272,3 @@ export function markdownToSafeHtml(markdown: string): string {
     return escapeHtml(markdown.trim());
   }
 }
-

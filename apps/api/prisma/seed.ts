@@ -174,6 +174,12 @@ async function seedRolesAndPermissions() {
     },
   });
 
+  const gameRoles = await Promise.all([
+    prisma.role.upsert({ where: { code: 'GAME_ADMIN' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_ADMIN', name: 'Game Admin', description: 'Quản trị vận hành một game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
+    prisma.role.upsert({ where: { code: 'GAME_CONTENT_MANAGER' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_CONTENT_MANAGER', name: 'Quản lý nội dung game', description: 'Quản lý nội dung và sự kiện game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
+    prisma.role.upsert({ where: { code: 'GAME_PLAYER_MODERATOR' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_PLAYER_MODERATOR', name: 'Điều phối người chơi', description: 'Xem và khóa/mở người chơi trong game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
+  ]);
+
   const permissions = [
     { code: 'admin.access', module: 'admin', action: 'access', subject: 'Admin', name: 'Truy cập quản trị', sortOrder: 1 },
     { code: 'admin.dashboard.view', module: 'admin', action: 'read', subject: 'Dashboard', name: 'Xem tổng quan', sortOrder: 2 },
@@ -216,26 +222,41 @@ async function seedRolesAndPermissions() {
     { code: 'finance.transactions.view', module: 'finance', action: 'read', subject: 'WalletTransaction', name: 'Xem giao dịch ví', sortOrder: 6 },
     { code: 'finance.transactions.export', module: 'finance', action: 'export', subject: 'WalletTransaction', name: 'Xuất giao dịch ví', sortOrder: 7 },
     { code: 'finance.wallet.adjust', module: 'finance', action: 'adjust', subject: 'Wallet', name: 'Điều chỉnh ví', sortOrder: 8 },
+    { code: 'game.dashboard.view', module: 'game', action: 'read', subject: 'GameDashboard', name: 'Xem tổng quan game', sortOrder: 1, scopeType: 'GAME' },
+    { code: 'game.presentation.manage', module: 'game', action: 'manage', subject: 'GamePresentation', name: 'Quản lý trình bày game', sortOrder: 2, scopeType: 'GAME' },
+    { code: 'game.content.manage', module: 'game', action: 'manage', subject: 'GameContent', name: 'Quản lý nội dung game', sortOrder: 3, scopeType: 'GAME' },
+    { code: 'game.events.manage', module: 'game', action: 'manage', subject: 'GameEvent', name: 'Quản lý sự kiện game', sortOrder: 4, scopeType: 'GAME' },
+    { code: 'game.players.view', module: 'game', action: 'read', subject: 'GamePlayer', name: 'Xem người chơi game', sortOrder: 5, scopeType: 'GAME' },
+    { code: 'game.players.moderate', module: 'game', action: 'moderate', subject: 'GamePlayer', name: 'Khóa/mở người chơi game', sortOrder: 6, scopeType: 'GAME' },
+    { code: 'game.audit.view', module: 'game', action: 'read', subject: 'GameAudit', name: 'Xem nhật ký game', sortOrder: 7, scopeType: 'GAME' },
   ];
 
   for (const perm of permissions) {
     const created = await prisma.permission.upsert({
       where: { code: perm.code },
-      update: { name: perm.name, sortOrder: perm.sortOrder },
+      update: { name: perm.name, sortOrder: perm.sortOrder, scopeType: perm.scopeType ?? 'PLATFORM' },
       create: perm,
     });
-    await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: superAdmin.id, permissionId: created.id } },
-      update: {},
-      create: { roleId: superAdmin.id, permissionId: created.id },
+    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM') await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: superAdmin.id, permissionId: created.id } }, update: {}, create: { roleId: superAdmin.id, permissionId: created.id },
     });
-    if (perm.module === 'support' || perm.code === 'admin.access') {
+    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM' && (perm.module === 'support' || perm.code === 'admin.access')) {
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: supportRole.id, permissionId: created.id } },
         update: {},
         create: { roleId: supportRole.id, permissionId: created.id },
       });
     }
+  }
+
+  const gamePermissionCodes: Record<string, string[]> = {
+    GAME_ADMIN: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage', 'game.players.view', 'game.players.moderate', 'game.audit.view'],
+    GAME_CONTENT_MANAGER: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage'],
+    GAME_PLAYER_MODERATOR: ['game.dashboard.view', 'game.players.view', 'game.players.moderate'],
+  };
+  for (const role of gameRoles) {
+    const permissionIds = (await prisma.permission.findMany({ where: { code: { in: gamePermissionCodes[role.code] } }, select: { id: true } })).map((entry) => entry.id);
+    for (const permissionId of permissionIds) await prisma.rolePermission.upsert({ where: { roleId_permissionId: { roleId: role.id, permissionId } }, update: {}, create: { roleId: role.id, permissionId } });
   }
 
   return { superAdmin, supportRole };

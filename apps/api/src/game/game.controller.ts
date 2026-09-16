@@ -12,6 +12,9 @@ export class GameController {
   @Get('by-subdomain/:subdomain')
   bySubdomain(@Param('subdomain') subdomain: string) { return this.games.bySubdomain(subdomain); }
 
+  @Get('admin-by-subdomain/:subdomain')
+  adminBySubdomain(@Param('subdomain') subdomain: string) { return this.games.adminBySubdomain(subdomain); }
+
   @Get(':slug/articles/:articleSlug')
   article(@Param('slug') slug: string, @Param('articleSlug') articleSlug: string) { return this.games.article(slug, articleSlug); }
 

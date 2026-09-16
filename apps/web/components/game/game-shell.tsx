@@ -25,6 +25,14 @@ function GameFrame({ children }: { children: React.ReactNode }) {
   const currentUrl = new URL(gameUrl(game.subdomain, pathname || '/'));
   currentUrl.search = searchParams.toString();
   const loginUrl = `${portalUrl('/auth/login')}?returnTo=${encodeURIComponent(currentUrl.toString())}`;
+  const launchGame = () => {
+    if (!game.sso) return;
+    const state = crypto.randomUUID();
+    sessionStorage.setItem(`zenx-game-sso-state:${game.code}`, state);
+    const target = new URL(game.sso.authorizeUrl, window.location.origin);
+    target.searchParams.set('state', state);
+    window.location.assign(target.toString());
+  };
   const theme = game.theme;
   const isThiTranMay = game.themePreset === 'PLAYFUL_CASUAL';
   const isLucDiaDamMe = game.themePreset === 'EDITORIAL_FANTASY';
@@ -163,6 +171,7 @@ function GameFrame({ children }: { children: React.ReactNode }) {
 
           {/* Right Header Action */}
           <div className="flex items-center gap-3">
+            {game.sso ? <button type="button" onClick={launchGame} className="hidden min-h-10 items-center gap-2 rounded-xl bg-[var(--game-primary)] px-5 text-xs font-bold text-white shadow-md transition hover:brightness-110 sm:inline-flex"><LogIn className="size-3.5" />Chơi ngay</button> : null}
             {isThiTranMay ? (
               <button
                 type="button"

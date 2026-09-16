@@ -16,6 +16,7 @@ import {
   Palette,
   RotateCcw,
   Save,
+  ShieldCheck,
   Sliders,
   Sparkles,
 } from 'lucide-react';
@@ -356,6 +357,7 @@ export default function AdminContentGameDetailPage() {
 
           {/* Right: Actions */}
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+            {canManage ? <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 text-xs"><Link href={`/admin/content/games/${encodeURIComponent(gameId)}/access`}><ShieldCheck className="size-3.5" /><span>Admin & SSO</span></Link></Button> : null}
             <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
               <Link href={`/preview/games/${encodeURIComponent(game.id)}`} target="_blank">
                 <ExternalLink className="size-3.5" />

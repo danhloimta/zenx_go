@@ -30,7 +30,7 @@ export class AuthorizationService {
       select: {
         role: {
           select: {
-            id: true,
+            id: true, scopeType: true,
             code: true,
             name: true,
             isActive: true,
@@ -44,7 +44,7 @@ export class AuthorizationService {
         ...role,
         permissions: role.permissions.filter(({ permission }: any) => permission.isActive !== false),
       }))
-      .filter((role: any) => role.isActive);
+      .filter((role: any) => role.isActive && (role.scopeType ?? 'PLATFORM') === 'PLATFORM');
     const { can, build } = new AbilityBuilder(createMongoAbility);
     if (roles.some((role: AuthorizationRole) => role.code === 'SUPER_ADMIN')) {
       can('manage', 'all');
