@@ -26,12 +26,12 @@ export default function ActivityPage() {
   </main>;
 }
 
-export function activityLabel(item: UserActivityLog) {
+function activityLabel(item: UserActivityLog) {
   const labels: Record<string, string> = { ACCOUNT_REGISTERED: 'Đăng ký tài khoản', LOGIN_PASSWORD: 'Đăng nhập bằng mật khẩu', LOGIN_GOOGLE: 'Đăng nhập bằng Google', LOGIN_FACEBOOK: 'Đăng nhập bằng Facebook', LOGOUT: 'Đăng xuất', PASSWORD_CHANGED: 'Đổi mật khẩu', PASSWORD_RESET: 'Đặt lại mật khẩu', EMAIL_CHANGED: 'Đổi email', PHONE_CHANGED: 'Đổi số điện thoại', SOCIAL_LINKED: 'Liên kết tài khoản mạng xã hội', SOCIAL_UNLINKED: 'Hủy liên kết tài khoản mạng xã hội', SENSITIVE_PROFILE_UPDATED: 'Cập nhật thông tin nhạy cảm', ADMIN_CONTACT_CHANGED: 'Quản trị viên đã thay đổi thông tin liên hệ', ADMIN_SENSITIVE_PROFILE_CHANGED: 'Quản trị viên đã thay đổi thông tin nhạy cảm', ADMIN_STATUS_CHANGED: 'Quản trị viên đã thay đổi trạng thái tài khoản', ADMIN_ROLES_CHANGED: 'Quản trị viên đã thay đổi vai trò', ADMIN_SESSIONS_REVOKED: 'Quản trị viên đã thu hồi các phiên đăng nhập', ADMIN_PASSWORD_RESET: 'Quản trị viên đã đặt lại mật khẩu' };
   return labels[item.eventType] ?? 'Hoạt động bảo mật';
 }
 
-export function ActivityTable({ items }: { items: UserActivityLog[] }) {
+function ActivityTable({ items }: { items: UserActivityLog[] }) {
   if (!items.length) return <div className="rounded-xl border bg-white p-12 text-center text-sm text-slate-500"><History className="mx-auto mb-3 size-8 text-slate-400" />Chưa có lịch sử hoạt động.</div>;
   return <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full min-w-[720px] text-left text-sm"><thead className="border-b bg-slate-50 text-slate-600"><tr><th className="p-4 font-semibold">Thời gian</th><th className="p-4 font-semibold">Hoạt động</th><th className="p-4 font-semibold">IP</th><th className="p-4 font-semibold">Thiết bị đăng nhập</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-b last:border-0"><td className="p-4 whitespace-nowrap text-slate-600">{new Date(item.createdAt).toLocaleString('vi-VN')}</td><td className="p-4"><span className={item.outcome === 'FAILED' ? 'text-red-600' : 'text-slate-900'}>{activityLabel(item)}{item.outcome === 'FAILED' ? ' (thất bại)' : ''}</span></td><td className="p-4 font-mono text-xs text-slate-600">{item.ipAddress ?? '—'}</td><td className="p-4 text-slate-600"><span className="inline-flex items-center gap-2"><Monitor className="size-4" />{item.deviceLabel ?? 'Không xác định'}</span></td></tr>)}</tbody></table></div>;
 }

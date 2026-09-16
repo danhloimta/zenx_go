@@ -91,6 +91,29 @@ describe('AccountService OTP policy', () => {
     expect(otp.send).not.toHaveBeenCalled();
   });
 
+  it('adds a first phone number after verifying the new number', async () => {
+    settings.isOtpRequired.mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ phone: null });
+    otp.consumeVerificationToken.mockResolvedValue(undefined);
+
+    await expect((service as any).changePhone('user-1', {
+      newPhone: '+84909876543',
+      verificationToken: 'verify-new-phone-token',
+    })).resolves.toEqual({ changed: true });
+
+    expect(otp.consumeVerificationToken).toHaveBeenCalledWith(
+      'verify-new-phone-token',
+      'VERIFY_PHONE',
+      '+84909876543',
+      undefined,
+      'SMS',
+    );
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'user-1' },
+      data: expect.objectContaining({ phone: '+84909876543', phoneVerifiedAt: expect.any(Date) }),
+    }));
+  });
+
   it('verifies phone-change OTP against the current phone and user id', async () => {
     settings.isOtpRequired.mockResolvedValue(true);
     prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });

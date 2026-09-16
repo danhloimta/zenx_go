@@ -154,7 +154,7 @@ export class AdminService {
   }
 
   async getUser(userId: string) {
-    const [user, transactions] = await this.prisma.$transaction([
+    const [user, transactions, topups] = await this.prisma.$transaction([
       this.prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -195,6 +195,10 @@ export class AdminService {
           },
         },
       }),
+      this.prisma.walletTransaction.aggregate({
+        where: { userId, type: 'TOPUP', status: 'SUCCESS' },
+        _sum: { amount: true },
+      }),
     ]);
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     return {
@@ -209,7 +213,7 @@ export class AdminService {
             security: { configured: Boolean(user.sensitiveProfile.securityQuestionCode) },
           }
         : { identity: { configured: false, last4: null }, security: { configured: false } },
-      wallet: user.wallet,
+      wallet: user.wallet ? { ...user.wallet, totalTopup: topups._sum.amount ?? 0n } : null,
       recentTransactions: transactions.map((transaction) => ({
         ...transaction,
         payment: transaction.payment

@@ -297,14 +297,25 @@ export class AccountService {
 
     const otpRequired = await this.isOtpRequired();
     const originalPhoneNormalized = user.phone ? normalizePhone(user.phone) : undefined;
+    let phoneVerifiedAt: Date | null = null;
     if (otpRequired || dto.verificationToken) {
       if (!user.phone) {
         if (otpRequired) {
-          throw new DomainError(
-            ErrorCode.PHONE_CHANGE_OTP_UNAVAILABLE,
-            'A current phone number is required to change the phone number with OTP enabled',
-            400,
+          if (!dto.verificationToken) {
+            throw new DomainError(
+              ErrorCode.VERIFICATION_TOKEN_INVALID,
+              'Phone verification is required to add a phone number',
+              400,
+            );
+          }
+          await this.otp.consumeVerificationToken(
+            dto.verificationToken,
+            OtpPurpose.VERIFY_PHONE,
+            dto.newPhone,
+            undefined,
+            OtpChannel.SMS,
           );
+          phoneVerifiedAt = new Date();
         }
       } else if (dto.verificationToken) {
         try {
@@ -345,7 +356,7 @@ export class AccountService {
     const data = {
       phone: dto.newPhone.trim(),
       phoneNormalized,
-      phoneVerifiedAt: null,
+      phoneVerifiedAt,
     };
     if (otpRequired && originalPhoneNormalized) {
       const updated = await this.prisma.user.updateMany({

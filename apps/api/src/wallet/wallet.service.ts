@@ -30,7 +30,16 @@ type TransactionFilters = {
 export class WalletService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getWallet(userId: string) { return this.prisma.wallet.findUniqueOrThrow({ where: { userId }, select: { currency: true, balance: true, updatedAt: true } }); }
+  async getWallet(userId: string) {
+    const [wallet, topups] = await Promise.all([
+      this.prisma.wallet.findUniqueOrThrow({ where: { userId }, select: { currency: true, balance: true, updatedAt: true } }),
+      this.prisma.walletTransaction.aggregate({
+        where: { userId, type: WalletTransactionType.TOPUP, status: WalletTransactionStatus.SUCCESS },
+        _sum: { amount: true },
+      }),
+    ]);
+    return { ...wallet, totalTopup: topups._sum.amount ?? 0n };
+  }
 
   async getTransactions(userId: string, query: TransactionFilters) {
     const page = query.page ?? 1;

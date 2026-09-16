@@ -622,7 +622,10 @@ function ContactChange({
 
   const sendOtp = useMutation({
     mutationFn: async (): Promise<{ expiresIn: number; resendAfter: number; destination?: string }> => {
-      if (type === 'phone') return api.account.changePhoneOtp.send();
+      if (type === 'phone') {
+        if (!hasValue) return api.otp.send({ channel: 'SMS', purpose: 'VERIFY_PHONE', destination });
+        return api.account.changePhoneOtp.send();
+      }
       return api.otp.send({ channel, purpose, destination });
     },
     onSuccess: (result) => {
@@ -644,7 +647,9 @@ function ContactChange({
         return api.account.changePhone({ newPhone: destination });
       }
       if (type === 'phone') {
-        const verification = await api.account.changePhoneOtp.verify({ code });
+        const verification = hasValue
+          ? await api.account.changePhoneOtp.verify({ code })
+          : await api.otp.verify({ channel: 'SMS', purpose: 'VERIFY_PHONE', destination, code });
         return api.account.changePhone({
           newPhone: destination,
           verificationToken: verification.verificationToken,

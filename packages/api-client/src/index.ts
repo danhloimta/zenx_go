@@ -569,6 +569,7 @@ export interface SensitiveProfileUpdateRequest {
 export interface WalletSummary {
   currency: 'ZENX' | string;
   balance: number | string;
+  totalTopup: number | string;
 }
 
 export interface WalletTransaction {

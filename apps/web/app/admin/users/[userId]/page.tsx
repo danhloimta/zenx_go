@@ -884,6 +884,10 @@ function WalletSection({ user, canAdjustWallet }: { user: AdminUserDetail; canAd
             {user.wallet?.currency ?? 'ZENX'}
           </span>
         </p>
+        <div className="mt-4 border-t border-white/10 pt-3">
+          <p className="text-xs font-medium text-slate-400">Tổng đã nạp</p>
+          <p className="mt-1 text-lg font-black text-emerald-400">{formatAmount(user.wallet?.totalTopup)} <span className="text-xs">ZENX</span></p>
+        </div>
       </div>
 
       <div className="mt-5">

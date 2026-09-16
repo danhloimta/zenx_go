@@ -51,6 +51,10 @@ export default function WalletPage() {
                   <ZenxCoinGoldIcon className="size-4" /> ZENX Coin
                 </span>
               </div>
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold text-slate-500">Tổng đã nạp</p>
+                <p className="mt-1 text-xl font-black text-[#00873E]">{formatAmount(wallet.data?.totalTopup)} <span className="text-xs font-bold">ZENX Coin</span></p>
+              </div>
             </div>
             <div className="flex size-14 items-center justify-center rounded-2xl bg-[#E8F7EC] text-[#00873E]">
               <WalletCards className="size-7" />
