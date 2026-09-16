@@ -17,7 +17,7 @@ export type ContentWorkspaceAdapter = {
   events: (query?: { page?: number; pageSize?: number; search?: string; status?: ContentPublishStatus }) => ReturnType<typeof api.gameAdmin.content.events>;
   event: (eventId: string) => ReturnType<typeof api.gameAdmin.content.event>;
   createEvent: (input: Omit<AdminContentEventCreateRequest, 'gameId'>) => ReturnType<typeof api.gameAdmin.content.createEvent>;
-  updateEvent: (eventId: string, input: AdminContentEventUpdateRequest) => ReturnType<typeof api.gameAdmin.content.updateEvent>;
+  updateEvent: (eventId: string, input: Omit<AdminContentEventUpdateRequest, 'gameId'>) => ReturnType<typeof api.gameAdmin.content.updateEvent>;
 };
 
 export function gameContentWorkspace(gameId: string, gameName: string, subdomain: string): ContentWorkspaceAdapter {
@@ -25,6 +25,6 @@ export function gameContentWorkspace(gameId: string, gameName: string, subdomain
   return {
     gameId, gameName, subdomain, articlesPath: `${base}/articles`, eventsPath: `${base}/events`,
     articles: (query) => api.gameAdmin.content.articles(gameId, query), article: (id) => api.gameAdmin.content.article(gameId, id), createArticle: (input) => api.gameAdmin.content.createArticle(gameId, input), updateArticle: (id, input) => api.gameAdmin.content.updateArticle(gameId, id, input), deleteArticle: (id) => api.gameAdmin.content.deleteArticle(gameId, id), restoreArticle: (id) => api.gameAdmin.content.restoreArticle(gameId, id),
-    events: (query) => api.gameAdmin.content.events(gameId, query), event: (id) => api.gameAdmin.content.event(gameId, id), createEvent: (input) => api.gameAdmin.content.createEvent(gameId, input), updateEvent: (id, input) => api.gameAdmin.content.updateEvent(gameId, id, input),
+    events: (query) => api.gameAdmin.content.events(gameId, query), event: (id) => api.gameAdmin.content.event(gameId, id), createEvent: (input) => api.gameAdmin.content.createEvent(gameId, input), updateEvent: (id, input) => { const { gameId: _gameId, ...scoped } = input as AdminContentEventUpdateRequest; return api.gameAdmin.content.updateEvent(gameId, id, scoped); },
   };
 }
