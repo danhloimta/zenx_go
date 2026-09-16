@@ -3,6 +3,8 @@ import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
 import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto } from './game-admin.dto';
 import { GameAccessService } from './game-access.service';
+import { AdminService } from './admin.service';
+import { AdminProfileUpdateDto } from './admin.dto';
 import { vietnamCalendarStart, vietnamDaysAgoStart } from './game-metrics';
 import { auditRangeEnd } from './game-audit-date-range';
 
@@ -10,7 +12,7 @@ const playerInclude = { user: { select: { id: true, username: true, profile: { s
 
 @Injectable()
 export class GameAdminService {
-  constructor(private readonly prisma: PrismaService, private readonly access: GameAccessService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: GameAccessService, private readonly admin: AdminService) {}
 
   async context(userId: string, subdomain: string) {
     const game = await this.prisma.game.findUnique({ where: { subdomain: subdomain.trim().toLowerCase() }, select: { id: true, code: true, name: true, subdomain: true, logoUrl: true, operationalStatus: true, isPublic: true } });
@@ -44,6 +46,34 @@ export class GameAdminService {
     const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, include: playerInclude });
     if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
     return this.serializePlayer(player);
+  }
+
+  async getPlayerProfile(gameId: string, userId: string) {
+    const player = await (this.prisma.gamePlayer as any).findUnique({
+      where: { userId_gameId: { userId, gameId } },
+      select: { id: true, user: { select: { id: true, username: true, email: true, phone: true, emailVerifiedAt: true, phoneVerifiedAt: true, updatedAt: true, profile: { select: { fullName: true, avatarUrl: true, dateOfBirth: true, gender: true, city: true, address: true } } } } },
+    });
+    if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
+    return this.serializePlayerProfile(player.id, player.user);
+  }
+
+  async updatePlayerProfile(gameId: string, userId: string, dto: AdminProfileUpdateDto, actorUserId: string) {
+    const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, select: { id: true } });
+    if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
+    const updated = await this.admin.updateProfile(userId, dto, async (tx, change) => {
+      await tx.authorizationAuditLog.create({
+        data: {
+          actorUserId,
+          gameId,
+          action: 'GAME_PLAYER_PROFILE_UPDATED',
+          targetType: 'GAME_PLAYER',
+          targetId: player.id,
+          beforeData: JSON.stringify(change.before),
+          afterData: JSON.stringify(change.after),
+        },
+      });
+    });
+    return this.serializePlayerProfile(player.id, updated);
   }
 
   async updatePlayerStatus(gameId: string, userId: string, dto: GamePlayerStatusDto, actorUserId: string) {
@@ -135,6 +165,19 @@ export class GameAdminService {
 
   private serializePlayer(entry: any) {
     return { id: entry.id, userId: entry.userId, user: entry.user, status: entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockReason: entry.blockReason, supportNote: entry.supportNote ?? null, updatedAt: entry.updatedAt };
+  }
+  private serializePlayerProfile(playerId: string, user: any) {
+    return {
+      playerId,
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      phone: user.phone ?? null,
+      emailVerified: user.emailVerified ?? Boolean(user.emailVerifiedAt),
+      phoneVerified: user.phoneVerified ?? Boolean(user.phoneVerifiedAt),
+      profile: user.profile ? { fullName: user.profile.fullName, avatarUrl: user.profile.avatarUrl ?? null, dateOfBirth: user.profile.dateOfBirth, gender: user.profile.gender, city: user.profile.city, address: user.profile.address } : null,
+      updatedAt: user.updatedAt,
+    };
   }
   private serializeDashboardPlayer(entry: any) {
     return { id: entry.id, userId: entry.userId, user: entry.user, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, updatedAt: entry.updatedAt };

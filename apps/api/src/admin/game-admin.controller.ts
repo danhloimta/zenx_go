@@ -6,6 +6,7 @@ import { GamePermissionGuard } from './game-permission.guard';
 import { RequirePermission } from './permission.decorator';
 import { GameAdminService } from './game-admin.service';
 import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto } from './game-admin.dto';
+import { AdminProfileUpdateDto } from './admin.dto';
 
 @Controller('game-admin')
 @UseGuards(AuthGuard)
@@ -29,6 +30,16 @@ export class GameAdminController {
   @UseGuards(GameAccessGuard, GamePermissionGuard)
   @RequirePermission({ code: 'game.players.view', action: 'read', subject: 'GamePlayer' })
   getPlayer(@Param('gameId') gameId: string, @Param('userId') userId: string) { return this.games.getPlayer(gameId, userId); }
+
+  @Get('games/:gameId/players/:userId/profile')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.players.profile.manage', action: 'manage', subject: 'GamePlayerProfile' })
+  getPlayerProfile(@Param('gameId') gameId: string, @Param('userId') userId: string) { return this.games.getPlayerProfile(gameId, userId); }
+
+  @Patch('games/:gameId/players/:userId/profile')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.players.profile.manage', action: 'manage', subject: 'GamePlayerProfile' })
+  updatePlayerProfile(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: AdminProfileUpdateDto, @Req() request: GameAdminRequest) { return this.games.updatePlayerProfile(gameId, userId, dto, request.user.sub); }
 
   @Patch('games/:gameId/players/:userId/status')
   @UseGuards(GameAccessGuard, GamePermissionGuard)

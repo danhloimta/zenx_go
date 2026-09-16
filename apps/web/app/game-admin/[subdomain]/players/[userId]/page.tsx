@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { GamePlayerProfileEditor } from '@/components/game-player-profile-editor';
 
 const ACTIVITY_LABEL: Record<GamePlayerActivityEntry['action'], string> = {
   GAME_PLAYER_BLOCKED: 'Đã khóa player',
@@ -57,6 +58,7 @@ export default function GamePlayerDetailPage() {
   const can = (action: string, subject: string) => context.data?.isSuperAdmin || context.data?.abilityRules.some((rule) => rule.action === action && rule.subject === subject);
   const canModerate = can('moderate', 'GamePlayer');
   const canEditNote = can('support-note', 'GamePlayer');
+  const canManageProfile = can('manage', 'GamePlayerProfile');
 
   useEffect(() => {
     if (player.data && noteVersion === null) {
@@ -140,6 +142,8 @@ export default function GamePlayerDetailPage() {
       <InfoCard label="Lần SSO gần nhất" value={formatDate(current.lastLoginAt)} />
       <InfoCard label="Tổng lượt SSO" value={String(current.loginCount)} />
     </section>
+
+    {canManageProfile ? <GamePlayerProfileEditor gameId={gameId!} userId={userId} /> : null}
 
     <section className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Ghi chú nội bộ</h2><p className="mt-1 text-sm text-slate-500">Chỉ đội ngũ quản trị game nhìn thấy.</p></div>{canModerate ? <Button variant={current.status === 'BLOCKED' ? 'outline' : 'destructive'} onClick={() => setPendingStatus(current.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED')}>{current.status === 'BLOCKED' ? 'Mở khóa player' : 'Khóa player'}</Button> : null}</div>

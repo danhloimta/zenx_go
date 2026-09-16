@@ -140,6 +140,35 @@ describe('GameAdminService player support', () => {
     expect(prisma.authorizationAuditLog.create).not.toHaveBeenCalled();
   });
 
+  it('updates a scoped player profile through the shared profile service and records game audit', async () => {
+    const updated = {
+      id: 'player-user', username: 'renamed-player', email: 'player@example.com', phone: '+84901234567',
+      emailVerified: true, phoneVerified: true, updatedAt: new Date('2026-09-16T02:00:00.000Z'),
+      profile: { fullName: 'Player Renamed', avatarUrl: null, dateOfBirth: null, gender: 'UNSPECIFIED', city: 'Hồ Chí Minh', address: null },
+      roles: [],
+    };
+    const admin = {
+      updateProfile: jest.fn(async (_userId: string, _dto: unknown, onUpdated: (tx: unknown, snapshot: unknown) => Promise<void>) => {
+        await onUpdated({ authorizationAuditLog: (prisma as any).authorizationAuditLog }, { before: { username: 'player' }, after: { username: 'renamed-player' } });
+        return updated;
+      }),
+    };
+    const { prisma } = makeService();
+    const service = new (GameAdminService as any)(prisma, {}, admin);
+
+    const result = await service.updatePlayerProfile('orion', 'player-user', {
+      username: 'renamed-player', email: 'player@example.com', phone: '+84901234567', fullName: 'Player Renamed',
+      dateOfBirth: null, gender: 'UNSPECIFIED', city: 'Hồ Chí Minh', address: null,
+      emailVerified: true, phoneVerified: true, expectedUpdatedAt: '2026-09-16T01:00:00.000Z',
+    }, 'game-admin');
+
+    expect(admin.updateProfile).toHaveBeenCalledWith('player-user', expect.objectContaining({ username: 'renamed-player', emailVerified: true, phoneVerified: true }), expect.any(Function));
+    expect(prisma.authorizationAuditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ actorUserId: 'game-admin', gameId: 'orion', action: 'GAME_PLAYER_PROFILE_UPDATED', targetType: 'GAME_PLAYER', targetId: 'player-row' }) });
+    expect(result).toMatchObject({ username: 'renamed-player', email: 'player@example.com', profile: { fullName: 'Player Renamed' } });
+    expect(result).not.toHaveProperty('roles');
+    expect(result).not.toHaveProperty('wallet');
+  });
+
   it('returns only this player\'s moderation and support activity in the requested game', async () => {
     const entries = [{
       id: 'audit-1', gameId: 'orion', action: 'GAME_PLAYER_SUPPORT_NOTE_UPDATED', targetType: 'GAME_PLAYER', targetId: 'player-row', reason: null,

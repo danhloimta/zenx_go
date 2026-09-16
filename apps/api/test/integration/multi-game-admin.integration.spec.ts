@@ -296,6 +296,32 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     expect(contentDashboard.status).toBe(200);
     expect(JSON.stringify(contentDashboard.body.data.recentPlayers)).not.toMatch(/supportNote|blockReason/i);
 
+    const deniedProfile = await http().get(`/game-admin/games/${orionId}/players/${playerId}/profile`).set('Cookie', moderatorCookies);
+    expect(deniedProfile.status).toBe(403);
+    const fullProfile = await http().get(`/game-admin/games/${orionId}/players/${playerId}/profile`).set('Cookie', gameAdminCookies);
+    expect(fullProfile.status).toBe(200);
+    expect(JSON.stringify(fullProfile.body.data)).not.toMatch(/wallet|roles|sensitiveProfile|password/i);
+    const updatedProfile = await http()
+      .patch(`/game-admin/games/${orionId}/players/${playerId}/profile`)
+      .set('Cookie', gameAdminCookies)
+      .send({
+        username: fullProfile.body.data.username,
+        email: fullProfile.body.data.email,
+        phone: '+84912345678',
+        fullName: 'Profile updated by Orion Game Admin',
+        dateOfBirth: '1990-01-01',
+        gender: 'OTHER',
+        city: 'Hồ Chí Minh',
+        address: 'Game support address',
+        emailVerified: true,
+        phoneVerified: true,
+        expectedUpdatedAt: fullProfile.body.data.updatedAt,
+      });
+    expect(updatedProfile.status).toBe(200);
+    expect(updatedProfile.body.data).toMatchObject({ phone: '+84912345678', phoneVerified: true, profile: { fullName: 'Profile updated by Orion Game Admin', city: 'Hồ Chí Minh' } });
+    const crossGameProfile = await http().get(`/game-admin/games/${hoaLongId}/players/${playerId}/profile`).set('Cookie', superAdminCookies);
+    expect(crossGameProfile.status).toBe(404);
+
     const staleNote = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)
       .set('Cookie', moderatorCookies)
@@ -501,6 +527,7 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       'GAME_SSO_SECRET_ROTATED',
       'GAME_ARTICLE_CREATED',
       'GAME_PLAYER_BLOCKED',
+      'GAME_PLAYER_PROFILE_UPDATED',
       'GAME_PLAYER_SUPPORT_NOTE_UPDATED',
       'GAME_MAINTENANCE_ENABLED',
       'GAME_MAINTENANCE_DISABLED',
@@ -511,6 +538,7 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       'GAME_SSO_SECRET_ROTATED',
       'GAME_ARTICLE_CREATED',
       'GAME_PLAYER_BLOCKED',
+      'GAME_PLAYER_PROFILE_UPDATED',
       'GAME_PLAYER_SUPPORT_NOTE_UPDATED',
       'GAME_MAINTENANCE_ENABLED',
       'GAME_MAINTENANCE_DISABLED',
