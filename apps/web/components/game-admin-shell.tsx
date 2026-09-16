@@ -16,6 +16,7 @@ import {
   Gamepad2,
   ExternalLink,
   Settings2,
+  MessageSquare,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getPublicBaseDomain, portalUrl } from '@/lib/domain';
@@ -93,6 +94,11 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
     .concat(
       can('read', 'GamePlayer')
         ? [{ href: '/admin/players', label: 'Người chơi', icon: Users }]
+        : [],
+    )
+    .concat(
+      can('manage', 'GameSupport')
+        ? [{ href: '/admin/support', label: 'Hỗ trợ người chơi', icon: MessageSquare }]
         : [],
     )
     .concat(

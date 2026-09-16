@@ -531,6 +531,7 @@ export default function AccountSupportPage() {
                             >
                               {ticket.category.name}
                             </Badge>
+                            <p className="mt-1 text-[11px] text-slate-500">{ticket.game?.name ?? 'Hỗ trợ chung'}</p>
                           </td>
 
                           <td className="px-4 py-4 align-top whitespace-nowrap text-xs text-slate-500">
@@ -788,8 +789,10 @@ function CreateTicketSection({
 }) {
   const queryClient = useQueryClient();
   const [categoryId, setCategoryId] = useState('');
+  const [gameId, setGameId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const gamesQuery = useQuery({ queryKey: ['games', 'support-options'], queryFn: () => api.games.list(), retry: false });
 
   useEffect(() => {
     if (!categoryId && categories[0]) {
@@ -827,6 +830,7 @@ function CreateTicketSection({
 
     createMutation.mutate({
       categoryId,
+      gameId,
       subject: subject.trim(),
       description: description.trim(),
     });
@@ -854,6 +858,13 @@ function CreateTicketSection({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700">Game cần hỗ trợ</label>
+          <select value={gameId ?? ''} onChange={(e) => setGameId(e.target.value || null)} disabled={gamesQuery.isLoading} className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3.5 text-xs sm:text-sm font-medium text-slate-800 shadow-2xs focus:border-[#00873E] focus:outline-none focus:ring-2 focus:ring-[#00873E]/10">
+            <option value="">ZenX GO / Tài khoản, thanh toán và hỗ trợ chung</option>
+            {(gamesQuery.data?.items ?? []).map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+          </select>
+        </div>
         {/* Danh mục */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700">

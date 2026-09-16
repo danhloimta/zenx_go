@@ -128,6 +128,7 @@ export class GameService {
       ? { message: game.maintenanceMessage?.trim() || 'Game đang được bảo trì. Vui lòng quay lại sau.', expectedEndsAt: game.maintenanceEndsAt ?? null }
       : null;
     return {
+      id: game.id,
       code: game.code,
       name: game.name,
       slug: game.slug,

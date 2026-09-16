@@ -800,6 +800,7 @@ export interface SupportTicket {
   createdAt: string;
   updatedAt: string;
   category: Pick<SupportCategory, 'id' | 'code' | 'name'>;
+  game?: { id: string; name: string; slug: string; subdomain: string } | null;
 }
 
 export interface SupportTicketMessagesResponse extends Paginated<SupportTicketMessage> {}
@@ -925,8 +926,13 @@ export interface SupportAdminFaqUpdateRequest {
 
 export interface CreateSupportTicketRequest {
   categoryId: string;
+  gameId?: string | null;
   subject: string;
   description: string;
+}
+
+export interface GameSupportTicket extends SupportTicket {
+  user: { username: string; email: string | null; phone: string | null; fullName: string | null };
 }
 
 export type GameRecordType = 'REAL' | 'DEMO';
@@ -1020,6 +1026,7 @@ export interface GamePageConfig {
 }
 
 export interface GameSummary {
+  id: string;
   code: string;
   name: string;
   slug: string;
@@ -1431,6 +1438,12 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       operations: (gameId: string) => client.get<GameOperations>(`/game-admin/games/${encodeURIComponent(gameId)}/operations`),
       updateMaintenance: (gameId: string, input: { enabled: boolean; message: string | null; expectedEndsAt: string | null; expectedUpdatedAt: string; reason: string }) => client.patch<GameOperations>(`/game-admin/games/${encodeURIComponent(gameId)}/operations/maintenance`, input),
       audit: (gameId: string, query: { page?: number; pageSize?: 20 | 50; action?: string; actorUserId?: string; from?: string; to?: string } = {}) => client.get<Paginated<GameAuditEntry>>(`/game-admin/games/${encodeURIComponent(gameId)}/audit`, query),
+      support: {
+        tickets: (gameId: string, query: { page?: number; pageSize?: number } = {}) => client.get<Paginated<GameSupportTicket>>(`/game-admin/games/${encodeURIComponent(gameId)}/support/tickets`, query),
+        ticket: (gameId: string, ticketNo: string) => client.get<GameSupportTicket>(`/game-admin/games/${encodeURIComponent(gameId)}/support/tickets/${encodeURIComponent(ticketNo)}`),
+        messages: (gameId: string, ticketNo: string, query: { page?: number; pageSize?: number } = {}) => client.get<SupportTicketMessagesResponse>(`/game-admin/games/${encodeURIComponent(gameId)}/support/tickets/${encodeURIComponent(ticketNo)}/messages`, query),
+        reply: (gameId: string, ticketNo: string, input: CreateSupportMessageRequest) => client.post<SupportTicketMessage>(`/game-admin/games/${encodeURIComponent(gameId)}/support/tickets/${encodeURIComponent(ticketNo)}/messages`, input),
+      },
       content: {
         presentation: (gameId: string) => client.get<AdminContentGame>(`/game-admin/games/${encodeURIComponent(gameId)}/presentation`),
         updatePresentation: (gameId: string, input: AdminContentGamePresentationUpdateRequest) => client.patch<AdminContentGame>(`/game-admin/games/${encodeURIComponent(gameId)}/presentation`, input),

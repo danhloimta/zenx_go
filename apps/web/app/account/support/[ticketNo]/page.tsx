@@ -128,6 +128,7 @@ export default function SupportTicketDetailPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-bold text-[#00873E]">{ticket.ticketNo}</span>
                   <Badge variant="secondary">{ticket.category.name}</Badge>
+                  <Badge variant="secondary">{ticket.game?.name ?? 'Hỗ trợ chung'}</Badge>
                   {ticket.unread ? <Badge variant="destructive">Mới cập nhật</Badge> : null}
                 </div>
                 <h1 className="mt-3 text-2xl font-black text-slate-900">{ticket.subject}</h1>

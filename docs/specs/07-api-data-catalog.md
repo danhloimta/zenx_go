@@ -100,6 +100,9 @@
 | `API-SUPPORT-MESSAGE-CREATE` | `POST /support/tickets/:ticketNo/messages` | Access | `IMPLEMENTED` | User public reply with closed/reopen rules.                | support service; support-admin integration/E2E      |
 | `API-SUPPORT-TICKET-READ`    | `POST /support/tickets/:ticketNo/read`     | Access | `IMPLEMENTED` | Upsert user read cursor.                                   | support service; support-admin integration/E2E      |
 | `API-SUPPORT-UNREAD-COUNT`   | `GET /support/unread-count`                | Access | `IMPLEMENTED` | Staff-reply unread count for current user.                 | support service; support-admin integration/E2E      |
+| `API-GAME-SUPPORT-TICKETS`   | `GET /game-admin/games/:gameId/support/tickets` | Game Admin | `IMPLEMENTED` | Ticket queue scoped tuyệt đối theo game. | game admin service |
+| `API-GAME-SUPPORT-TICKET`    | `GET /game-admin/games/:gameId/support/tickets/:ticketNo` | Game Admin | `IMPLEMENTED` | Detail ticket scoped theo game. | game admin service |
+| `API-GAME-SUPPORT-MESSAGES`  | `GET/POST /game-admin/games/:gameId/support/tickets/:ticketNo/messages` | Game Admin | `IMPLEMENTED` | Public thread và reply không cần claim. | game admin service |
 
 ## Admin Support API (Phase 2)
 

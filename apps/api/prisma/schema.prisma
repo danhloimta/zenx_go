@@ -212,6 +212,7 @@ model Game {
   ssoClient         GameSsoClient?
   ssoCodes          GameSsoAuthorizationCode[]
   authorizationAuditLogs AuthorizationAuditLog[]
+  supportTickets    SupportTicket[]
 
   @@index([isPublic, sortOrder])
   @@index([subdomain, isPublic])
@@ -651,6 +652,7 @@ model SupportTicket {
   ticketNo              String                   @unique @map("ticket_no") @db.VarChar(40)
   userId                String                   @map("user_id") @db.UniqueIdentifier
   categoryId            String                   @map("category_id") @db.UniqueIdentifier
+  gameId                String?                  @map("game_id") @db.UniqueIdentifier
   subject               String                   @db.NVarChar(160)
   description           String                   @db.NVarChar(4000)
   status                String                   @default("NEW") @db.VarChar(16)
@@ -666,6 +668,7 @@ model SupportTicket {
   user                  User                     @relation("SupportTicketOwner", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assignee              User?                    @relation("SupportTicketAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   category              SupportCategory          @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  game                  Game?                    @relation(fields: [gameId], references: [id], onDelete: SetNull)
   messages              SupportTicketMessage[]
   readStates            SupportTicketReadState[]
 
@@ -674,6 +677,7 @@ model SupportTicket {
   @@index([status, priority, lastActivityAt])
   @@index([assigneeUserId, status, lastActivityAt])
   @@index([lastActivityAt])
+  @@index([gameId, lastActivityAt])
   @@map("support_tickets")
 }
 

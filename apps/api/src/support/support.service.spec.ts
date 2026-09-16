@@ -2,6 +2,9 @@ import { SupportService } from './support.service';
 
 describe('SupportService', () => {
   const prisma = {
+    game: {
+      findFirst: jest.fn(),
+    },
     supportCategory: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
@@ -121,6 +124,31 @@ describe('SupportService', () => {
         body: 'Tôi đã thanh toán nhưng số dư chưa được cập nhật.',
       }),
     });
+  });
+
+  it('accepts a public game on a new ticket and persists its game scope', async () => {
+    prisma.supportCategory.findFirst.mockResolvedValue({ id: 'category-1' });
+    prisma.game.findFirst.mockResolvedValue({ id: 'game-1' });
+    prisma.supportTicket.create.mockResolvedValue({
+      id: 'ticket-id', ticketNo: 'ZSUP-20260826-AB12CD34', userId: 'user-1', categoryId: 'category-1',
+      gameId: 'game-1', subject: 'Lỗi đăng nhập game', description: 'Không thể đăng nhập vào game sau khi cập nhật.',
+      status: 'NEW', createdAt: new Date(), updatedAt: new Date(),
+      category: { id: 'category-1', code: 'ACCOUNT', name: 'Tài khoản' },
+      game: { id: 'game-1', name: 'Orion', slug: 'orion', subdomain: 'orion' },
+    });
+    const service = new SupportService(prisma as never);
+
+    await expect(service.createTicket('user-1', {
+      categoryId: 'category-1', gameId: 'game-1', subject: 'Lỗi đăng nhập game',
+      description: 'Không thể đăng nhập vào game sau khi cập nhật.',
+    } as any)).resolves.toMatchObject({ game: { id: 'game-1', name: 'Orion' } });
+
+    expect(prisma.game.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'game-1', isPublic: true },
+    }));
+    expect(prisma.supportTicket.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ gameId: 'game-1' }),
+    }));
   });
 
   it('scopes ticket lists and details to the authenticated user', async () => {

@@ -26,6 +26,7 @@ const FAQ_SELECT = {
 
 const TICKET_INCLUDE = {
   category: { select: CATEGORY_SELECT },
+  game: { select: { id: true, name: true, slug: true, subdomain: true } },
 } as const;
 
 @Injectable()
@@ -60,6 +61,14 @@ export class SupportService {
         400,
       );
     }
+    const gameId = dto.gameId ?? null;
+    if (gameId) {
+      const game = await this.prisma.game.findFirst({
+        where: { id: gameId, isPublic: true },
+        select: { id: true },
+      });
+      if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 400);
+    }
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -69,6 +78,7 @@ export class SupportService {
               ticketNo: this.ticketNo(),
               userId,
               categoryId: category.id,
+              gameId,
               subject: dto.subject,
               description: dto.description,
               status: SupportTicketStatus.NEW,

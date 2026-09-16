@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto, GameSupportTicketsQueryDto } from './game-admin.dto';
 import { GameAccessService } from './game-access.service';
 import { AdminService } from './admin.service';
 import { AdminProfileUpdateDto } from './admin.dto';
 import { vietnamCalendarStart, vietnamDaysAgoStart } from './game-metrics';
 import { auditRangeEnd } from './game-audit-date-range';
+import { CreateSupportMessageDto, SupportTicketMessagesQueryDto } from '../support/dto';
+import { SupportMessageAuthorType, SupportMessageVisibility, SupportTicketStatus } from '../common/domain';
 
 const playerInclude = { user: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } } } as const;
 
@@ -173,9 +175,43 @@ export class GameAdminService {
     return { items: items.map((entry) => ({ id: entry.id, action: entry.action, targetType: entry.targetType, targetId: entry.targetId, reason: entry.reason, beforeData: this.data(entry.beforeData), afterData: this.data(entry.afterData), actor: entry.actor ? { id: entry.actor.id, username: entry.actor.username, displayName: entry.actor.profile?.fullName ?? entry.actor.username } : null, createdAt: entry.createdAt })), page: query.page, pageSize: query.pageSize, total };
   }
 
+  async listSupportTickets(gameId: string, query: GameSupportTicketsQueryDto) {
+    const where = { gameId };
+    const [items, total] = await this.prisma.$transaction([this.prisma.supportTicket.findMany({ where, orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize, select: this.supportTicketSelect() }), this.prisma.supportTicket.count({ where })]);
+    return { items: items.map((ticket) => this.serializeSupportTicket(ticket)), page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) };
+  }
+
+  async getSupportTicket(gameId: string, ticketNo: string) {
+    const ticket = await this.prisma.supportTicket.findFirst({ where: { gameId, ticketNo: ticketNo.trim() }, select: this.supportTicketSelect() });
+    if (!ticket) throw new DomainError(ErrorCode.SUPPORT_TICKET_NOT_FOUND, 'Support ticket not found', 404);
+    return this.serializeSupportTicket(ticket);
+  }
+
+  async getSupportMessages(gameId: string, ticketNo: string, query: SupportTicketMessagesQueryDto) {
+    const ticket = await this.prisma.supportTicket.findFirst({ where: { gameId, ticketNo: ticketNo.trim() }, select: { id: true } });
+    if (!ticket) throw new DomainError(ErrorCode.SUPPORT_TICKET_NOT_FOUND, 'Support ticket not found', 404);
+    const where = { ticketId: ticket.id, visibility: SupportMessageVisibility.PUBLIC };
+    const [items, total] = await this.prisma.$transaction([this.prisma.supportTicketMessage.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize, select: { id: true, authorType: true, visibility: true, body: true, createdAt: true, author: { select: { username: true, profile: { select: { fullName: true } } } } } }), this.prisma.supportTicketMessage.count({ where })]);
+    return { items: items.map((message) => ({ ...message, author: { username: message.author.username, fullName: message.author.profile?.fullName ?? null } })), page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) };
+  }
+
+  async replySupportTicket(gameId: string, ticketNo: string, dto: CreateSupportMessageDto, actorUserId: string) {
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.supportTicket.findFirst({ where: { gameId, ticketNo: ticketNo.trim() }, select: { id: true, status: true } });
+      if (!ticket) throw new DomainError(ErrorCode.SUPPORT_TICKET_NOT_FOUND, 'Support ticket not found', 404);
+      if (ticket.status === SupportTicketStatus.CLOSED) throw new DomainError(ErrorCode.SUPPORT_TICKET_CLOSED, 'This ticket is closed', 409);
+      const message = await tx.supportTicketMessage.create({ data: { ticketId: ticket.id, authorUserId: actorUserId, authorType: SupportMessageAuthorType.STAFF, visibility: SupportMessageVisibility.PUBLIC, body: dto.body }, select: { id: true, authorType: true, visibility: true, body: true, createdAt: true, author: { select: { username: true, profile: { select: { fullName: true } } } } } });
+      await tx.supportTicket.update({ where: { id: ticket.id }, data: { lastActivityAt: now, lastStaffReplyAt: now, status: SupportTicketStatus.WAITING_USER } });
+      return { ...message, author: { username: message.author.username, fullName: message.author.profile?.fullName ?? null } };
+    });
+  }
+
   private serializePlayer(entry: any) {
     return { id: entry.id, userId: entry.userId, user: entry.user, status: entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockReason: entry.blockReason, supportNote: entry.supportNote ?? null, updatedAt: entry.updatedAt };
   }
+  private supportTicketSelect() { return { ticketNo: true, subject: true, description: true, status: true, lastActivityAt: true, lastCustomerMessageAt: true, lastStaffReplyAt: true, createdAt: true, updatedAt: true, category: { select: { id: true, code: true, name: true } }, user: { select: { username: true, email: true, phone: true, profile: { select: { fullName: true } } } } } as const; }
+  private serializeSupportTicket(ticket: any) { return { ...ticket, user: { username: ticket.user.username, email: ticket.user.email, phone: ticket.user.phone, fullName: ticket.user.profile?.fullName ?? null } }; }
   private serializePlayerProfile(playerId: string, user: any) {
     return {
       playerId,
