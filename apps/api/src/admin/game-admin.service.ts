@@ -58,8 +58,18 @@ export class GameAdminService {
   }
 
   async updatePlayerProfile(gameId: string, userId: string, dto: AdminProfileUpdateDto, actorUserId: string) {
-    const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, select: { id: true } });
+    const player = await (this.prisma.gamePlayer as any).findUnique({
+      where: { userId_gameId: { userId, gameId } },
+      select: { id: true, user: { select: { roles: { select: { role: { select: { code: true, isActive: true, scopeType: true } } } }, gameRoleAssignments: { select: { id: true } } } } },
+    });
     if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
+    const targetHasPlatformRole = (player.user?.roles ?? []).some(({ role }: any) => role.isActive && role.scopeType === 'PLATFORM');
+    const targetHasGameRole = (player.user?.gameRoleAssignments ?? []).length > 0;
+    const actorRoles = await this.prisma.userRole.findMany({ where: { userId: actorUserId }, select: { role: { select: { code: true, isActive: true } } } });
+    const actorIsSuperAdmin = actorRoles.some(({ role }) => role.isActive && role.code === 'SUPER_ADMIN');
+    if ((targetHasPlatformRole || targetHasGameRole) && !actorIsSuperAdmin) {
+      throw new DomainError(ErrorCode.GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED, 'Administrator profiles can only be updated by Super Admin', 403);
+    }
     const updated = await this.admin.updateProfile(userId, dto, async (tx, change) => {
       await tx.authorizationAuditLog.create({
         data: {

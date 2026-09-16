@@ -79,6 +79,7 @@ const messages: Record<string, string> = {
   STALE_GAME_OPERATION_UPDATE: 'Trạng thái vận hành đã thay đổi. Hãy tải lại trang rồi thử lại.',
   GAME_OPERATION_STATUS_LOCKED: 'Trạng thái này chỉ có admin tổng mới có thể thay đổi.',
   GAME_SSO_UNAVAILABLE: 'SSO game đang tạm thời không khả dụng do trạng thái vận hành.',
+  GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED: 'Tài khoản có quyền quản trị nền tảng chỉ Super Admin mới được chỉnh sửa.',
 };
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {

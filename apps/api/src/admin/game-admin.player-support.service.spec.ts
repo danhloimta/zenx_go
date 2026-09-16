@@ -33,6 +33,7 @@ function makeService(overrides: Record<string, unknown> = {}) {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     },
+    userRole: { findMany: jest.fn().mockResolvedValue([]) },
     $transaction: jest.fn(async (operation: unknown) => typeof operation === 'function' ? (operation as (client: unknown) => unknown)(prisma) : Promise.all(operation as Promise<unknown>[])),
     ...overrides,
   };
@@ -167,6 +168,32 @@ describe('GameAdminService player support', () => {
     expect(result).toMatchObject({ username: 'renamed-player', email: 'player@example.com', profile: { fullName: 'Player Renamed' } });
     expect(result).not.toHaveProperty('roles');
     expect(result).not.toHaveProperty('wallet');
+  });
+
+  it('prevents a non-Super-Admin game operator from editing a platform administrator player', async () => {
+    const admin = { updateProfile: jest.fn() };
+    const { prisma } = makeService({
+      gamePlayer: { findUnique: jest.fn().mockResolvedValue({ id: 'player-row', user: { roles: [{ role: { code: 'SUPPORT', isActive: true, scopeType: 'PLATFORM' } }] } }) },
+      userRole: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    const service = new (GameAdminService as any)(prisma, {}, admin);
+
+    await expect(service.updatePlayerProfile('orion', 'platform-admin', { expectedUpdatedAt: '2026-09-16T01:00:00.000Z', fullName: 'No access' }, 'game-admin'))
+      .rejects.toMatchObject({ code: 'GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED', status: 403 });
+    expect(admin.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('prevents a non-Super-Admin game operator from editing another game administrator player', async () => {
+    const admin = { updateProfile: jest.fn() };
+    const { prisma } = makeService({
+      gamePlayer: { findUnique: jest.fn().mockResolvedValue({ id: 'player-row', user: { roles: [], gameRoleAssignments: [{ id: 'other-game-role' }] } }) },
+      userRole: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+    const service = new (GameAdminService as any)(prisma, {}, admin);
+
+    await expect(service.updatePlayerProfile('orion', 'other-game-admin', { expectedUpdatedAt: '2026-09-16T01:00:00.000Z', fullName: 'No access' }, 'game-admin'))
+      .rejects.toMatchObject({ code: 'GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED', status: 403 });
+    expect(admin.updateProfile).not.toHaveBeenCalled();
   });
 
   it('returns only this player\'s moderation and support activity in the requested game', async () => {

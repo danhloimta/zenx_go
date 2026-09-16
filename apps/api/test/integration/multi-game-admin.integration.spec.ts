@@ -21,6 +21,7 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
   let hoaLongSubdomain = '';
   let orionCallback = '';
   let hoaLongCallback = '';
+  let superAdminId = '';
   let gameAdminId = '';
   let contentManagerId = '';
   let contentOnlyId = '';
@@ -85,6 +86,7 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     const moderator = await createUser('multimoderator');
     const player = await createUser('multiplayer');
     contentManagerId = contentManagerUser.id;
+    superAdminId = superAdmin.id;
     contentOnlyId = contentOnlyUser.id;
     moderatorId = moderator.id;
     playerId = player.id;
@@ -319,8 +321,21 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       });
     expect(updatedProfile.status).toBe(200);
     expect(updatedProfile.body.data).toMatchObject({ phone: '+84912345678', phoneVerified: true, profile: { fullName: 'Profile updated by Orion Game Admin', city: 'Hồ Chí Minh' } });
+    const revokedPlayerSession = await http().post('/auth/refresh').set('Cookie', playerCookies).send({});
+    expect(revokedPlayerSession.status).toBe(401);
+    playerCookies = await login(fullProfile.body.data.username);
     const crossGameProfile = await http().get(`/game-admin/games/${hoaLongId}/players/${playerId}/profile`).set('Cookie', superAdminCookies);
     expect(crossGameProfile.status).toBe(404);
+
+    await (prisma.gamePlayer as any).upsert({ where: { userId_gameId: { userId: superAdminId, gameId: orionId } }, create: { userId: superAdminId, gameId: orionId }, update: {} });
+    const protectedProfile = await http().get(`/game-admin/games/${orionId}/players/${superAdminId}/profile`).set('Cookie', superAdminCookies);
+    expect(protectedProfile.status).toBe(200);
+    const deniedPrivilegedTarget = await http()
+      .patch(`/game-admin/games/${orionId}/players/${superAdminId}/profile`)
+      .set('Cookie', gameAdminCookies)
+      .send({ fullName: 'Attempted platform takeover', expectedUpdatedAt: protectedProfile.body.data.updatedAt });
+    expect(deniedPrivilegedTarget.status).toBe(403);
+    expect(deniedPrivilegedTarget.body.error.code).toBe('GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED');
 
     const staleNote = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)
