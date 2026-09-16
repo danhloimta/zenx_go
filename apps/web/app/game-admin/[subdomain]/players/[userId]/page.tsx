@@ -30,6 +30,7 @@ export default function GamePlayerDetailPage() {
   const [note, setNote] = useState('');
   const [noteVersion, setNoteVersion] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [noteConflict, setNoteConflict] = useState<{ note: string; updatedAt: string } | null>(null);
   const [pendingStatus, setPendingStatus] = useState<'ACTIVE' | 'BLOCKED' | null>(null);
   const [reason, setReason] = useState('');
   const [activityPage, setActivityPage] = useState(1);
@@ -67,17 +68,22 @@ export default function GamePlayerDetailPage() {
   const saveNote = useMutation({
     mutationFn: () => api.gameAdmin.updatePlayerSupportNote(gameId!, userId, {
       note: note.trim() || null,
-      expectedUpdatedAt: player.data!.updatedAt,
+      expectedUpdatedAt: noteVersion ?? player.data!.updatedAt,
     }),
     onSuccess: (updated) => {
       setNote(updated.supportNote ?? '');
       setNoteVersion(updated.updatedAt);
       setNoteError(null);
+      setNoteConflict(null);
       queryClient.setQueryData(['game-admin', 'player', gameId, userId], updated);
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'player-activity', gameId, userId] });
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'players', gameId] });
     },
-    onError: () => setNoteError('Không thể lưu ghi chú. Player có thể vừa được thay đổi; nội dung anh/chị đang nhập vẫn được giữ lại.'),
+    onError: async () => {
+      setNoteError('Không thể lưu ghi chú. Player có thể vừa được thay đổi; bản nháp hiện tại vẫn được giữ lại.');
+      const result = await player.refetch();
+      if (result.data) setNoteConflict({ note: result.data.supportNote ?? '', updatedAt: result.data.updatedAt });
+    },
   });
 
   const updateStatus = useMutation({
@@ -95,12 +101,25 @@ export default function GamePlayerDetailPage() {
     },
   });
 
-  const reloadPlayer = async () => {
+  const useServerNote = () => {
+    if (!noteConflict) return;
+    setNote(noteConflict.note);
+    setNoteVersion(noteConflict.updatedAt);
+    setNoteConflict(null);
+    setNoteError(null);
+  };
+
+  const keepDraftAndUseLatestVersion = () => {
+    if (!noteConflict) return;
+    setNoteVersion(noteConflict.updatedAt);
+    setNoteConflict(null);
+    setNoteError(null);
+  };
+
+  const refreshConflict = async () => {
     const result = await player.refetch();
     if (result.data) {
-      setNote(result.data.supportNote ?? '');
-      setNoteVersion(result.data.updatedAt);
-      setNoteError(null);
+      setNoteConflict({ note: result.data.supportNote ?? '', updatedAt: result.data.updatedAt });
     }
   };
 
@@ -124,7 +143,7 @@ export default function GamePlayerDetailPage() {
 
     <section className="rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">Ghi chú nội bộ</h2><p className="mt-1 text-sm text-slate-500">Chỉ đội ngũ quản trị game nhìn thấy.</p></div>{canModerate ? <Button variant={current.status === 'BLOCKED' ? 'outline' : 'destructive'} onClick={() => setPendingStatus(current.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED')}>{current.status === 'BLOCKED' ? 'Mở khóa player' : 'Khóa player'}</Button> : null}</div>
-      {canEditNote ? <><Textarea className="mt-4 min-h-32" maxLength={2_000} value={note} onChange={(event) => { setNote(event.target.value); setNoteError(null); }} placeholder="Thêm ghi chú hỗ trợ nội bộ…" /><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><p className={noteTooLong ? 'text-xs text-red-600' : 'text-xs text-slate-500'}>{note.length}/2000 ký tự</p><Button disabled={!noteChanged || noteTooLong || saveNote.isPending} onClick={() => saveNote.mutate()}>Lưu ghi chú</Button></div>{noteError ? <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-red-600"><span>{noteError}</span><Button size="sm" variant="outline" onClick={() => void reloadPlayer()}>Tải dữ liệu mới</Button></div> : null}</> : <p className="mt-4 text-sm text-slate-500">Bạn không có quyền chỉnh sửa ghi chú nội bộ.</p>}
+      {canEditNote ? <><Textarea className="mt-4 min-h-32" maxLength={2_000} value={note} onChange={(event) => { setNote(event.target.value); setNoteError(null); setNoteConflict(null); }} placeholder="Thêm ghi chú hỗ trợ nội bộ…" /><div className="mt-2 flex flex-wrap items-center justify-between gap-3"><p className={noteTooLong ? 'text-xs text-red-600' : 'text-xs text-slate-500'}>{note.length}/2000 ký tự</p><Button disabled={!noteChanged || noteTooLong || saveNote.isPending} onClick={() => saveNote.mutate()}>Lưu ghi chú</Button></div>{noteError ? <div className="mt-3 space-y-2 text-sm text-red-600"><p>{noteError}</p>{noteConflict ? <><p className="rounded-lg bg-amber-50 p-3 text-amber-800">Ghi chú trên máy chủ hiện là: <span className="font-semibold">{noteConflict.note || 'Chưa có ghi chú'}</span></p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={useServerNote}>Khôi phục bản máy chủ</Button><Button size="sm" variant="outline" onClick={keepDraftAndUseLatestVersion}>Giữ bản nháp và ghi đè</Button></div></> : <Button size="sm" variant="outline" onClick={() => void refreshConflict()}>Kiểm tra bản mới</Button>}</div> : null}</> : <p className="mt-4 text-sm text-slate-500">Bạn không có quyền chỉnh sửa ghi chú nội bộ.</p>}
     </section>
 
     <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="text-lg font-black">Lịch sử hỗ trợ & moderation</h2>{activity.isLoading ? <p className="mt-4 text-sm text-slate-500">Đang tải lịch sử…</p> : activity.isError ? <p className="mt-4 text-sm text-red-600">Không thể tải lịch sử hoạt động.</p> : <><div className="mt-4 space-y-4">{activity.data?.items.map((entry) => <ActivityItem key={entry.id} entry={entry} />)}{activity.data?.items.length === 0 ? <p className="text-sm text-slate-500">Chưa có hoạt động hỗ trợ hoặc moderation.</p> : null}</div>{activity.data && activity.data.total > activity.data.pageSize ? <div className="mt-5 flex items-center justify-end gap-2"><Button size="sm" variant="outline" disabled={activityPage <= 1} onClick={() => setActivityPage(activityPage - 1)}>Trước</Button><span className="text-sm text-slate-500">Trang {activityPage} / {Math.max(1, Math.ceil(activity.data.total / activity.data.pageSize))}</span><Button size="sm" variant="outline" disabled={activityPage >= Math.ceil(activity.data.total / activity.data.pageSize)} onClick={() => setActivityPage(activityPage + 1)}>Sau</Button></div> : null}</>}</section>

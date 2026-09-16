@@ -24,14 +24,16 @@ describe('GameAdminService maintenance operations', () => {
   });
 
   it('enables maintenance with an optimistic write and a redacted audit snapshot', async () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const prisma = {
-      game: { findUnique: jest.fn().mockResolvedValue(game()), updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue(game({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ', maintenanceEndsAt: new Date('2026-09-18T00:00:00.000Z') })) },
+      game: { findUnique: jest.fn().mockResolvedValue(game()), updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue(game({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ', maintenanceEndsAt: new Date(future) })) },
       authorizationAuditLog: { create: jest.fn().mockResolvedValue({}) },
+      $transaction: jest.fn(async (operation: unknown) => (operation as (client: unknown) => unknown)(prisma)),
     };
     const service = new GameAdminService(prisma as any, {} as any);
 
     const result = await (service as any).updateMaintenance('orion', {
-      enabled: true, message: 'Nâng cấp máy chủ', expectedEndsAt: '2026-09-18T00:00:00.000Z', expectedUpdatedAt: '2026-09-17T00:00:00.000Z', reason: 'Triển khai bản vá',
+      enabled: true, message: 'Nâng cấp máy chủ', expectedEndsAt: future, expectedUpdatedAt: '2026-09-17T00:00:00.000Z', reason: 'Triển khai bản vá',
     }, 'game-admin');
 
     expect(prisma.game.updateMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -40,7 +42,7 @@ describe('GameAdminService maintenance operations', () => {
     }));
     const audit = prisma.authorizationAuditLog.create.mock.calls[0][0].data;
     expect(audit).toEqual(expect.objectContaining({ action: 'GAME_MAINTENANCE_ENABLED', actorUserId: 'game-admin', gameId: 'orion', targetType: 'GAME', targetId: 'orion' }));
-    expect(JSON.parse(audit.afterData)).toEqual({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ', maintenanceEndsAt: '2026-09-18T00:00:00.000Z' });
+    expect(JSON.parse(audit.afterData)).toEqual({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ', maintenanceEndsAt: new Date(future).toISOString() });
     expect(JSON.stringify(audit)).not.toMatch(/secret|authorization/i);
     expect(result).toEqual(expect.objectContaining({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ' }));
   });
@@ -58,6 +60,7 @@ describe('GameAdminService maintenance operations', () => {
     const prisma = {
       game: { findUnique: jest.fn().mockResolvedValue(game()), updateMany: jest.fn().mockResolvedValue({ count: 0 }), findUniqueOrThrow: jest.fn() },
       authorizationAuditLog: { create: jest.fn() },
+      $transaction: jest.fn(async (operation: unknown) => (operation as (client: unknown) => unknown)(prisma)),
     };
     const service = new GameAdminService(prisma as any, {} as any);
 
@@ -65,5 +68,21 @@ describe('GameAdminService maintenance operations', () => {
       enabled: true, message: 'Nâng cấp máy chủ', expectedEndsAt: null, expectedUpdatedAt: '2026-09-17T00:00:00.000Z', reason: 'Triển khai bản vá',
     }, 'game-admin')).rejects.toMatchObject({ code: ErrorCode.STALE_GAME_OPERATION_UPDATE, status: 409 });
     expect(prisma.authorizationAuditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('propagates audit failure from the same maintenance transaction', async () => {
+    const auditFailure = new Error('audit unavailable');
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const prisma = {
+      game: { findUnique: jest.fn().mockResolvedValue(game()), updateMany: jest.fn().mockResolvedValue({ count: 1 }), findUniqueOrThrow: jest.fn().mockResolvedValue(game({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Nâng cấp máy chủ', maintenanceEndsAt: new Date(future) })) },
+      authorizationAuditLog: { create: jest.fn().mockRejectedValue(auditFailure) },
+      $transaction: jest.fn(async (operation: unknown) => (operation as (client: unknown) => unknown)(prisma)),
+    };
+    const service = new GameAdminService(prisma as any, {} as any);
+
+    await expect((service as any).updateMaintenance('orion', {
+      enabled: true, message: 'Nâng cấp máy chủ', expectedEndsAt: future, expectedUpdatedAt: '2026-09-17T00:00:00.000Z', reason: 'Triển khai bản vá',
+    }, 'game-admin')).rejects.toThrow('audit unavailable');
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
   });
 });

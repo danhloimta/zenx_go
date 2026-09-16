@@ -29,7 +29,7 @@ export class GameAdminService {
       players.count({ where: { gameId } }), players.count({ where: { gameId, firstLoginAt: { gte: day } } }), players.count({ where: { gameId, firstLoginAt: { gte: sevenDays } } }), players.count({ where: { gameId, firstLoginAt: { gte: thirtyDays } } }), players.count({ where: { gameId, lastLoginAt: { gte: sevenDays } } }), players.count({ where: { gameId, lastLoginAt: { gte: thirtyDays } } }), players.count({ where: { gameId, loginCount: { gt: 1 } } }),
       players.aggregate({ where: { gameId }, _sum: { loginCount: true } }), players.findMany({ where: { gameId }, orderBy: { lastLoginAt: 'desc' }, take: 10, include: playerInclude }),
     ]);
-    return { totals: { totalPlayers, newToday, new7d, new30d, active7d, active30d, returning, totalSsoLogins: totalLogins._sum.loginCount ?? 0 }, recentPlayers: recent.map((entry: any) => this.serializePlayer(entry)) };
+    return { totals: { totalPlayers, newToday, new7d, new30d, active7d, active30d, returning, totalSsoLogins: totalLogins._sum.loginCount ?? 0 }, recentPlayers: recent.map((entry: any) => this.serializeDashboardPlayer(entry)) };
   }
 
   async listPlayers(gameId: string, query: GamePlayersQueryDto) {
@@ -51,11 +51,15 @@ export class GameAdminService {
     const current = await players.findUnique({ where: { userId_gameId: { userId, gameId } }, include: playerInclude });
     if (!current) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
     if (current.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
-    const now = new Date();
-    const write = await players.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: dto.status === 'BLOCKED' ? { status: 'BLOCKED', blockedAt: now, blockedByUserId: actorUserId, blockReason: dto.reason, updatedAt: now } : { status: 'ACTIVE', blockedAt: null, blockedByUserId: null, blockReason: null, updatedAt: now } });
-    if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
-    const updated = await players.findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
-    await this.prisma.authorizationAuditLog.create({ data: { actorUserId, gameId, action: dto.status === 'BLOCKED' ? 'GAME_PLAYER_BLOCKED' : 'GAME_PLAYER_UNBLOCKED', targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify(this.serializePlayerForModerationAudit(current)), afterData: JSON.stringify(this.serializePlayerForModerationAudit(updated)), reason: dto.reason } });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const txPlayers = tx.gamePlayer as any;
+      const now = new Date();
+      const write = await txPlayers.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: dto.status === 'BLOCKED' ? { status: 'BLOCKED', blockedAt: now, blockedByUserId: actorUserId, blockReason: dto.reason, updatedAt: now } : { status: 'ACTIVE', blockedAt: null, blockedByUserId: null, blockReason: null, updatedAt: now } });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
+      const next = await txPlayers.findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
+      await tx.authorizationAuditLog.create({ data: { actorUserId, gameId, action: dto.status === 'BLOCKED' ? 'GAME_PLAYER_BLOCKED' : 'GAME_PLAYER_UNBLOCKED', targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify(this.serializePlayerForModerationAudit(current)), afterData: JSON.stringify(this.serializePlayerForModerationAudit(next)), reason: dto.reason } });
+      return next;
+    });
     return this.serializePlayer(updated);
   }
 
@@ -65,11 +69,15 @@ export class GameAdminService {
     if (!current) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
     if (current.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
     const supportNote = typeof dto.note === 'string' && dto.note.trim() ? dto.note.trim() : null;
-    const now = new Date();
-    const write = await players.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: { supportNote, updatedAt: now } });
-    if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
-    const updated = await players.findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
-    await this.prisma.authorizationAuditLog.create({ data: { actorUserId, gameId, action: 'GAME_PLAYER_SUPPORT_NOTE_UPDATED', targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify({ supportNote: current.supportNote ?? null }), afterData: JSON.stringify({ supportNote }), reason: null } });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const txPlayers = tx.gamePlayer as any;
+      const now = new Date();
+      const write = await txPlayers.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: { supportNote, updatedAt: now } });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
+      const next = await txPlayers.findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
+      await tx.authorizationAuditLog.create({ data: { actorUserId, gameId, action: 'GAME_PLAYER_SUPPORT_NOTE_UPDATED', targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify({ supportNote: current.supportNote ?? null }), afterData: JSON.stringify({ supportNote }), reason: null } });
+      return next;
+    });
     return this.serializePlayer(updated);
   }
 
@@ -104,11 +112,14 @@ export class GameAdminService {
     const data = dto.enabled
       ? { operationalStatus: 'MAINTENANCE', maintenanceMessage: message, maintenanceEndsAt: expectedEndsAt, updatedAt: now }
       : { operationalStatus: 'AVAILABLE', maintenanceMessage: null, maintenanceEndsAt: null, updatedAt: now };
-    const write = await this.prisma.game.updateMany({ where: { id: gameId, updatedAt: current.updatedAt }, data });
-    if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_OPERATION_UPDATE, 'Game operations were changed by another operator', 409);
-    const updated = await this.prisma.game.findUniqueOrThrow({ where: { id: gameId }, select: { id: true, operationalStatus: true, maintenanceMessage: true, maintenanceEndsAt: true, updatedAt: true } });
     const action = !dto.enabled ? 'GAME_MAINTENANCE_DISABLED' : current.operationalStatus === 'MAINTENANCE' ? 'GAME_MAINTENANCE_UPDATED' : 'GAME_MAINTENANCE_ENABLED';
-    await this.prisma.authorizationAuditLog.create({ data: { actorUserId, gameId, action, targetType: 'GAME', targetId: gameId, beforeData: JSON.stringify(this.serializeMaintenanceAudit(current)), afterData: JSON.stringify(this.serializeMaintenanceAudit(updated)), reason: dto.reason } });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const write = await tx.game.updateMany({ where: { id: gameId, updatedAt: current.updatedAt }, data });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_OPERATION_UPDATE, 'Game operations were changed by another operator', 409);
+      const next = await tx.game.findUniqueOrThrow({ where: { id: gameId }, select: { id: true, operationalStatus: true, maintenanceMessage: true, maintenanceEndsAt: true, updatedAt: true } });
+      await tx.authorizationAuditLog.create({ data: { actorUserId, gameId, action, targetType: 'GAME', targetId: gameId, beforeData: JSON.stringify(this.serializeMaintenanceAudit(current)), afterData: JSON.stringify(this.serializeMaintenanceAudit(next)), reason: dto.reason } });
+      return next;
+    });
     return this.serializeOperations(updated);
   }
 
@@ -124,6 +135,9 @@ export class GameAdminService {
 
   private serializePlayer(entry: any) {
     return { id: entry.id, userId: entry.userId, user: entry.user, status: entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockReason: entry.blockReason, supportNote: entry.supportNote ?? null, updatedAt: entry.updatedAt };
+  }
+  private serializeDashboardPlayer(entry: any) {
+    return { id: entry.id, userId: entry.userId, user: entry.user, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, updatedAt: entry.updatedAt };
   }
   private serializePlayerForModerationAudit(entry: any) {
     const { supportNote: _supportNote, ...player } = this.serializePlayer(entry);

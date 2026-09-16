@@ -153,6 +153,7 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     expect(gameAdminAssignment.roles.map((role: { id: string }) => role.id)).toEqual([gameAdminRoleId]);
     const contentOnlyAssignment = await replaceRoles(orionId, contentOnlyId, [contentRoleId]);
     expect(contentOnlyAssignment.roles.map((role: { id: string }) => role.id)).toEqual([contentRoleId]);
+
   });
 
   it('scopes CMS mutations to Orion, publishes content, and prevents moderator access', async () => {
@@ -290,6 +291,10 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       .send({ note: '  Integration support note.  ', expectedUpdatedAt: player.updatedAt });
     expect(supportNote.status).toBe(200);
     expect(supportNote.body.data.supportNote).toBe('Integration support note.');
+
+    const contentDashboard = await http().get(`/game-admin/games/${orionId}/dashboard`).set('Cookie', contentOnlyCookies);
+    expect(contentDashboard.status).toBe(200);
+    expect(JSON.stringify(contentDashboard.body.data.recentPlayers)).not.toMatch(/supportNote|blockReason/i);
 
     const staleNote = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)

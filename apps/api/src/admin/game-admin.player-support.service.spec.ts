@@ -33,13 +33,30 @@ function makeService(overrides: Record<string, unknown> = {}) {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
     },
-    $transaction: jest.fn(async (queries) => Promise.all(queries)),
+    $transaction: jest.fn(async (operation: unknown) => typeof operation === 'function' ? (operation as (client: unknown) => unknown)(prisma) : Promise.all(operation as Promise<unknown>[])),
     ...overrides,
   };
   return { prisma, service: new GameAdminService(prisma as any, {} as any) };
 }
 
 describe('GameAdminService player support', () => {
+  it('projects dashboard recent players without internal support data', async () => {
+    const recent = [player({ supportNote: 'Private note', blockReason: 'Private reason' })];
+    const { service } = makeService({
+      gamePlayer: {
+        count: jest.fn().mockResolvedValue(1),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { loginCount: 1 } }),
+        findMany: jest.fn().mockResolvedValue(recent),
+      },
+    });
+
+    const result = await service.dashboard('orion');
+
+    expect(result.recentPlayers[0]).toEqual(expect.objectContaining({ userId: 'player-user', loginCount: 1 }));
+    expect(result.recentPlayers[0]).not.toHaveProperty('supportNote');
+    expect(result.recentPlayers[0]).not.toHaveProperty('blockReason');
+  });
+
   it('validates a nullable support note and rejects absent or oversized notes', async () => {
     const valid = await validate(plainToInstance(GamePlayerSupportNoteDto, { note: null, expectedUpdatedAt: '2026-09-16T01:00:00.000Z' }));
     const invalid = await validate(plainToInstance(GamePlayerSupportNoteDto, { note: 'x'.repeat(2_001), expectedUpdatedAt: 'invalid' }));
@@ -101,6 +118,16 @@ describe('GameAdminService player support', () => {
     expect(prisma.authorizationAuditLog.create).not.toHaveBeenCalled();
   });
 
+  it('propagates audit failure from the same support-note transaction', async () => {
+    const auditFailure = new Error('audit unavailable');
+    const { prisma, service } = makeService({ authorizationAuditLog: { create: jest.fn().mockRejectedValue(auditFailure), findMany: jest.fn(), count: jest.fn() } });
+
+    await expect((service as any).updatePlayerSupportNote('orion', 'player-user', {
+      note: 'Transaction note', expectedUpdatedAt: '2026-09-16T01:00:00.000Z',
+    }, 'moderator')).rejects.toThrow('audit unavailable');
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
+  });
+
   it('treats a player from another game as not found before writing a support note', async () => {
     const { prisma, service } = makeService({
       gamePlayer: { findUnique: jest.fn().mockResolvedValue(null), findUniqueOrThrow: jest.fn(), updateMany: jest.fn() },
@@ -148,5 +175,15 @@ describe('GameAdminService player support', () => {
     const audit = prisma.authorizationAuditLog.create.mock.calls[0][0].data;
     expect(JSON.parse(audit.beforeData)).not.toHaveProperty('supportNote');
     expect(JSON.parse(audit.afterData)).not.toHaveProperty('supportNote');
+  });
+
+  it('propagates audit failure from the same moderation transaction', async () => {
+    const auditFailure = new Error('audit unavailable');
+    const { prisma, service } = makeService({ authorizationAuditLog: { create: jest.fn().mockRejectedValue(auditFailure), findMany: jest.fn(), count: jest.fn() } });
+
+    await expect(service.updatePlayerStatus('orion', 'player-user', {
+      status: 'BLOCKED', reason: 'Abuse', expectedUpdatedAt: '2026-09-16T01:00:00.000Z',
+    }, 'moderator')).rejects.toThrow('audit unavailable');
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
   });
 });

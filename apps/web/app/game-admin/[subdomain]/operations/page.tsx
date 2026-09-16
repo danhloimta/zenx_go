@@ -24,6 +24,8 @@ function statusLabel(status: GameOperations['operationalStatus']) {
   return 'Sẵn sàng phục vụ';
 }
 
+type MaintenanceForm = { enabled: boolean; message: string; expectedEndsAt: string };
+
 export default function GameOperationsPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const queryClient = useQueryClient();
@@ -34,13 +36,20 @@ export default function GameOperationsPage() {
   const [message, setMessage] = useState('');
   const [expectedEndsAt, setExpectedEndsAt] = useState('');
   const [reason, setReason] = useState('');
+  const [baseline, setBaseline] = useState<MaintenanceForm | null>(null);
+  const form: MaintenanceForm = { enabled, message, expectedEndsAt };
+  const formDirty = Boolean(baseline && JSON.stringify(form) !== JSON.stringify(baseline));
 
   useEffect(() => {
     if (!operations.data) return;
-    setEnabled(operations.data.operationalStatus === 'MAINTENANCE');
-    setMessage(operations.data.maintenanceMessage ?? '');
-    setExpectedEndsAt(toLocalInput(operations.data.maintenanceEndsAt));
-  }, [operations.data]);
+    const next = { enabled: operations.data.operationalStatus === 'MAINTENANCE', message: operations.data.maintenanceMessage ?? '', expectedEndsAt: toLocalInput(operations.data.maintenanceEndsAt) };
+    if (!baseline || !formDirty) {
+      setEnabled(next.enabled);
+      setMessage(next.message);
+      setExpectedEndsAt(next.expectedEndsAt);
+      setBaseline(next);
+    }
+  }, [operations.data, baseline, formDirty]);
 
   const update = useMutation({
     mutationFn: () => api.gameAdmin.updateMaintenance(gameId!, {
@@ -52,6 +61,11 @@ export default function GameOperationsPage() {
     }),
     onSuccess: (next) => {
       setReason('');
+      const nextForm = { enabled: next.operationalStatus === 'MAINTENANCE', message: next.maintenanceMessage ?? '', expectedEndsAt: toLocalInput(next.maintenanceEndsAt) };
+      setEnabled(nextForm.enabled);
+      setMessage(nextForm.message);
+      setExpectedEndsAt(nextForm.expectedEndsAt);
+      setBaseline(nextForm);
       queryClient.setQueryData(['game-admin', 'operations', gameId], next);
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'context', subdomain] });
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'dashboard', gameId] });

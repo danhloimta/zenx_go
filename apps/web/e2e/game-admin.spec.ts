@@ -95,7 +95,7 @@ test.describe('game administrator and player SSO journey', () => {
     await expect(moderatorPage.getByRole('link', { name: 'Vận hành' })).toHaveCount(0);
 
     await moderatorPage.goto('http://hoalong.lvh.me:3300/admin');
-    await expect(moderatorPage).toHaveURL(/http:\/\/lvh\.me:3300\/auth\/login/);
+    await expect(moderatorPage.getByText('Không thể truy cập khu vực quản trị game.')).toBeVisible();
 
     const playerContext = await signedInContext(browser, player);
     const playerPage = await playerContext.newPage();

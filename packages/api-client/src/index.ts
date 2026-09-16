@@ -404,7 +404,8 @@ export interface GamePlayer {
   id: string; userId: string; user: { id: string; username: string; profile: { fullName: string; avatarUrl?: string | null } | null };
   status: 'ACTIVE' | 'BLOCKED'; firstLoginAt: string; lastLoginAt: string; loginCount: number; blockedAt: string | null; blockReason: string | null; supportNote: string | null; updatedAt: string;
 }
-export interface GameAdminDashboard { totals: { totalPlayers: number; newToday: number; new7d: number; new30d: number; active7d: number; active30d: number; returning: number; totalSsoLogins: number }; recentPlayers: GamePlayer[]; }
+export interface GameRecentPlayer { id: string; userId: string; user: { id: string; username: string; profile: { fullName: string; avatarUrl?: string | null } | null }; firstLoginAt: string; lastLoginAt: string; loginCount: number; updatedAt: string; }
+export interface GameAdminDashboard { totals: { totalPlayers: number; newToday: number; new7d: number; new30d: number; active7d: number; active30d: number; returning: number; totalSsoLogins: number }; recentPlayers: GameRecentPlayer[]; }
 export interface GameAuditEntry { id: string; action: string; targetType: string; targetId: string | null; reason: string | null; beforeData: unknown; afterData: unknown; actor: { id: string; username: string; displayName: string } | null; createdAt: string; }
 export interface GamePlayerActivityEntry { id: string; action: 'GAME_PLAYER_BLOCKED' | 'GAME_PLAYER_UNBLOCKED' | 'GAME_PLAYER_SUPPORT_NOTE_UPDATED'; targetType: 'GAME_PLAYER'; targetId: string; reason: string | null; beforeData: unknown; afterData: unknown; actor: { id: string; username: string; displayName: string } | null; createdAt: string; }
 export interface GameOperations { operationalStatus: GameOperationalStatus; maintenanceMessage: string | null; maintenanceEndsAt: string | null; updatedAt: string; }
