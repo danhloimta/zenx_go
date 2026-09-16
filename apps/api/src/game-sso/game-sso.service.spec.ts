@@ -1,3 +1,5 @@
+jest.mock('argon2', () => ({ verify: jest.fn() }));
+import * as argon2 from 'argon2';
 import { GameSsoService } from './game-sso.service';
 
 describe('GameSsoService', () => {
@@ -36,11 +38,12 @@ describe('GameSsoService', () => {
         },
       })),
     };
-    const verify = jest.spyOn(require('argon2'), 'verify').mockResolvedValue(true);
+    const verify = argon2.verify as jest.Mock;
+    verify.mockResolvedValue(true);
     const service = new GameSsoService(prisma as any);
 
     await expect(service.exchange(`Basic ${Buffer.from('client:secret').toString('base64')}`, 'raw-code', 'https://game.example/callback'))
       .rejects.toMatchObject({ code: 'GAME_SSO_UNAVAILABLE', status: 503 });
-    verify.mockRestore();
+    verify.mockReset();
   });
 });

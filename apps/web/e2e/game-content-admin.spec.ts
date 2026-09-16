@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomInt } from 'node:crypto';
 import { resolve } from 'node:path';

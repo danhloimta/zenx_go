@@ -140,7 +140,8 @@ export class GameAdminService {
     return { id: entry.id, userId: entry.userId, user: entry.user, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, updatedAt: entry.updatedAt };
   }
   private serializePlayerForModerationAudit(entry: any) {
-    const { supportNote: _supportNote, ...player } = this.serializePlayer(entry);
+    const player = this.serializePlayer(entry);
+    delete player.supportNote;
     return player;
   }
   private serializeOperations(game: any) { return { operationalStatus: game.operationalStatus, maintenanceMessage: game.maintenanceMessage ?? null, maintenanceEndsAt: game.maintenanceEndsAt ?? null, updatedAt: game.updatedAt }; }
