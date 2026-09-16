@@ -149,7 +149,7 @@ describe('GameAdminService player support', () => {
       roles: [],
     };
     const admin = {
-      updateProfile: jest.fn(async (_userId: string, _dto: unknown, onUpdated: (tx: unknown, snapshot: unknown) => Promise<void>) => {
+      updateProfile: jest.fn(async (_userId: string, _dto: unknown, _context: unknown, onUpdated: (tx: unknown, snapshot: unknown) => Promise<void>) => {
         await onUpdated({ authorizationAuditLog: (prisma as any).authorizationAuditLog }, { before: { username: 'player' }, after: { username: 'renamed-player' } });
         return updated;
       }),
@@ -163,7 +163,7 @@ describe('GameAdminService player support', () => {
       emailVerified: true, phoneVerified: true, expectedUpdatedAt: '2026-09-16T01:00:00.000Z',
     }, 'game-admin');
 
-    expect(admin.updateProfile).toHaveBeenCalledWith('player-user', expect.objectContaining({ username: 'renamed-player', emailVerified: true, phoneVerified: true }), expect.any(Function));
+    expect(admin.updateProfile).toHaveBeenCalledWith('player-user', expect.objectContaining({ username: 'renamed-player', emailVerified: true, phoneVerified: true }), undefined, expect.any(Function));
     expect(prisma.authorizationAuditLog.create).toHaveBeenCalledWith({ data: expect.objectContaining({ actorUserId: 'game-admin', gameId: 'orion', action: 'GAME_PLAYER_PROFILE_UPDATED', targetType: 'GAME_PLAYER', targetId: 'player-row' }) });
     expect(result).toMatchObject({ username: 'renamed-player', email: 'player@example.com', profile: { fullName: 'Player Renamed' } });
     expect(result).not.toHaveProperty('roles');
