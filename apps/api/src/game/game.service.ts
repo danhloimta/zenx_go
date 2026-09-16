@@ -10,6 +10,7 @@ import { Marked } from 'marked';
 const GAME_INCLUDE = {
   genres: { include: { genre: true } },
   platforms: true,
+  ssoClient: { select: { clientId: true, redirectUri: true, isActive: true } },
 };
 
 function gameDetailInclude(now: Date) {
@@ -119,6 +120,9 @@ export class GameService {
   }
 
   private publicGameSummary(game: any) {
+    const sso = game.ssoClient?.isActive
+      ? { authorizeUrl: `/api/v1/game-sso/authorize?${new URLSearchParams({ client_id: game.ssoClient.clientId, redirect_uri: game.ssoClient.redirectUri }).toString()}` }
+      : null;
     return {
       code: game.code,
       name: game.name,
@@ -150,6 +154,7 @@ export class GameService {
       platforms: game.platforms
         .map((entry: any) => entry.platform)
         .sort((left: string, right: string) => platformRank(left) - platformRank(right)),
+      sso,
     };
   }
 

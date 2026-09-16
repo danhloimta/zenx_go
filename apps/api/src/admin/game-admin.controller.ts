@@ -5,7 +5,7 @@ import { GameAccessGuard, GameAdminRequest } from './game-access.guard';
 import { GamePermissionGuard } from './game-permission.guard';
 import { RequirePermission } from './permission.decorator';
 import { GameAdminService } from './game-admin.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GameAuditQueryDto } from './game-admin.dto';
 
 @Controller('game-admin')
 @UseGuards(AuthGuard)
@@ -34,4 +34,9 @@ export class GameAdminController {
   @UseGuards(GameAccessGuard, GamePermissionGuard)
   @RequirePermission({ code: 'game.players.moderate', action: 'moderate', subject: 'GamePlayer' })
   updatePlayerStatus(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerStatusDto, @Req() request: GameAdminRequest) { return this.games.updatePlayerStatus(gameId, userId, dto, request.user.sub); }
+
+  @Get('games/:gameId/audit')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.audit.view', action: 'read', subject: 'GameAudit' })
+  audit(@Param('gameId') gameId: string, @Query() query: GameAuditQueryDto) { return this.games.audit(gameId, query); }
 }

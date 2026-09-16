@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GameAuditQueryDto } from './game-admin.dto';
 import { GameAccessService } from './game-access.service';
+import { vietnamCalendarStart, vietnamDaysAgoStart } from './game-metrics';
 
 const playerInclude = { user: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } } } as const;
 
@@ -19,9 +20,9 @@ export class GameAdminService {
 
   async dashboard(gameId: string) {
     const now = new Date();
-    const day = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const sevenDays = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDays = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const day = vietnamCalendarStart(now);
+    const sevenDays = vietnamDaysAgoStart(now, 6);
+    const thirtyDays = vietnamDaysAgoStart(now, 29);
     const players = this.prisma.gamePlayer as any;
     const [totalPlayers, newToday, new7d, new30d, active7d, active30d, returning, totalLogins, recent] = await Promise.all([
       players.count({ where: { gameId } }), players.count({ where: { gameId, firstLoginAt: { gte: day } } }), players.count({ where: { gameId, firstLoginAt: { gte: sevenDays } } }), players.count({ where: { gameId, firstLoginAt: { gte: thirtyDays } } }), players.count({ where: { gameId, lastLoginAt: { gte: sevenDays } } }), players.count({ where: { gameId, lastLoginAt: { gte: thirtyDays } } }), players.count({ where: { gameId, loginCount: { gt: 1 } } }),
@@ -57,7 +58,18 @@ export class GameAdminService {
     return this.serializePlayer(updated);
   }
 
+  async audit(gameId: string, query: GameAuditQueryDto) {
+    const where: any = { gameId, ...(query.action ? { action: query.action } : {}), ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}) };
+    if (query.from || query.to) where.createdAt = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.authorizationAuditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: { actor: { select: { id: true, username: true, profile: { select: { fullName: true } } } } } }),
+      this.prisma.authorizationAuditLog.count({ where }),
+    ]);
+    return { items: items.map((entry) => ({ id: entry.id, action: entry.action, targetType: entry.targetType, targetId: entry.targetId, reason: entry.reason, beforeData: this.data(entry.beforeData), afterData: this.data(entry.afterData), actor: entry.actor ? { id: entry.actor.id, username: entry.actor.username, displayName: entry.actor.profile?.fullName ?? entry.actor.username } : null, createdAt: entry.createdAt })), page: query.page, pageSize: query.pageSize, total };
+  }
+
   private serializePlayer(entry: any) {
     return { id: entry.id, userId: entry.userId, user: entry.user, status: entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockReason: entry.blockReason, updatedAt: entry.updatedAt };
   }
+  private data(value: string | null) { try { return value ? JSON.parse(value) : null; } catch { return null; } }
 }

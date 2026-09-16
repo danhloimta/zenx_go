@@ -210,6 +210,8 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 - Root `/admin` remains the platform command hub. Each known game subdomain exposes its own `/admin` workspace; `SUPER_ADMIN` may access every workspace while child admins require a matching game assignment.
 - `GET /game-sso/authorize` issues a 60-second one-time code after validating an active game client and exact callback URI. `POST /game-sso/exchange` uses HTTP Basic client credentials and returns minimal player identity. Blocking a player prevents future SSO only; it does not terminate an existing game session.
 - Only platform administrators with game-management permission can assign game roles or create/rotate SSO credentials. Client secrets are hashed and returned once only when created or rotated.
+- Game workspaces expose scoped presentation, article, event, player and audit routes under `/game-admin/games/:gameId/*`; all resource reads and mutations validate the current `gameId` before calling shared CMS services.
+- Public game payloads return an SSO authorize URL only for active game clients. The browser adds a one-time `state`; neither client secret nor authorization code appears in public responses or audit data.
 
 ### `User` additions
 

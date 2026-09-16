@@ -15,6 +15,7 @@ export class GameSsoController {
   @Get('authorize')
   async authorize(@Query('client_id') clientId: string, @Query('redirect_uri') redirectUri: string, @Query('state') state: string | undefined, @Req() request: Request, @Res() response: Response) {
     if (!clientId || !redirectUri || !state || state.length > 512) throw new DomainError(ErrorCode.GAME_SSO_CLIENT_INVALID, 'Invalid authorization request', 400);
+    await this.sso.validateAuthorizeRequest(clientId, redirectUri);
     let access: { sub: string };
     try { access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]); }
     catch {

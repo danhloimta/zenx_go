@@ -10,9 +10,14 @@ const codeHash = (value: string) => createHash('sha256').update(value).digest('h
 export class GameSsoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async authorize(userId: string, clientId: string, redirectUri: string) {
+  async validateAuthorizeRequest(clientId: string, redirectUri: string) {
     const client = await (this.prisma.gameSsoClient as any).findUnique({ where: { clientId }, include: { game: { select: { id: true, code: true, isPublic: true } } } });
     if (!client || !client.isActive || !client.game.isPublic || client.redirectUri !== redirectUri) throw new DomainError(ErrorCode.GAME_SSO_CLIENT_INVALID, 'Invalid game SSO client', 400);
+    return client;
+  }
+
+  async authorize(userId: string, clientId: string, redirectUri: string) {
+    const client = await this.validateAuthorizeRequest(clientId, redirectUri);
     const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId: client.gameId } }, select: { status: true } });
     if (player?.status === 'BLOCKED') throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
     const rawCode = randomBytes(32).toString('base64url');
