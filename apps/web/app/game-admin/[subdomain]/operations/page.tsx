@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -37,18 +37,22 @@ export default function GameOperationsPage() {
   const [expectedEndsAt, setExpectedEndsAt] = useState('');
   const [reason, setReason] = useState('');
   const [baseline, setBaseline] = useState<MaintenanceForm | null>(null);
+  const [baselineVersion, setBaselineVersion] = useState<string | null>(null);
+  const lastLoadedVersion = useRef<string | null>(null);
   const form: MaintenanceForm = { enabled, message, expectedEndsAt };
   const formDirty = Boolean(baseline && JSON.stringify(form) !== JSON.stringify(baseline));
 
   useEffect(() => {
     if (!operations.data) return;
+    if (lastLoadedVersion.current === operations.data.updatedAt) return;
     const next = { enabled: operations.data.operationalStatus === 'MAINTENANCE', message: operations.data.maintenanceMessage ?? '', expectedEndsAt: toLocalInput(operations.data.maintenanceEndsAt) };
-    if (!baseline || !formDirty) {
-      setEnabled(next.enabled);
-      setMessage(next.message);
-      setExpectedEndsAt(next.expectedEndsAt);
-      setBaseline(next);
-    }
+    lastLoadedVersion.current = operations.data.updatedAt;
+    if (baseline && formDirty) return;
+    setEnabled(next.enabled);
+    setMessage(next.message);
+    setExpectedEndsAt(next.expectedEndsAt);
+    setBaseline(next);
+    setBaselineVersion(operations.data.updatedAt);
   }, [operations.data, baseline, formDirty]);
 
   const update = useMutation({
@@ -56,7 +60,7 @@ export default function GameOperationsPage() {
       enabled,
       message: enabled ? message.trim() || null : null,
       expectedEndsAt: enabled && expectedEndsAt ? new Date(expectedEndsAt).toISOString() : null,
-      expectedUpdatedAt: operations.data!.updatedAt,
+      expectedUpdatedAt: baselineVersion ?? operations.data!.updatedAt,
       reason: reason.trim(),
     }),
     onSuccess: (next) => {
@@ -66,6 +70,7 @@ export default function GameOperationsPage() {
       setMessage(nextForm.message);
       setExpectedEndsAt(nextForm.expectedEndsAt);
       setBaseline(nextForm);
+      setBaselineVersion(next.updatedAt);
       queryClient.setQueryData(['game-admin', 'operations', gameId], next);
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'context', subdomain] });
       void queryClient.invalidateQueries({ queryKey: ['game-admin', 'dashboard', gameId] });
@@ -80,6 +85,17 @@ export default function GameOperationsPage() {
   const reasonInvalid = reason.trim().length < 3 || reason.trim().length > 500;
   const disabled = locked || messageInvalid || reasonInvalid || update.isPending;
 
+  const reloadServerOperations = () => {
+    const next = { enabled: operations.data!.operationalStatus === 'MAINTENANCE', message: operations.data!.maintenanceMessage ?? '', expectedEndsAt: toLocalInput(operations.data!.maintenanceEndsAt) };
+    setEnabled(next.enabled);
+    setMessage(next.message);
+    setExpectedEndsAt(next.expectedEndsAt);
+    setBaseline(next);
+    setBaselineVersion(operations.data!.updatedAt);
+    lastLoadedVersion.current = operations.data!.updatedAt;
+    update.reset();
+  };
+
   return <div className="mx-auto max-w-3xl space-y-6">
     <header><h1 className="text-3xl font-black">Vận hành</h1><p className="mt-1 text-sm text-slate-500">Điều khiển trạng thái phục vụ của {context.data.game.name}. Phiên game đang chạy không bị ngắt.</p></header>
     <section className="rounded-xl border border-slate-200 bg-white p-5">
@@ -88,7 +104,7 @@ export default function GameOperationsPage() {
       <label className="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={enabled} disabled={locked} onChange={(event) => setEnabled(event.target.checked)} /> Bật chế độ bảo trì</label>
       {enabled ? <div className="mt-4 space-y-4"><div><label className="text-sm font-semibold" htmlFor="maintenance-message">Thông báo hiển thị trên website</label><Textarea id="maintenance-message" className="mt-2 min-h-28" maxLength={500} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ví dụ: Game đang nâng cấp máy chủ, vui lòng quay lại sau." /><p className="mt-1 text-xs text-slate-500">{message.length}/500 ký tự</p></div><div><label className="text-sm font-semibold" htmlFor="maintenance-ends-at">Dự kiến mở lại</label><Input id="maintenance-ends-at" className="mt-2" type="datetime-local" value={expectedEndsAt} onChange={(event) => setExpectedEndsAt(event.target.value)} /><p className="mt-1 text-xs text-slate-500">Để trống nếu chưa xác định thời gian.</p></div></div> : null}
       <div className="mt-4"><label className="text-sm font-semibold" htmlFor="maintenance-reason">Lý do thay đổi</label><Input id="maintenance-reason" className="mt-2" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Nhập lý do để ghi vào audit" /><p className="mt-1 text-xs text-slate-500">Bắt buộc, từ 3 đến 500 ký tự.</p></div>
-      {update.isError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{getErrorMessage(update.error, 'Không thể cập nhật trạng thái vận hành. Dữ liệu có thể đã thay đổi, hãy tải lại trang.')}</p> : null}
+      {update.isError ? <div className="mt-4 space-y-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"><p>{getErrorMessage(update.error, 'Không thể cập nhật trạng thái vận hành. Dữ liệu có thể đã thay đổi, hãy tải lại trang.')}</p><Button size="sm" variant="outline" onClick={reloadServerOperations}>Tải trạng thái mới</Button></div> : null}
       <div className="mt-5 flex justify-end"><Button disabled={disabled} onClick={() => update.mutate()}>{update.isPending ? 'Đang lưu…' : enabled ? 'Bật bảo trì' : 'Tắt bảo trì'}</Button></div>
     </section>
     <p className="text-sm text-slate-500">Khi bật bảo trì, public site vẫn xem được nhưng nút “Chơi ngay” bị ẩn và các lần SSO mới bị chặn. Người chơi đang ở trong game không bị đăng xuất.</p>
