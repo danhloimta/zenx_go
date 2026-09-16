@@ -19,6 +19,7 @@ import { GameModule } from './game/game.module';
 import { DomainPolicyModule } from './common/domain-policy.module';
 import { PortalModule } from './portal/portal.module';
 import { AdminModule } from './admin/admin.module';
+import { GameSsoModule } from './game-sso/game-sso.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { AdminModule } from './admin/admin.module';
     GameModule,
     PortalModule,
     AdminModule,
+    GameSsoModule,
     DomainPolicyModule,
   ],
   providers: [

@@ -150,6 +150,9 @@
 | ----------------------- | ---------------------------------------- | ------ | ------------- | ------------------------------------------------------------ | ----------------------------------------- |
 | `API-GAME-LIST`         | `GET /games`                             | Public | `IMPLEMENTED` | Public game summaries; status/genre/platform filters.        | `apps/api/src/game`; game integration     |
 | `API-GAME-BY-SUBDOMAIN` | `GET /games/by-subdomain/:subdomain`     | Public | `IMPLEMENTED` | Public game detail/config by host context.                   | game service; game/portal integration     |
+| `API-GAME-SSO-AUTHORIZE` | `GET /game-sso/authorize` | Browser session | `IMPLEMENTED` | Validates active client/callback and redirects with a one-time authorization code. | game-sso service/controller |
+| `API-GAME-SSO-EXCHANGE` | `POST /game-sso/exchange` | HTTP Basic game client | `IMPLEMENTED` | Consumes a 60-second code once and returns minimal identity while recording game player login. | game-sso service/controller |
+| `API-GAME-ADMIN-PLAYERS` | `GET/PATCH /game-admin/games/:gameId/players` | Game role / `SUPER_ADMIN` | `IMPLEMENTED` | Scoped player listing, dashboard and per-game block state. | game-admin service/controller |
 | `API-GAME-ARTICLE`      | `GET /games/:slug/articles/:articleSlug` | Public | `IMPLEMENTED` | Published safe article detail + related.                     | game service; game integration            |
 | `API-GAME-ARTICLES`     | `GET /games/:slug/articles`              | Public | `IMPLEMENTED` | Published article list for game.                             | game service; game integration            |
 | `API-GAME-ROADMAP`      | `GET /games/:slug/roadmap`               | Public | `IMPLEMENTED` | Roadmap milestones/checklists.                               | game service; game integration            |

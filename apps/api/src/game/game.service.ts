@@ -65,6 +65,12 @@ export class GameService {
     return this.publicGameDetail(game);
   }
 
+  async adminBySubdomain(subdomain: string) {
+    const game = await this.prisma.game.findUnique({ where: { subdomain: subdomain.trim().toLowerCase() }, select: { id: true, subdomain: true } });
+    if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
+    return game;
+  }
+
   async articles(slug: string) {
     const game = await this.prisma.game.findFirst({ where: { slug: slug.trim().toLowerCase(), isPublic: true }, select: { id: true } });
     if (!game) throw new DomainError(ErrorCode.GAME_NOT_FOUND, 'Game not found', 404);
@@ -261,4 +267,3 @@ export function markdownToSafeHtml(markdown: string): string {
     return escapeHtml(markdown.trim());
   }
 }
-

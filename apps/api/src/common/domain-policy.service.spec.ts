@@ -31,7 +31,7 @@ describe('DomainPolicyService', () => {
     await expect(service.isAllowedOrigin('https://lucdia.zenxgo.io.vn:8443')).resolves.toBe(false);
     prisma.game.findFirst.mockResolvedValueOnce(null);
     await expect(service.isAllowedOrigin('https://unknown.zenxgo.io.vn')).resolves.toBe(false);
-    expect(prisma.game.findFirst).toHaveBeenCalledWith({ where: { subdomain: 'unknown', isPublic: true }, select: { id: true } });
+    expect(prisma.game.findFirst).toHaveBeenCalledWith({ where: { subdomain: 'unknown' }, select: { id: true } });
   });
 
   it('resolves only public game return URLs and normalizes www to the portal', async () => {

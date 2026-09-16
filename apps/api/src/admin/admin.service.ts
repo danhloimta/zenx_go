@@ -418,7 +418,7 @@ export class AdminService {
 
     const roleSelectors = Array.from(new Set(dto.roleIds));
     const nextRoles = roleSelectors.length
-      ? await this.prisma.role.findMany({ where: { id: { in: roleSelectors }, isActive: true }, select: { id: true, code: true } })
+      ? await this.prisma.role.findMany({ where: { id: { in: roleSelectors }, isActive: true, scopeType: 'PLATFORM' }, select: { id: true, code: true } })
       : [];
     if (nextRoles.length !== roleSelectors.length)
       throw new DomainError(ErrorCode.ROLE_INACTIVE, 'One or more roles are inactive or unavailable', 400);

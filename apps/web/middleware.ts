@@ -35,6 +35,15 @@ async function isPublicGameSubdomain(subdomain: string) {
   }
 }
 
+async function isKnownGameSubdomain(subdomain: string) {
+  const baseUrl = apiBaseUrl();
+  if (!baseUrl) return false;
+  try {
+    const response = await fetch(`${baseUrl}/games/admin-by-subdomain/${encodeURIComponent(subdomain)}`, { headers: { accept: 'application/json' }, cache: 'no-store' });
+    return response.ok;
+  } catch { return false; }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/_')) return NextResponse.next();
@@ -62,6 +71,14 @@ export async function middleware(request: NextRequest) {
   }
   if (host.kind !== 'GAME') {
     return new NextResponse('Not Found', { status: 404 });
+  }
+
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (!(await isKnownGameSubdomain(host.subdomain ?? ''))) return new NextResponse('Not Found', { status: 404 });
+    const internalPath = `/game-admin/${host.subdomain}${pathname === '/admin' ? '' : pathname.slice('/admin'.length)}`;
+    const target = new URL(internalPath, request.url);
+    target.search = request.nextUrl.search;
+    return NextResponse.rewrite(target);
   }
 
   // Validate against the database so newly edited public subdomains work immediately,

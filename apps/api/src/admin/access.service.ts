@@ -119,6 +119,6 @@ export class AccessAdminService {
   }
 
   private serializeRole(role: any) {
-    return { id: role.id, code: role.code, name: role.name, description: role.description, isSystem: role.isSystem, isActive: role.isActive, createdAt: role.createdAt, updatedAt: role.updatedAt, userCount: role._count.users, permissions: role.permissions.map(({ permission }: any) => permission) };
+    return { id: role.id, code: role.code, name: role.name, description: role.description, isSystem: role.isSystem, isActive: role.isActive, scopeType: role.scopeType, createdAt: role.createdAt, updatedAt: role.updatedAt, userCount: role._count.users, permissions: role.permissions.map(({ permission }: any) => permission) };
   }
 }

@@ -68,6 +68,11 @@
 
 ## Basic account/profile
 
+## Game SSO MVP
+
+- A game registers one confidential SSO client with an exact callback URI. Browser authorization uses `GET /game-sso/authorize`; the game server exchanges the 60-second single-use code through `POST /game-sso/exchange` with HTTP Basic client credentials.
+- A successful exchange records the account as a player of that game. A blocked game-player cannot receive or exchange a new code; this does not revoke a session already created by the game server.
+
 ### Screens
 
 | Screen ID              | Route                       | Hành vi chính                                                                                        | API/source/test                                                                                                   |

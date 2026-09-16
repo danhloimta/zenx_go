@@ -46,6 +46,13 @@ export const PERMISSIONS = {
   FINANCE_TRANSACTIONS_VIEW: define('finance.transactions.view', 'read', 'WalletTransaction'),
   FINANCE_TRANSACTIONS_EXPORT: define('finance.transactions.export', 'export', 'WalletTransaction'),
   FINANCE_WALLET_ADJUST: define('finance.wallet.adjust', 'adjust', 'Wallet'),
+  GAME_DASHBOARD_VIEW: define('game.dashboard.view', 'read', 'GameDashboard'),
+  GAME_PRESENTATION_MANAGE: define('game.presentation.manage', 'manage', 'GamePresentation'),
+  GAME_CONTENT_MANAGE: define('game.content.manage', 'manage', 'GameContent'),
+  GAME_EVENTS_MANAGE: define('game.events.manage', 'manage', 'GameEvent'),
+  GAME_PLAYERS_VIEW: define('game.players.view', 'read', 'GamePlayer'),
+  GAME_PLAYERS_MODERATE: define('game.players.moderate', 'moderate', 'GamePlayer'),
+  GAME_AUDIT_VIEW: define('game.audit.view', 'read', 'GameAudit'),
 } as const;
 
 const byCode = new Map(Object.values(PERMISSIONS).map((entry) => [entry.code, entry]));

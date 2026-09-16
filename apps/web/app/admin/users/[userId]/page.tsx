@@ -1430,7 +1430,7 @@ function UpdateRolesDialog({
             </div>
           </label>
 
-          {availableRoles.filter((role) => !['SUPER_ADMIN', 'SUPPORT'].includes(role.code)).map((role) => (
+          {availableRoles.filter((role) => role.scopeType !== 'GAME' && !['SUPER_ADMIN', 'SUPPORT'].includes(role.code)).map((role) => (
             <label key={role.id} className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${selectedRoles.some((entry) => entry.id === role.id) ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'}`}>
               <input type="checkbox" checked={selectedRoles.some((entry) => entry.id === role.id)} onChange={() => toggleRole(role)} disabled={pending} className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]" />
               <div className="flex-1"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-900">{role.name}</span><span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">{role.code}</span></div></div>

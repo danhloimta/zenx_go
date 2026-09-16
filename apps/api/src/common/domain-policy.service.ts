@@ -88,7 +88,7 @@ export class DomainPolicyService implements OnModuleInit {
     if (!shape) return false;
     if (!this.matchesConfiguredOrigin(origin)) return false;
     if (shape.kind !== 'GAME') return true;
-    return this.isPublicGameSubdomain(shape.subdomain);
+    return this.isKnownGameSubdomain(shape.subdomain);
   }
 
   async isAllowedRequestOrigin(origin: string | undefined | null) {
@@ -102,6 +102,12 @@ export class DomainPolicyService implements OnModuleInit {
       where: { subdomain: subdomain.toLowerCase(), isPublic: true },
       select: { id: true },
     });
+    return Boolean(game);
+  }
+
+  async isKnownGameSubdomain(subdomain: string | undefined) {
+    if (!subdomain || !this.allowGameSubdomains) return false;
+    const game = await this.prisma.game.findFirst({ where: { subdomain: subdomain.toLowerCase() }, select: { id: true } });
     return Boolean(game);
   }
 

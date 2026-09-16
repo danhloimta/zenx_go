@@ -203,6 +203,14 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 
 ## Data model
 
+### Multi-game admin and player SSO
+
+- Platform roles remain in `user_roles`; game-scoped system roles (`GAME_ADMIN`, `GAME_CONTENT_MANAGER`, `GAME_PLAYER_MODERATOR`) are assigned through `game_role_assignments` and are valid only for one `game_id`.
+- `game_players` records a player only after a game server successfully exchanges a one-time SSO authorization code. It stores first/last login, login count and per-game `ACTIVE`/`BLOCKED` status.
+- Root `/admin` remains the platform command hub. Each known game subdomain exposes its own `/admin` workspace; `SUPER_ADMIN` may access every workspace while child admins require a matching game assignment.
+- `GET /game-sso/authorize` issues a 60-second one-time code after validating an active game client and exact callback URI. `POST /game-sso/exchange` uses HTTP Basic client credentials and returns minimal player identity. Blocking a player prevents future SSO only; it does not terminate an existing game session.
+- Only platform administrators with game-management permission can assign game roles or create/rotate SSO credentials. Client secrets are hashed and returned once only when created or rotated.
+
 ### `User` additions
 
 | Field                              | Purpose                                                                           |
