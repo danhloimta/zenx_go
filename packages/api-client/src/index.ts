@@ -228,6 +228,20 @@ function delay(milliseconds: number) {
 }
 
 export type AuthProvider = 'google' | 'facebook';
+export interface AuthProviderAvailability {
+  google: boolean;
+  facebook: boolean;
+}
+export interface AdminAuthSettings {
+  googleLoginRegistrationEnabled: boolean;
+  facebookLoginRegistrationEnabled: boolean;
+  updatedAt: string;
+}
+export interface AdminAuthSettingsUpdateRequest {
+  expectedUpdatedAt: string;
+  googleLoginRegistrationEnabled?: boolean;
+  facebookLoginRegistrationEnabled?: boolean;
+}
 export type OtpChannel = 'SMS' | 'ZALO' | 'EMAIL';
 export type OtpPurpose =
   | 'REGISTER'
@@ -1331,6 +1345,8 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
   return {
     raw: client,
     auth: {
+      providerAvailability: () =>
+        client.get<AuthProviderAvailability>('/auth/provider-availability'),
       register: (input: RegisterRequest) => client.post<RegisterResponse>('/auth/register', input),
       login: (input: LoginRequest) => client.post<LoginResponse>('/auth/login', input),
       refresh: () => client.post<RefreshResponse>('/auth/refresh'),
@@ -1350,6 +1366,11 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
     admin: {
       me: () => client.get<AdminMe>('/admin/me'),
       dashboard: () => client.get<AdminDashboard>('/admin/dashboard'),
+      authSettings: {
+        get: () => client.get<AdminAuthSettings>('/admin/settings/auth-providers'),
+        update: (input: AdminAuthSettingsUpdateRequest) =>
+          client.patch<AdminAuthSettings>('/admin/settings/auth-providers', input),
+      },
       users: (
         query: { page?: number; pageSize?: number; search?: string; status?: AccountStatus } = {},
       ) => client.get<Paginated<AdminUserSummary>>('/admin/users', query),

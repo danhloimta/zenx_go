@@ -18,6 +18,7 @@ import { SocialAuthButton } from '@/components/social-auth-button';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 import { isSafeReturnTo, portalUrl } from '@/lib/domain';
 
 const schema = z.object({
@@ -39,6 +40,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const queryReturnTo = getReturnToCandidate(searchParams.get('returnTo') ?? searchParams.get('next'));
   const [returnTo, setReturnTo] = useState<string | undefined>(queryReturnTo);
+  const providers = useAuthProviderAvailability();
+  const availability = !providers.isFetching && !providers.isPaused && providers.isSuccess
+    ? providers.data
+    : undefined;
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { username: '', password: '' },
@@ -62,6 +67,8 @@ function LoginForm() {
     const messages: Record<string, string> = {
       not_linked: 'Tài khoản Google chưa được liên kết với ZENX GO. Hãy đăng nhập bằng mật khẩu rồi liên kết Google trong phần Tài khoản.',
       not_configured: 'Nhà cung cấp đăng nhập chưa được cấu hình.',
+      provider_disabled: 'Phương thức đăng nhập này hiện không khả dụng.',
+      settings_unavailable: 'Phương thức đăng nhập này hiện không khả dụng.',
       provider_cancelled: 'Đăng nhập Google đã bị hủy.',
       invalid_state: 'Phiên đăng nhập Google đã hết hạn. Vui lòng thử lại.',
       oauth_failed: 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.',
@@ -161,16 +168,24 @@ function LoginForm() {
               </Button>
             </form>
 
-            <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
-              <span className="h-px flex-1 bg-slate-200" />
-              Hoặc đăng nhập với
-              <span className="h-px flex-1 bg-slate-200" />
-            </div>
+            {(availability?.google || availability?.facebook) && (
+              <>
+                <div className="my-6 flex items-center gap-3 text-xs text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  Hoặc đăng nhập với
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <SocialAuthButton provider="google" href={api.auth.oauthUrl('google', 'login', returnTo ?? queryReturnTo)} />
-              <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook', 'login', returnTo ?? queryReturnTo)} />
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {availability.google && (
+                    <SocialAuthButton provider="google" href={api.auth.oauthUrl('google', 'login', returnTo ?? queryReturnTo)} />
+                  )}
+                  {availability.facebook && (
+                    <SocialAuthButton provider="facebook" href={api.auth.oauthUrl('facebook', 'login', returnTo ?? queryReturnTo)} />
+                  )}
+                </div>
+              </>
+            )}
 
             <p className="mt-7 text-center text-xs sm:text-sm text-slate-600">
               Chưa có tài khoản?{' '}

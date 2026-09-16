@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   ROLES_UPDATE: define('roles.update', 'update', 'Role'),
   ROLES_DELETE: define('roles.delete', 'delete', 'Role'),
   ROLES_PERMISSIONS_ASSIGN: define('roles.permissions.assign', 'assign-permission', 'Role'),
+  AUTH_SETTINGS_MANAGE: define('settings.auth.manage', 'manage', 'AuthSettings'),
   SUPPORT_DASHBOARD_VIEW: define('support.dashboard.view', 'read', 'SupportDashboard'),
   SUPPORT_AGENTS_VIEW: define('support.agents.view', 'read', 'SupportAgent'),
   SUPPORT_TICKETS_VIEW: define('support.tickets.view', 'read', 'SupportTicket'),

@@ -7,6 +7,11 @@ import { createPageConfig } from '../src/admin/content/game-templates';
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.authSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1 },
+  });
   await seedRolesAndPermissions();
   await seedUsers();
   await seedSecurityQuestions();
@@ -185,6 +190,7 @@ async function seedRolesAndPermissions() {
     { code: 'roles.update', module: 'roles', action: 'update', subject: 'Role', name: 'Cập nhật role', sortOrder: 3 },
     { code: 'roles.delete', module: 'roles', action: 'delete', subject: 'Role', name: 'Xóa role', sortOrder: 4 },
     { code: 'roles.permissions.assign', module: 'roles', action: 'assign-permission', subject: 'Role', name: 'Gán permission cho role', sortOrder: 5 },
+    { code: 'settings.auth.manage', module: 'settings', action: 'manage', subject: 'AuthSettings', name: 'Quản lý cài đặt đăng nhập', sortOrder: 1 },
     { code: 'support.dashboard.view', module: 'support', action: 'read', subject: 'SupportDashboard', name: 'Xem tổng quan hỗ trợ', sortOrder: 1 },
     { code: 'support.agents.view', module: 'support', action: 'read', subject: 'SupportAgent', name: 'Xem nhân viên hỗ trợ', sortOrder: 2 },
     { code: 'support.tickets.view', module: 'support', action: 'read', subject: 'SupportTicket', name: 'Xem ticket', sortOrder: 3 },

@@ -24,6 +24,7 @@ import {
   Receipt,
   Tags,
   Loader2,
+  Settings,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
@@ -59,6 +60,7 @@ const allNavSections: NavSection[] = [
       { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard, exact: true, permission: { action: 'read', subject: 'Dashboard' } },
       { href: '/admin/users', label: 'Người dùng', icon: Users, permission: { action: 'read', subject: 'User' } },
       { href: '/admin/access/roles', label: 'Vai trò & quyền', icon: ShieldCheck, permission: { action: 'read', subject: 'Role' } },
+      { href: '/admin/settings', label: 'Cài đặt', icon: Settings, permission: { action: 'manage', subject: 'AuthSettings' } },
     ],
   },
   {

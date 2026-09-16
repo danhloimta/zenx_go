@@ -9,10 +9,17 @@ import { SocialProvider } from '../common/domain';
 import { DomainError } from '../common/errors';
 import { OAuthMode, SocialService } from '../social/social.service';
 import { DomainPolicyService } from '../common/domain-policy.service';
+import { AuthSettingsService } from '../auth-settings/auth-settings.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService, private readonly config: ConfigService, private readonly social: SocialService, private readonly domainPolicy: DomainPolicyService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly config: ConfigService,
+    private readonly social: SocialService,
+    private readonly domainPolicy: DomainPolicyService,
+    private readonly authSettings: AuthSettingsService,
+  ) {}
 
   @Post('register')
   register(@Req() request: Request, @Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -71,6 +78,7 @@ export class AuthController {
     const mode: OAuthMode = rawMode === 'link' ? 'link' : 'login';
     let returnTo: string | undefined;
     try {
+      if (mode === 'login') await this.authSettings.assertLoginRegistrationEnabled(provider);
       returnTo = mode === 'login' ? await this.domainPolicy.resolveReturnTo(rawReturnTo) : undefined;
       let userId: string | undefined;
       if (mode === 'link') {
@@ -99,6 +107,9 @@ export class AuthController {
     try {
       oauthState = this.social.verifyState(provider, state, cookieState);
       safeReturnTo = oauthState.mode === 'login' ? await this.domainPolicy.resolveReturnTo(oauthState.returnTo) : undefined;
+      if (oauthState.mode === 'login') {
+        await this.authSettings.assertLoginRegistrationEnabled(provider);
+      }
       const remainingState = this.social.removeState(cookieState, state!);
       if (remainingState) {
         response.cookie(stateCookie, remainingState, {
@@ -150,6 +161,8 @@ export class AuthController {
       if (error.code === 'SOCIAL_LINKED_TO_ANOTHER_ACCOUNT') return 'linked_to_another_account';
       if (error.code === 'CANNOT_UNLINK_LAST_LOGIN_METHOD') return 'last_login_method';
       if (error.code === 'INVALID_OAUTH_STATE') return 'invalid_state';
+      if (error.code === 'SOCIAL_PROVIDER_DISABLED') return 'provider_disabled';
+      if (error.code === 'SETTINGS_UNAVAILABLE') return 'settings_unavailable';
     }
     return 'oauth_failed';
   }

@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 
 const schema = z
   .object({
@@ -61,6 +62,10 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
+  const providers = useAuthProviderAvailability();
+  const availability = !providers.isFetching && !providers.isPaused && providers.isSuccess
+    ? providers.data
+    : undefined;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -207,26 +212,32 @@ export default function RegisterPage() {
             </div>
 
             {/* Quick Social Sign-Up */}
-            <div className="mt-6 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <SocialAuthButton
-                  provider="google"
-                  href={api.auth.oauthUrl('google')}
-                  label="Google"
-                />
-                <SocialAuthButton
-                  provider="facebook"
-                  href={api.auth.oauthUrl('facebook')}
-                  label="Facebook"
-                />
-              </div>
+            {(availability?.google || availability?.facebook) && (
+              <div className="mt-6 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {availability.google && (
+                    <SocialAuthButton
+                      provider="google"
+                      href={api.auth.oauthUrl('google')}
+                      label="Google"
+                    />
+                  )}
+                  {availability.facebook && (
+                    <SocialAuthButton
+                      provider="facebook"
+                      href={api.auth.oauthUrl('facebook')}
+                      label="Facebook"
+                    />
+                  )}
+                </div>
 
-              <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
-                <span className="h-px flex-1 bg-slate-200" />
-                Hoặc đăng ký bằng tài khoản
-                <span className="h-px flex-1 bg-slate-200" />
+                <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+                  <span className="h-px flex-1 bg-slate-200" />
+                  Hoặc đăng ký bằng tài khoản
+                  <span className="h-px flex-1 bg-slate-200" />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Registration Form */}
             <form
