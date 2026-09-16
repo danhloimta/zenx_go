@@ -21,7 +21,7 @@ export type ContentWorkspaceAdapter = {
 };
 
 export function gameContentWorkspace(gameId: string, gameName: string, subdomain: string): ContentWorkspaceAdapter {
-  const base = `/game-admin/${encodeURIComponent(subdomain)}`;
+  const base = '/admin';
   return {
     gameId, gameName, subdomain, articlesPath: `${base}/articles`, eventsPath: `${base}/events`,
     articles: (query) => api.gameAdmin.content.articles(gameId, query), article: (id) => api.gameAdmin.content.article(gameId, id), createArticle: (input) => api.gameAdmin.content.createArticle(gameId, input), updateArticle: (id, input) => api.gameAdmin.content.updateArticle(gameId, id, input), deleteArticle: (id) => api.gameAdmin.content.deleteArticle(gameId, id), restoreArticle: (id) => api.gameAdmin.content.restoreArticle(gameId, id),
