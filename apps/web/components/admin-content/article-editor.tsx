@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AdminContentArticle,
   ContentPublishStatus,
@@ -48,6 +48,7 @@ import { ImageUploadField } from '@/components/image-upload-field';
 import { ArticleMarkdownPreview } from './article-markdown-preview';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { toast } from 'sonner';
+import type { ContentWorkspaceAdapter } from './content-workspace-adapter';
 
 const categoryOptions: Array<{
   value: GameArticleCategory;
@@ -96,11 +97,13 @@ type ArticleForm = {
 
 type ViewMode = 'write' | 'preview' | 'split';
 
-export function ArticleEditor({ articleId }: { articleId?: string }) {
+export function ArticleEditor({ articleId, workspace }: { articleId?: string; workspace?: ContentWorkspaceAdapter }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const editing = Boolean(articleId);
-  const articleQuery = useAdminContentArticle(articleId ?? '', editing);
+  const platformArticleQuery = useAdminContentArticle(articleId ?? '', editing && !workspace);
+  const scopedArticleQuery = useQuery({ queryKey: ['game-admin', 'articles', workspace?.gameId, articleId], queryFn: () => api.gameAdmin.content.article(workspace!.gameId, articleId!), enabled: Boolean(workspace && editing), retry: false });
+  const articleQuery = workspace ? scopedArticleQuery : platformArticleQuery;
   const games = useAdminContentGames({ page: 1, pageSize: 50 });
   const article = articleQuery.data;
 
@@ -113,7 +116,9 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
   const [copiedId, setCopiedId] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const deleteMutation = useAdminDeleteArticle();
+  const platformDeleteMutation = useAdminDeleteArticle();
+  const scopedDeleteMutation = useMutation({ mutationFn: (id: string) => api.gameAdmin.content.deleteArticle(workspace!.gameId, id) });
+  const deleteMutation = workspace ? scopedDeleteMutation : platformDeleteMutation;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleDeleteArticle = async () => {
@@ -121,7 +126,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
     try {
       await deleteMutation.mutateAsync(articleId);
       toast.success('Đã chuyển bài viết vào thùng rác');
-      router.push('/admin/content/articles');
+      router.push(workspace?.articlesPath ?? '/admin/content/articles');
     } catch {
       toast.error('Không thể xóa bài viết. Vui lòng thử lại.');
     }
@@ -129,7 +134,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
 
   useEffect(() => {
     if (article && !initialized) {
-      setForm(toForm(article));
+      setForm({ ...toForm(article), gameId: workspace?.gameId ?? article.gameId });
       setInitialized(true);
       setAutoSlug(false);
     }
@@ -148,19 +153,21 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
 
   const create = useMutation({
     mutationFn: () =>
-      api.admin.content.createArticle({ ...form, coverImageUrl: form.coverImageUrl || null }),
+      workspace
+        ? api.gameAdmin.content.createArticle(workspace.gameId, { ...form, coverImageUrl: form.coverImageUrl || null })
+        : api.admin.content.createArticle({ ...form, coverImageUrl: form.coverImageUrl || null }),
     onSuccess: () => {
       toast.success('Đã tạo bài viết thành công.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'articles'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'dashboard'] });
-      router.push('/admin/content/articles');
+      router.push(workspace?.articlesPath ?? '/admin/content/articles');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const update = useMutation({
-    mutationFn: () =>
-      api.admin.content.updateArticle(articleId!, {
+    mutationFn: () => {
+      const input = {
         title: form.title,
         excerpt: form.excerpt,
         content: form.content,
@@ -170,7 +177,11 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
         seoDescription: form.seoDescription || null,
         status: form.status,
         expectedUpdatedAt: article!.updatedAt,
-      }),
+      };
+      return workspace
+        ? api.gameAdmin.content.updateArticle(workspace.gameId, articleId!, input)
+        : api.admin.content.updateArticle(articleId!, input);
+    },
     onSuccess: () => {
       toast.success('Đã lưu bài viết thành công.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'article', articleId] });
@@ -183,7 +194,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
   const pending = create.isPending || update.isPending;
 
   const canSubmit =
-    Boolean(form.gameId) &&
+    Boolean(workspace || form.gameId) &&
     form.title.trim().length >= 3 &&
     form.slug.trim().length >= 3 &&
     form.excerpt.trim().length >= 3 &&
@@ -222,7 +233,9 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
 
   // Find linked game
   const selectedGame = useMemo(() => {
-    return (games.data?.items ?? []).find((g) => g.id === form.gameId);
+    return workspace
+      ? { id: workspace.gameId, name: workspace.gameName, subdomain: workspace.subdomain }
+      : (games.data?.items ?? []).find((g) => g.id === form.gameId);
   }, [games.data?.items, form.gameId]);
 
   // Public live URL
@@ -269,7 +282,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
   if (editing && (articleQuery.isError || !article)) {
     return (
       <div className="space-y-4">
-        <BackLink />
+        <BackLink href={workspace?.articlesPath} />
         <Alert>{getErrorMessage(articleQuery.error, 'Không thể tải dữ liệu bài viết.')}</Alert>
       </div>
     );
@@ -283,7 +296,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
           {/* Left: Breadcrumb & Title */}
           <div className="flex min-w-0 items-center gap-3">
             <Link
-              href="/admin/content/articles"
+              href={workspace?.articlesPath ?? '/admin/content/articles'}
               className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-colors"
               title="Quay lại danh sách bài viết"
             >
@@ -362,7 +375,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => router.push('/admin/content/articles')}
+              onClick={() => router.push(workspace?.articlesPath ?? '/admin/content/articles')}
               className="border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
               Thoát
@@ -823,9 +836,9 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
                 {/* Linked Game */}
                 <div>
                   <label htmlFor="article-game" className="mb-1.5 block text-xs font-bold text-slate-700">
-                    Game liên kết <span className="text-rose-500">*</span>
+                    {workspace ? 'Game hiện tại' : 'Game liên kết'} <span className="text-rose-500">*</span>
                   </label>
-                  <Select
+                  {workspace ? <div className="h-10 rounded-md border bg-slate-50 px-3 py-2 text-sm font-medium">{workspace.gameName}</div> : <Select
                     id="article-game"
                     value={form.gameId}
                     onChange={(event) => set('gameId', event.target.value)}
@@ -838,7 +851,7 @@ export function ArticleEditor({ articleId }: { articleId?: string }) {
                         {game.name} ({game.code})
                       </option>
                     ))}
-                  </Select>
+                  </Select>}
                   {selectedGame ? (
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700">
@@ -1091,10 +1104,10 @@ function slugify(text: string): string {
     .replace(/-+/g, '-');
 }
 
-function BackLink() {
+function BackLink({ href = '/admin/content/articles' }: { href?: string }) {
   return (
     <Link
-      href="/admin/content/articles"
+      href={href}
       className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"
     >
       <ArrowLeft className="size-4" /> Quay lại danh sách bài viết

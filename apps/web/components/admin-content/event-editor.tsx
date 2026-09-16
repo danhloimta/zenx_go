@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AdminContentEvent, ContentPublishStatus } from '@zenx-go/api-client';
 import { useAdminContentEvent, useAdminContentGames } from '@/hooks/use-content';
 import { api } from '@/lib/api';
@@ -39,6 +39,7 @@ import { ImageUploadField } from '@/components/image-upload-field';
 import { ArticleMarkdownPreview } from './article-markdown-preview';
 import { MarkdownToolbar } from './markdown-toolbar';
 import { toast } from 'sonner';
+import type { ContentWorkspaceAdapter } from './content-workspace-adapter';
 
 type EventForm = {
   gameId: string;
@@ -56,11 +57,13 @@ type EventForm = {
 
 type ViewMode = 'write' | 'preview' | 'split';
 
-export function EventEditor({ eventId }: { eventId?: string }) {
+export function EventEditor({ eventId, workspace }: { eventId?: string; workspace?: ContentWorkspaceAdapter }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const editing = Boolean(eventId);
-  const eventQuery = useAdminContentEvent(eventId ?? '', editing);
+  const platformEventQuery = useAdminContentEvent(eventId ?? '', editing && !workspace);
+  const scopedEventQuery = useQuery({ queryKey: ['game-admin', 'events', workspace?.gameId, eventId], queryFn: () => api.gameAdmin.content.event(workspace!.gameId, eventId!), enabled: Boolean(workspace && editing), retry: false });
+  const eventQuery = workspace ? scopedEventQuery : platformEventQuery;
   const games = useAdminContentGames({ page: 1, pageSize: 50 });
   const event = eventQuery.data;
 
@@ -76,7 +79,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
 
   useEffect(() => {
     if (event && !initialized) {
-      setForm(toForm(event));
+      setForm({ ...toForm(event), gameId: workspace?.gameId ?? event.gameId ?? '' });
       setInitialized(true);
       setAutoSlug(false);
     }
@@ -93,19 +96,19 @@ export function EventEditor({ eventId }: { eventId?: string }) {
   };
 
   const create = useMutation({
-    mutationFn: () => api.admin.content.createEvent(toRequest(form)),
+    mutationFn: () => workspace ? api.gameAdmin.content.createEvent(workspace.gameId, omitGameId(toRequest(form))) : api.admin.content.createEvent(toRequest(form)),
     onSuccess: () => {
       toast.success('Đã tạo sự kiện thành công.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'events'] });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'dashboard'] });
-      router.push('/admin/content/events');
+      router.push(workspace?.eventsPath ?? '/admin/content/events');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const update = useMutation({
-    mutationFn: () =>
-      api.admin.content.updateEvent(eventId!, {
+    mutationFn: () => {
+      const input = {
         gameId: form.gameId || null,
         title: form.title,
         excerpt: form.excerpt,
@@ -117,7 +120,11 @@ export function EventEditor({ eventId }: { eventId?: string }) {
         seoDescription: form.seoDescription || null,
         status: form.status,
         expectedUpdatedAt: event!.updatedAt,
-      }),
+      };
+      return workspace
+        ? api.gameAdmin.content.updateEvent(workspace.gameId, eventId!, omitGameId(input))
+        : api.admin.content.updateEvent(eventId!, input);
+    },
     onSuccess: () => {
       toast.success('Đã lưu sự kiện thành công.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'event', eventId] });
@@ -169,7 +176,9 @@ export function EventEditor({ eventId }: { eventId?: string }) {
 
   // Find linked game
   const selectedGame = useMemo(() => {
-    return (games.data?.items ?? []).find((g) => g.id === form.gameId);
+    return workspace
+      ? { id: workspace.gameId, name: workspace.gameName, subdomain: workspace.subdomain }
+      : (games.data?.items ?? []).find((g) => g.id === form.gameId);
   }, [games.data?.items, form.gameId]);
 
   // Public live URL (all events are hosted on the portal at /events/:slug)
@@ -222,7 +231,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
   if (editing && (eventQuery.isError || !event)) {
     return (
       <div className="space-y-4">
-        <BackLink />
+        <BackLink href={workspace?.eventsPath} />
         <Alert>{getErrorMessage(eventQuery.error, 'Không thể tải dữ liệu sự kiện.')}</Alert>
       </div>
     );
@@ -236,7 +245,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
           {/* Left: Breadcrumb & Title */}
           <div className="flex min-w-0 items-center gap-3">
             <Link
-              href="/admin/content/events"
+              href={workspace?.eventsPath ?? '/admin/content/events'}
               className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition-colors"
               title="Quay lại danh sách sự kiện"
             >
@@ -300,7 +309,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => router.push('/admin/content/events')}
+              onClick={() => router.push(workspace?.eventsPath ?? '/admin/content/events')}
               className="border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
               Thoát
@@ -763,9 +772,9 @@ export function EventEditor({ eventId }: { eventId?: string }) {
                 {/* Linked Game / Portal Scope */}
                 <div>
                   <label htmlFor="event-game" className="mb-1.5 block text-xs font-bold text-slate-700">
-                    Phạm vi áp dụng
+                    {workspace ? 'Game hiện tại' : 'Phạm vi áp dụng'}
                   </label>
-                  <Select
+                  {workspace ? <div className="h-10 rounded-md border bg-slate-50 px-3 py-2 text-sm font-medium">{workspace.gameName}</div> : <Select
                     id="event-game"
                     value={form.gameId}
                     onChange={(event) => set('gameId', event.target.value)}
@@ -777,7 +786,7 @@ export function EventEditor({ eventId }: { eventId?: string }) {
                         {game.name} ({game.code})
                       </option>
                     ))}
-                  </Select>
+                  </Select>}
                   {selectedGame ? (
                     <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
                       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700">
@@ -979,6 +988,11 @@ function toRequest(form: EventForm) {
   };
 }
 
+function omitGameId<T extends { gameId: unknown }>(input: T): Omit<T, 'gameId'> {
+  const { gameId: _gameId, ...scoped } = input;
+  return scoped;
+}
+
 function toInputDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -1004,10 +1018,10 @@ function slugify(text: string): string {
     .replace(/-+/g, '-');
 }
 
-function BackLink() {
+function BackLink({ href = '/admin/content/events' }: { href?: string }) {
   return (
     <Link
-      href="/admin/content/events"
+      href={href}
       className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"
     >
       <ArrowLeft className="size-4" /> Quay lại danh sách sự kiện
