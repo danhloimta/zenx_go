@@ -4,6 +4,7 @@ import { PrismaService } from '../database/prisma.service';
 import { GamePlayersQueryDto, GamePlayerStatusDto, GameAuditQueryDto } from './game-admin.dto';
 import { GameAccessService } from './game-access.service';
 import { vietnamCalendarStart, vietnamDaysAgoStart } from './game-metrics';
+import { auditRangeEnd } from './game-audit-date-range';
 
 const playerInclude = { user: { select: { id: true, username: true, profile: { select: { fullName: true, avatarUrl: true } } } } } as const;
 
@@ -60,7 +61,7 @@ export class GameAdminService {
 
   async audit(gameId: string, query: GameAuditQueryDto) {
     const where: any = { gameId, ...(query.action ? { action: query.action } : {}), ...(query.actorUserId ? { actorUserId: query.actorUserId } : {}) };
-    if (query.from || query.to) where.createdAt = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) };
+    if (query.from || query.to) where.createdAt = { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: auditRangeEnd(query.to) } : {}) };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.authorizationAuditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: { actor: { select: { id: true, username: true, profile: { select: { fullName: true } } } } } }),
       this.prisma.authorizationAuditLog.count({ where }),
