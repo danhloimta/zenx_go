@@ -12,7 +12,7 @@ import { useAdminAuthSettings, useUpdateAdminAuthSettings } from '@/hooks/use-au
 type FormState = {
   google: boolean;
   facebook: boolean;
-  phoneOtpRequired: boolean;
+  otpRequired: boolean;
 };
 
 type FormBaseline = FormState & { updatedAt: string };
@@ -49,7 +49,7 @@ export default function AdminAuthSettingsPage() {
     if (settings.isError) {
       return (
         <Alert>
-          <p className="font-semibold">Không thể tải cài đặt đăng nhập mạng xã hội.</p>
+          <p className="font-semibold">Không thể tải cài đặt đăng nhập và xác thực.</p>
           <Button
             className="mt-4 border-red-200 bg-white text-red-700 hover:bg-red-50"
             variant="outline"
@@ -71,14 +71,14 @@ export default function AdminAuthSettingsPage() {
         expectedUpdatedAt: baseline.updatedAt,
         googleLoginRegistrationEnabled: form.google,
         facebookLoginRegistrationEnabled: form.facebook,
-        phoneRegistrationOtpRequired: form.phoneOtpRequired,
+        otpRequired: form.otpRequired,
       },
       {
         onSuccess: (updated) => {
           replaceFormWith(updated);
           setNotice({
             kind: 'success',
-            text: 'Đã lưu cài đặt đăng nhập mạng xã hội.',
+            text: 'Đã lưu cài đặt đăng nhập và xác thực.',
           });
         },
         onError: async (error) => {
@@ -168,12 +168,12 @@ export default function AdminAuthSettingsPage() {
       <Card className="rounded-2xl border-slate-200 bg-white shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl font-black text-slate-900">
-            Đăng nhập & đăng ký mạng xã hội
+            Đăng nhập, đăng ký & xác thực
           </CardTitle>
           <CardDescription className="leading-6 text-slate-500">
             Bật hoặc tắt khả năng đăng nhập và đăng ký mới theo từng nhà cung cấp.
             Việc liên kết và hủy liên kết tài khoản mạng xã hội hiện có không bị ảnh hưởng.
-            Công tắc OTP bên dưới chỉ áp dụng cho đăng ký bằng tài khoản và không thay đổi các luồng OTP khác.
+            Công tắc OTP bên dưới áp dụng cho các luồng auth được mô tả trong từng mục; email change và các luồng OTP nhạy cảm khác không bị thay đổi.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -200,14 +200,14 @@ export default function AdminAuthSettingsPage() {
             }}
           />
           <ProviderCheckbox
-            id="phone-registration-otp-enabled"
-            label="Xác thực OTP số điện thoại khi đăng ký"
-            description="Khi bật, người dùng phải nhập OTP SMS trước khi tạo tài khoản. Khi tắt, người dùng chỉ cần cung cấp số điện thoại; số điện thoại sẽ chưa được đánh dấu xác thực."
-            checked={form.phoneOtpRequired}
+            id="otp-required-enabled"
+            label="Yêu cầu OTP khi thực hiện thao tác bảo mật"
+            description="Khi bật, OTP được yêu cầu khi đăng ký, đổi mật khẩu, đổi số điện thoại và đặt lại mật khẩu. Khi tắt, các luồng này không cần OTP; email change và các luồng OTP nhạy cảm khác vẫn giữ nguyên."
+            checked={form.otpRequired}
             disabled={controlsDisabled}
             onCheckedChange={(checked) => {
               setNotice(null);
-              setForm((current) => current ? { ...current, phoneOtpRequired: checked } : current);
+              setForm((current) => current ? { ...current, otpRequired: checked } : current);
             }}
           />
           <div className="flex justify-end border-t border-slate-100 pt-5">
@@ -225,14 +225,14 @@ function formStateFrom(settings: AdminAuthSettings): FormState {
   return {
     google: settings.googleLoginRegistrationEnabled,
     facebook: settings.facebookLoginRegistrationEnabled,
-    phoneOtpRequired: settings.phoneRegistrationOtpRequired,
+    otpRequired: settings.otpRequired ?? settings.phoneRegistrationOtpRequired ?? true,
   };
 }
 
 function isDirty(form: FormState, baseline: FormState) {
   return form.google !== baseline.google ||
     form.facebook !== baseline.facebook ||
-    form.phoneOtpRequired !== baseline.phoneOtpRequired;
+    form.otpRequired !== baseline.otpRequired;
 }
 
 function ProviderCheckbox({
@@ -274,6 +274,7 @@ function SettingsSkeleton() {
     <div className="mx-auto max-w-3xl space-y-4" aria-label="Đang tải cài đặt">
       <Skeleton className="h-8 w-80" />
       <Skeleton className="h-5 w-full" />
+      <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="h-24 w-full rounded-xl" />
       <Skeleton className="ml-auto h-11 w-36" />

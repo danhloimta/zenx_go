@@ -231,11 +231,15 @@ export type AuthProvider = 'google' | 'facebook';
 export interface AuthProviderAvailability {
   google: boolean;
   facebook: boolean;
+  otpRequired: boolean;
+  /** @deprecated Use otpRequired. */
   phoneRegistrationOtpRequired: boolean;
 }
 export interface AdminAuthSettings {
   googleLoginRegistrationEnabled: boolean;
   facebookLoginRegistrationEnabled: boolean;
+  otpRequired: boolean;
+  /** @deprecated Use otpRequired. */
   phoneRegistrationOtpRequired: boolean;
   updatedAt: string;
 }
@@ -243,12 +247,15 @@ export interface AdminAuthSettingsUpdateRequest {
   expectedUpdatedAt: string;
   googleLoginRegistrationEnabled?: boolean;
   facebookLoginRegistrationEnabled?: boolean;
+  otpRequired?: boolean;
+  /** @deprecated Use otpRequired. */
   phoneRegistrationOtpRequired?: boolean;
 }
 export type OtpChannel = 'SMS' | 'ZALO' | 'EMAIL';
 export type OtpPurpose =
   | 'REGISTER'
   | 'VERIFY_PHONE'
+  | 'CHANGE_PASSWORD'
   | 'RESET_PASSWORD'
   | 'CHANGE_PHONE'
   | 'CHANGE_EMAIL'
@@ -323,7 +330,7 @@ export interface ForgotPasswordRequest {
 
 export interface ResetPasswordRequest {
   email: string;
-  verificationToken: string;
+  verificationToken?: string;
   newPassword: string;
 }
 
@@ -463,6 +470,7 @@ export interface CompleteProfileRequest {
 export interface ChangePasswordRequest {
   currentPassword?: string;
   newPassword: string;
+  verificationToken?: string;
 }
 
 export interface ChangeEmailRequest {
@@ -472,7 +480,15 @@ export interface ChangeEmailRequest {
 
 export interface ChangePhoneRequest {
   newPhone: string;
-  verificationToken: string;
+  verificationToken?: string;
+}
+
+export interface ChangePasswordOtpSendResponse extends OtpSendResponse {
+  destination: string;
+}
+
+export interface ChangePasswordOtpVerifyRequest {
+  code: string;
 }
 
 export interface SensitiveProfileSummary {
@@ -1687,6 +1703,12 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       },
       changePassword: (input: ChangePasswordRequest) =>
         client.post<void>('/account/change-password', input),
+      changePasswordOtp: {
+        send: () =>
+          client.post<ChangePasswordOtpSendResponse>('/account/change-password/otp'),
+        verify: (input: ChangePasswordOtpVerifyRequest) =>
+          client.post<OtpVerifyResponse>('/account/change-password/otp/verify', input),
+      },
       changeEmail: (input: ChangeEmailRequest) => client.post<void>('/account/change-email', input),
       changePhone: (input: ChangePhoneRequest) => client.post<void>('/account/change-phone', input),
       sensitiveProfile: {

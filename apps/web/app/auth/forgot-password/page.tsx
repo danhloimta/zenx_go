@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +21,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 
 const schema = z.object({
   email: z.string().trim().email('Email chưa đúng định dạng. Vui lòng kiểm tra lại.'),
@@ -27,6 +29,11 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
+  const settings = useAuthProviderAvailability();
+  const otpRequired = !settings.isFetching && !settings.isPaused && settings.isSuccess
+    ? settings.data?.otpRequired ?? settings.data?.phoneRegistrationOtpRequired ?? true
+    : true;
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
 
@@ -47,6 +54,11 @@ export default function ForgotPasswordPage() {
   const mutation = useMutation({
     mutationFn: api.auth.forgotPassword,
     onSuccess: (_, variables) => {
+      if (!otpRequired) {
+        toast.success('Đã xác nhận email. Hãy tạo mật khẩu mới.');
+        router.push(`/auth/reset-password?email=${encodeURIComponent(variables.email)}`);
+        return;
+      }
       setSubmittedEmail(variables.email);
       setCountdown(60);
       toast.success('Mã xác thực đã được gửi tới email của bạn.');
@@ -141,7 +153,9 @@ export default function ForgotPasswordPage() {
                 Quên mật khẩu?
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-slate-500 leading-relaxed">
-                Nhập email đã đăng ký để nhận mã 6 số đặt lại mật khẩu mới.
+                {otpRequired
+                  ? 'Nhập email đã đăng ký để nhận mã 6 số đặt lại mật khẩu mới.'
+                  : 'Nhập email đã đăng ký để tiếp tục đặt lại mật khẩu.'}
               </p>
             </div>
           </div>
@@ -176,10 +190,11 @@ export default function ForgotPasswordPage() {
             >
               {mutation.isPending ? (
                 <span className="flex items-center gap-2">
-                  <RefreshCw className="size-4 animate-spin" /> Đang gửi mã…
+                  <RefreshCw className="size-4 animate-spin" />
+                  {otpRequired ? 'Đang gửi mã…' : 'Đang xử lý…'}
                 </span>
               ) : (
-                'Gửi mã xác thực'
+                otpRequired ? 'Gửi mã xác thực' : 'Tiếp tục đặt lại mật khẩu'
               )}
             </Button>
           </form>

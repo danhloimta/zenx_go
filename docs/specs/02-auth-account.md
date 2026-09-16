@@ -12,7 +12,7 @@
 | ------------------ | ----------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | `FEAT-AUTH-001`    | Đăng ký username/password     | Guest      | Nhập username/email/phone/password → nếu policy yêu cầu thì verify phone OTP → accept Terms/Privacy → tạo account, profile và wallet. | `IMPLEMENTED` |
 | `FEAT-AUTH-002`    | Đăng nhập và session          | User       | Login bằng username/email + password → access/refresh cookie; refresh xoay session; logout revoke refresh và clear cookie. | `IMPLEMENTED` |
-| `FEAT-AUTH-003`    | Quên/reset password           | User       | Nhập email → email OTP → verification token → đặt password mới; revoke session cũ.                                         | `IMPLEMENTED` |
+| `FEAT-AUTH-003`    | Quên/reset password           | User       | Nhập email → nếu policy yêu cầu thì email OTP → verification token → đặt password mới; revoke session cũ.                  | `IMPLEMENTED` |
 | `FEAT-AUTH-004`    | Social login/link             | User       | OAuth state ký và hết hạn → provider code exchange → profile lookup → link hoặc login; không auto-link chỉ bằng email.     | `PARTIAL`     |
 | `FEAT-OTP-001`     | OTP channel/purpose           | Guest/User | Gửi OTP qua SMS/Zalo/Email, verify code một lần, hết hạn và giới hạn thử.                                                  | `MOCK`        |
 | `FEAT-ACCOUNT-001` | Account summary/contact       | User       | Đọc `account/me`, xem email/phone verification, đổi contact qua OTP.                                                       | `IMPLEMENTED` |
@@ -25,8 +25,9 @@
 ### Register/login/session
 
 - Username và email normalize case-insensitive; phone normalize về format `+84...` trước unique check.
-- Register bắt buộc `acceptTerms` và `acceptPrivacy`; `phoneRegistrationOtpRequired` quyết định phone có cần verification token đúng destination hay không.
-- Khi policy bật, token thiếu/sai/hết hạn bị từ chối; khi policy tắt, account vẫn tạo được với `phoneVerifiedAt = null`. Token hợp lệ được cung cấp tùy chọn vẫn đánh dấu phone đã xác thực.
+- Register bắt buộc `acceptTerms` và `acceptPrivacy`; canonical policy `otpRequired` (legacy alias: `phoneRegistrationOtpRequired`) quyết định các luồng OTP được yêu cầu.
+- Khi policy bật, đăng ký/đổi mật khẩu/đổi SĐT/reset password phải có verification token đúng purpose và destination; khi policy tắt, các luồng này không cần OTP. Nếu không gửi token, đăng ký hoặc đổi SĐT khi tắt giữ `phoneVerifiedAt = null`; token hợp lệ tùy chọn vẫn được tiêu thụ và đánh dấu đã xác thực.
+- OTP hợp lệ khi đổi mật khẩu xác nhận SĐT hiện tại và đánh dấu `phoneVerifiedAt` nếu trước đó chưa có; email change và sensitive-profile OTP luôn giữ policy bắt buộc riêng.
 - Account tạo thành công có status `ACTIVE`, `UserProfile` và wallet `ZENX` balance `0`; `phoneVerifiedAt` phụ thuộc kết quả xác thực ở trên.
 - Access token và refresh token được gửi bằng HttpOnly cookie; refresh session lưu hash và bị revoke khi xoay/logout/password change.
 - Access JWT có `type: access`; sensitive profile JWT có type riêng và không được AuthGuard chấp nhận như session.
@@ -45,7 +46,8 @@
 
 ### OTP
 
-- Public OTP dùng cho register, phone/email change và password reset.
+- Public OTP dùng cho register, đổi SĐT/email và password reset khi policy yêu cầu; OTP đổi mật khẩu được gửi/verify qua account endpoint authenticated.
+- Purpose `CHANGE_PASSWORD` luôn yêu cầu `userId` và bị từ chối trên public `/otp/*` (`OTP_PURPOSE_RESTRICTED`).
 - OTP lưu hash Argon2, có TTL, resend delay, attempt limit; code cũ pending bị expire khi tạo code mới.
 - Sensitive-profile OTP chỉ được gọi qua authenticated account endpoint và gắn với `userId`; public `/otp/*` từ chối purpose `MANAGE_SENSITIVE_PROFILE`.
 - Sensitive recovery ưu tiên phone đã xác thực, fallback email đã xác thực; không có kênh hợp lệ thì trả lỗi rõ ràng.
@@ -56,12 +58,12 @@
 - Google/Facebook provider identity được lưu riêng, unique theo `(provider, providerUserId)`.
 - OAuth state ký bằng secret, có mode `login`/`link`, return URL được domain policy validate.
 - Với mode `login`, cả endpoint start và callback đọc mới singleton `AuthSettings` từ database và từ chối provider đang tắt. Không cache quyết định nên thay đổi có hiệu lực ở request kế tiếp, kể cả callback của flow đã bắt đầu.
-- `GET /auth/provider-availability` trả projection public `{ google, facebook, phoneRegistrationOtpRequired }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
-- Cùng response public trả `phoneRegistrationOtpRequired` để register ẩn/hiện khối OTP. Backend đọc policy mới nhất trên mỗi request đăng ký; khi settings không đọc được, policy mặc định an toàn là vẫn yêu cầu OTP.
+- `GET /auth/provider-availability` trả projection public `{ google, facebook, otpRequired, phoneRegistrationOtpRequired }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
+- Cùng response public trả `otpRequired` (kèm alias legacy) để register, account password/phone và reset pages ẩn/hiện OTP. Backend đọc policy mới nhất trên mỗi request; khi settings không đọc được, policy mặc định an toàn là vẫn yêu cầu OTP.
 - Với JSON settings APIs, thiếu row singleton hoặc lỗi database trả HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. Với OAuth navigation start/callback, các internal domain code `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` được chuyển thành HTTP `302` redirect với query lần lượt `social_error=settings_unavailable` / `social_error=provider_disabled`; không code uppercase nào được dùng làm query value.
 - Identity đã thuộc account khác bị từ chối; email trùng không tự động link.
 - Unlink không được làm mất login method cuối nếu account chưa có password và không còn social identity khác.
-- Enforcement chỉ áp dụng mode `login`; `mode=link`, unlink và password flows giữ nguyên hành vi.
+- Social provider enforcement chỉ áp dụng mode `login`; `mode=link` và unlink giữ nguyên hành vi. Password/auth recovery flows tuân theo `otpRequired` như các rule ở trên.
 - Provider credentials thiếu thì UI/API trả `not_configured`; `FEAT-AUTH-004` vẫn `PARTIAL` vì Phase 1 không lưu credentials, cấu hình hay health-check provider và không chứng minh production readiness.
 
 ## Basic account/profile
@@ -74,7 +76,7 @@
 | `SCR-ACCOUNT-COMPLETE` | `/account/complete-profile` | Required onboarding form; save xong cập nhật query cache và chuyển profile.                          | `POST /account/complete-profile`; `apps/web/app/account/complete-profile/page.tsx`; account E2E                   |
 | `SCR-ACCOUNT-PROFILE`  | `/account/profile`          | Contact cards, basic profile form, avatar upload, social/password summary và sensitive-profile card. | `/account/me`, `/account/*`, `/account/sensitive-profile/*`; `apps/web/app/account/profile/page.tsx`; account E2E |
 | `SCR-ACCOUNT-SECURITY` | `/account/security`         | Email/phone/password security status và shortcut actions.                                            | `/account/me`; `apps/web/app/account/security/page.tsx`; account E2E                                              |
-| `SCR-ACCOUNT-PASSWORD` | `/account/change-password`  | Strength checklist, current/new password, social-only first password.                                | `POST /account/change-password`; `apps/web/app/account/change-password/page.tsx`; account E2E                     |
+| `SCR-ACCOUNT-PASSWORD` | `/account/change-password`  | Strength checklist, current/new password, social-only first password và policy-gated SMS OTP.          | `POST /account/change-password`, `/account/change-password/otp*`; `apps/web/app/account/change-password/page.tsx`; account E2E |
 | `SCR-ACCOUNT-SOCIAL`   | `/account/social`           | Link/unlink Google/Facebook, provider status và lỗi OAuth.                                           | `/auth/google                                                                                                     | facebook`, `/account/social/*`; `apps/web/app/account/social/page.tsx`; link initiation E2E, unlink API integration |
 
 ### Basic profile data

@@ -144,11 +144,13 @@ describe('Auth settings API (SQL Server)', () => {
     expect(publicRead.body.data).toEqual({
       google: true,
       facebook: true,
+      otpRequired: true,
       phoneRegistrationOtpRequired: true,
     });
     expect(Object.keys(publicRead.body.data).sort()).toEqual([
       'facebook',
       'google',
+      'otpRequired',
       'phoneRegistrationOtpRequired',
     ]);
   });
@@ -275,6 +277,7 @@ describe('Auth settings API (SQL Server)', () => {
     expect(adminRead.body.data).toMatchObject({
       googleLoginRegistrationEnabled: true,
       facebookLoginRegistrationEnabled: true,
+      otpRequired: true,
       phoneRegistrationOtpRequired: true,
     });
     expect(adminRead.body.data.updatedAt).toEqual(expect.any(String));
@@ -292,12 +295,13 @@ describe('Auth settings API (SQL Server)', () => {
       .send({
         expectedUpdatedAt,
         googleLoginRegistrationEnabled: false,
-        phoneRegistrationOtpRequired: false,
+        otpRequired: false,
       });
     expect(updated.status).toBe(200);
     expect(updated.body.data).toMatchObject({
       googleLoginRegistrationEnabled: false,
       facebookLoginRegistrationEnabled: true,
+      otpRequired: false,
       phoneRegistrationOtpRequired: false,
       updatedAt: expect.any(String),
     });
@@ -308,6 +312,32 @@ describe('Auth settings API (SQL Server)', () => {
       .send({ expectedUpdatedAt, facebookLoginRegistrationEnabled: false });
     expect(stale.status).toBe(409);
     expect(stale.body.error.code).toBe('STALE_AUTH_SETTINGS_UPDATE');
+  });
+
+  it('accepts the legacy OTP alias and rejects conflicting aliases', async () => {
+    const current = await http()
+      .get('/admin/settings/auth-providers')
+      .set('Cookie', adminCookies);
+    const expectedUpdatedAt = current.body.data.updatedAt as string;
+
+    const conflict = await http()
+      .patch('/admin/settings/auth-providers')
+      .set('Cookie', adminCookies)
+      .send({
+        expectedUpdatedAt,
+        otpRequired: true,
+        phoneRegistrationOtpRequired: false,
+      });
+    expect(conflict.status).toBe(400);
+    expect(conflict.body.error.code).toBe('INVALID_AUTH_SETTINGS');
+
+    const alias = await http()
+      .patch('/admin/settings/auth-providers')
+      .set('Cookie', adminCookies)
+      .send({ expectedUpdatedAt, phoneRegistrationOtpRequired: true });
+    expect(alias.status).toBe(200);
+    expect(alias.body.data.otpRequired).toBe(true);
+    expect(alias.body.data.phoneRegistrationOtpRequired).toBe(true);
   });
 
   it('rejects updates without a boolean setting or with non-boolean values', async () => {

@@ -19,6 +19,7 @@ import { AccountService } from './account.service';
 import {
   ChangeEmailDto,
   ChangePasswordDto,
+  ChangePasswordOtpVerifyDto,
   ChangePhoneDto,
   CompleteProfileDto,
   SensitiveProfileChallengeDto,
@@ -66,6 +67,19 @@ export class AccountController {
   @AllowPasswordChangeRequired()
   changePassword(@Req() request: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
     return this.account.changePassword(request.user.sub, dto);
+  }
+  @Post('change-password/otp')
+  @AllowPasswordChangeRequired()
+  sendChangePasswordOtp(@Req() request: AuthenticatedRequest) {
+    return this.account.sendChangePasswordOtp(request.user.sub);
+  }
+  @Post('change-password/otp/verify')
+  @AllowPasswordChangeRequired()
+  verifyChangePasswordOtp(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangePasswordOtpVerifyDto,
+  ) {
+    return this.account.verifyChangePasswordOtp(request.user.sub, dto);
   }
   @Post('change-email') changeEmail(
     @Req() request: AuthenticatedRequest,

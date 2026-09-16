@@ -6,6 +6,8 @@ import { PrismaService } from '../database/prisma.service';
 export type AuthSettingsState = {
   googleLoginRegistrationEnabled: boolean;
   facebookLoginRegistrationEnabled: boolean;
+  otpRequired: boolean;
+  /** @deprecated API compatibility alias; persisted via the legacy column. */
   phoneRegistrationOtpRequired: boolean;
   updatedAt: Date;
 };
@@ -13,6 +15,8 @@ export type AuthSettingsState = {
 export type AuthProviderAvailability = {
   google: boolean;
   facebook: boolean;
+  otpRequired: boolean;
+  /** @deprecated API compatibility alias. */
   phoneRegistrationOtpRequired: boolean;
 };
 
@@ -20,6 +24,8 @@ export type UpdateAuthSettingsInput = {
   expectedUpdatedAt: string;
   googleLoginRegistrationEnabled?: boolean;
   facebookLoginRegistrationEnabled?: boolean;
+  otpRequired?: boolean;
+  /** @deprecated Use otpRequired. */
   phoneRegistrationOtpRequired?: boolean;
 };
 
@@ -41,7 +47,13 @@ export class AuthSettingsService {
         select: AUTH_SETTINGS_SELECT,
       });
       if (!settings) throw this.unavailable();
-      return settings;
+      const rawSettings = settings as typeof settings & {
+        otpRequired?: boolean;
+      };
+      const otpRequired = rawSettings.phoneRegistrationOtpRequired
+        ?? rawSettings.otpRequired
+        ?? true;
+      return { ...settings, otpRequired, phoneRegistrationOtpRequired: otpRequired };
     } catch {
       throw this.unavailable();
     }
@@ -52,18 +64,15 @@ export class AuthSettingsService {
     return {
       google: settings.googleLoginRegistrationEnabled,
       facebook: settings.facebookLoginRegistrationEnabled,
+      otpRequired: settings.otpRequired,
       phoneRegistrationOtpRequired: settings.phoneRegistrationOtpRequired !== false,
     };
   }
 
-  /**
-   * Registration must fail closed if the settings row cannot be read. Returning
-   * true here keeps the existing OTP requirement during a transient settings
-   * outage while allowing the public settings endpoint to report the outage.
-   */
-  async isPhoneRegistrationOtpRequired(): Promise<boolean> {
+  /** Keep every policy-controlled auth flow at the secure default on outage. */
+  async isOtpRequired(): Promise<boolean> {
     try {
-      return (await this.readCurrent()).phoneRegistrationOtpRequired !== false;
+      return (await this.readCurrent()).otpRequired;
     } catch (error) {
       if (error instanceof DomainError && error.code === ErrorCode.SETTINGS_UNAVAILABLE) {
         return true;
@@ -72,7 +81,24 @@ export class AuthSettingsService {
     }
   }
 
+  /** @deprecated Use isOtpRequired; retained for older callers during rollout. */
+  async isPhoneRegistrationOtpRequired(): Promise<boolean> {
+    return this.isOtpRequired();
+  }
+
   async update(input: UpdateAuthSettingsInput): Promise<AuthSettingsState> {
+    if (
+      input.otpRequired !== undefined &&
+      input.phoneRegistrationOtpRequired !== undefined &&
+      input.otpRequired !== input.phoneRegistrationOtpRequired
+    ) {
+      throw new DomainError(
+        ErrorCode.INVALID_AUTH_SETTINGS,
+        'Canonical and legacy OTP settings must match',
+        400,
+      );
+    }
+    const otpRequired = input.otpRequired ?? input.phoneRegistrationOtpRequired;
     const data = {
       ...(input.googleLoginRegistrationEnabled !== undefined
         ? { googleLoginRegistrationEnabled: input.googleLoginRegistrationEnabled }
@@ -80,8 +106,8 @@ export class AuthSettingsService {
       ...(input.facebookLoginRegistrationEnabled !== undefined
         ? { facebookLoginRegistrationEnabled: input.facebookLoginRegistrationEnabled }
         : {}),
-      ...(input.phoneRegistrationOtpRequired !== undefined
-        ? { phoneRegistrationOtpRequired: input.phoneRegistrationOtpRequired }
+      ...(otpRequired !== undefined
+        ? { phoneRegistrationOtpRequired: otpRequired }
         : {}),
     };
 

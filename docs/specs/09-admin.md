@@ -29,7 +29,7 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
 | Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game, genre, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 | Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
-| Auth provider settings            | `IMPLEMENTED`     | `/admin/settings` bật/tắt login-registration Google/Facebook và yêu cầu OTP phone khi đăng ký với fresh-read enforcement và optimistic concurrency. |
+| Auth provider settings            | `IMPLEMENTED`     | `/admin/settings` bật/tắt login-registration Google/Facebook và policy OTP chung cho auth operations với fresh-read enforcement và optimistic concurrency. |
 
 ## Access model
 
@@ -141,11 +141,13 @@ CCCD được lưu AES-256-GCM ở `SensitiveProfile`; admin detail chỉ nhận
 
 ## Authentication provider settings
 
-- `GET /auth/provider-availability` là public dependency của login/register, trả `{ google, facebook, phoneRegistrationOtpRequired }` và `Cache-Control: no-store`.
-- `GET /admin/settings/auth-providers` trả `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled`, `phoneRegistrationOtpRequired` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một trong ba boolean.
+- `GET /auth/provider-availability` là public dependency của auth pages, trả `{ google, facebook, otpRequired, phoneRegistrationOtpRequired }` và `Cache-Control: no-store`.
+- `GET /admin/settings/auth-providers` trả Google/Facebook flags, canonical `otpRequired`, legacy alias `phoneRegistrationOtpRequired` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một auth-setting boolean, chấp nhận alias tương thích nhưng từ chối hai giá trị OTP mâu thuẫn.
 - Update dùng optimistic concurrency trên singleton `id=1`; stale write trả `409 STALE_AUTH_SETTINGS_UPDATE` để UI reload/merge có chủ đích.
+- API trả `400 INVALID_AUTH_SETTINGS` nếu client gửi hai alias OTP với giá trị mâu thuẫn.
 - Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. JSON settings APIs fail closed với HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. OAuth start/callback chuyển internal `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` thành HTTP `302` redirect với lowercase query `social_error=settings_unavailable` / `social_error=provider_disabled`.
-- Enforcement chỉ áp dụng login/registration. Password login/reset/change, OAuth `mode=link` và unlink giữ nguyên hành vi.
+- Social provider enforcement chỉ áp dụng login/registration. Password change/reset và phone change tuân theo `otpRequired`; password login, OAuth `mode=link` và unlink giữ nguyên hành vi.
+- Khi `otpRequired=false`, register, password change, phone change và forgot/reset password không bắt buộc verify OTP; token hợp lệ tùy chọn vẫn được tiêu thụ. Khi bật lại, backend bắt buộc policy ở request kế tiếp và không phụ thuộc trạng thái frontend.
 - Phase 1 không lưu OAuth credentials/secrets, không cấu hình hoặc health-check provider, và không chứng minh provider production readiness.
 
 ## API contract
@@ -216,7 +218,7 @@ Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `2026
 
 ### `AuthSettings`
 
-`AuthSettings` maps to `auth_settings` with `id=1`, `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled`, `phoneRegistrationOtpRequired` and `updatedAt`. Migration `202609150001_auth_settings_phase1` creates the table; migration `202609160001_registration_otp_setting` adds the OTP flag with database default `true`. The singleton enforces `CHECK (id = 1)`, and the original migration inserts row `id=1`, registers `settings.auth.manage`, and grants it to the system `SUPER_ADMIN` role. The seed upserts the same singleton without overwriting live choices; `SUPPORT` remains excluded.
+`AuthSettings` maps to `auth_settings` with `id=1`, Google/Facebook flags, physical legacy field `phone_registration_otp_required` and `updatedAt`. API/service chuẩn expose `otpRequired` and preserve `phoneRegistrationOtpRequired` as a compatibility alias. Migration `202609150001_auth_settings_phase1` creates the table; migration `202609160001_registration_otp_setting` adds the OTP flag with database default `true`. The singleton enforces `CHECK (id = 1)`, and the seed upserts the same singleton without overwriting live choices; `SUPPORT` remains excluded.
 
 ### Support data model
 
@@ -314,6 +316,6 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.
 - User create/delete và chỉnh sửa sensitive profile.
-- Generic settings infrastructure, cache, activity log, OAuth credential/secret UI or storage, provider configuration/health checks, các OTP purpose ngoài đăng ký phone/DOB/CCCD/wallet changes, và mọi claim về provider production readiness.
+- Generic settings infrastructure, cache, activity log, OAuth credential/secret UI or storage, provider configuration/health checks, các OTP purpose ngoài auth operations đã nêu và sensitive-profile/email change, DOB/CCCD/wallet changes, và mọi claim về provider production readiness.
 
 Các phần trên sẽ được tách thành phase riêng để tránh mở rộng phạm vi CMS cơ bản.

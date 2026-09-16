@@ -19,7 +19,7 @@ export class LoginDto {
 
 export class ResetPasswordDto {
   @IsEmail() email!: string;
-  @IsString() verificationToken!: string;
+  @IsOptional() @IsString() verificationToken?: string;
   @IsString() @MinLength(8) newPassword!: string;
 }
 

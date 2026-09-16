@@ -17,11 +17,16 @@ export class AdminAuthSettingsUpdateDto {
   @IsBoolean()
   phoneRegistrationOtpRequired?: boolean;
 
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsBoolean()
+  otpRequired?: boolean;
+
   @Exclude()
   @ValidateIf(
     (value: AdminAuthSettingsUpdateDto) =>
       value.googleLoginRegistrationEnabled === undefined &&
       value.facebookLoginRegistrationEnabled === undefined &&
+      value.otpRequired === undefined &&
       value.phoneRegistrationOtpRequired === undefined,
   )
   @IsDefined()

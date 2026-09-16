@@ -324,10 +324,23 @@ describe('Admin API (SQL Server)', () => {
     expect(blockedWallet.status).toBe(403);
     expect(blockedWallet.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
 
+    const passwordOtp = await http()
+      .post('/account/change-password/otp')
+      .set('Cookie', temporaryCookies);
+    expect(passwordOtp.status).toBe(201);
+    const passwordOtpVerified = await http()
+      .post('/account/change-password/otp/verify')
+      .set('Cookie', temporaryCookies)
+      .send({ code: process.env.OTP_MOCK_FIXED_CODE ?? '123456' });
+    expect(passwordOtpVerified.status).toBe(201);
     const changed = await http()
       .post('/account/change-password')
       .set('Cookie', temporaryCookies)
-      .send({ currentPassword: 'TemporaryPassword123!', newPassword: 'MemberPassword456!' });
+      .send({
+        currentPassword: 'TemporaryPassword123!',
+        newPassword: 'MemberPassword456!',
+        verificationToken: passwordOtpVerified.body.data.verificationToken,
+      });
     expect(changed.status).toBe(201);
     expect((await http().get('/account/me').set('Cookie', temporaryCookies)).status).toBe(401);
 

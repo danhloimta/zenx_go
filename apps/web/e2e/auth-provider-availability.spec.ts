@@ -153,14 +153,14 @@ for (const { code, message } of [
 
 async function mockAvailability(
   page: Page,
-  availability: { google: boolean; facebook: boolean; phoneRegistrationOtpRequired?: boolean },
+  availability: { google: boolean; facebook: boolean; otpRequired?: boolean; phoneRegistrationOtpRequired?: boolean },
 ) {
   await page.route(availabilityUrl, (route) => fulfillAvailability(route, availability));
 }
 
 async function fulfillAvailability(
   route: Route,
-  availability: { google: boolean; facebook: boolean; phoneRegistrationOtpRequired?: boolean },
+  availability: { google: boolean; facebook: boolean; otpRequired?: boolean; phoneRegistrationOtpRequired?: boolean },
 ) {
   await route.fulfill({
     status: 200,
@@ -169,7 +169,8 @@ async function fulfillAvailability(
     body: JSON.stringify({
       data: {
         ...availability,
-        phoneRegistrationOtpRequired: availability.phoneRegistrationOtpRequired ?? true,
+        otpRequired: availability.otpRequired ?? availability.phoneRegistrationOtpRequired ?? true,
+        phoneRegistrationOtpRequired: availability.phoneRegistrationOtpRequired ?? availability.otpRequired ?? true,
       },
       error: null,
     }),

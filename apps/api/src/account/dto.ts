@@ -21,6 +21,7 @@ export class CompleteProfileDto {
 
 export class ChangePasswordDto {
   @IsOptional() @IsString() currentPassword?: string;
+  @IsOptional() @IsString() verificationToken?: string;
   @IsString()
   @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/, {
@@ -29,13 +30,17 @@ export class ChangePasswordDto {
   newPassword!: string;
 }
 
+export class ChangePasswordOtpVerifyDto {
+  @IsString() @Matches(/^\d{6}$/) code!: string;
+}
+
 export class ChangeEmailDto {
   @IsString() verificationToken!: string;
   @IsEmail() newEmail!: string;
 }
 
 export class ChangePhoneDto {
-  @IsString() verificationToken!: string;
+  @IsOptional() @IsString() verificationToken?: string;
   @IsString() @Matches(/^\+?[0-9\s().-]{8,20}$/) newPhone!: string;
 }
 

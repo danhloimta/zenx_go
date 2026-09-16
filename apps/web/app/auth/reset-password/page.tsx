@@ -21,11 +21,15 @@ import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 
 const schema = z
   .object({
     email: z.string().trim().email('Email chưa đúng định dạng.'),
-    code: z.string().trim().length(6, 'Mã xác thực gồm 6 chữ số.'),
+    code: z
+      .string()
+      .trim()
+      .refine((value) => value.length === 0 || /^\d{6}$/.test(value), 'Mã xác thực gồm 6 chữ số.'),
     newPassword: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự.'),
     confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu.'),
   })
@@ -48,6 +52,10 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') ?? '';
+  const settings = useAuthProviderAvailability();
+  const otpRequired = !settings.isFetching && !settings.isPaused && settings.isSuccess
+    ? settings.data?.otpRequired ?? settings.data?.phoneRegistrationOtpRequired ?? true
+    : true;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -69,15 +77,20 @@ function ResetPasswordForm() {
 
   const mutation = useMutation({
     mutationFn: async ({ confirmPassword: _confirmPassword, code, email, newPassword }: Values) => {
-      const verification = await api.otp.verify({
-        channel: 'EMAIL',
-        purpose: 'RESET_PASSWORD',
-        destination: email,
-        code,
-      });
+      let verificationToken: string | undefined;
+      if (otpRequired) {
+        if (code.length !== 6) throw new Error('Vui lòng nhập mã OTP 6 số.');
+        const verification = await api.otp.verify({
+          channel: 'EMAIL',
+          purpose: 'RESET_PASSWORD',
+          destination: email,
+          code,
+        });
+        verificationToken = verification.verificationToken;
+      }
       return api.auth.resetPassword({
         email,
-        verificationToken: verification.verificationToken,
+        ...(verificationToken ? { verificationToken } : {}),
         newPassword,
       });
     },
@@ -99,7 +112,9 @@ function ResetPasswordForm() {
             Đặt lại mật khẩu
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500 leading-relaxed">
-            Nhập mã 6 chữ số đã gửi qua email và tạo mật khẩu mới cho tài khoản.
+            {otpRequired
+              ? 'Nhập mã 6 chữ số đã gửi qua email và tạo mật khẩu mới cho tài khoản.'
+              : 'Tạo mật khẩu mới cho tài khoản của bạn.'}
           </p>
         </div>
       </div>
@@ -129,7 +144,7 @@ function ResetPasswordForm() {
         </FormField>
 
         {/* OTP Code Field */}
-        <FormField
+        {otpRequired && <FormField
           label="Mã xác thực 6 số (OTP)"
           htmlFor="code"
           required
@@ -153,7 +168,7 @@ function ResetPasswordForm() {
               form.setValue('code', cleaned, { shouldValidate: true });
             }}
           />
-        </FormField>
+        </FormField>}
 
         {/* New Password Field */}
         <FormField

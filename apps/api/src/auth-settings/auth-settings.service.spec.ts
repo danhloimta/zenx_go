@@ -21,11 +21,54 @@ function setup() {
 }
 
 describe('AuthSettingsService', () => {
+  it('exposes otpRequired as the canonical field and preserves the legacy alias', async () => {
+    const { authSettings, service } = setup();
+    authSettings.findUnique.mockResolvedValue(enabledSettings);
+
+    await expect(service.readCurrent()).resolves.toMatchObject({
+      otpRequired: true,
+      phoneRegistrationOtpRequired: true,
+    });
+    await expect(service.isOtpRequired()).resolves.toBe(true);
+  });
+
+  it('rejects conflicting canonical and legacy OTP settings', async () => {
+    const { authSettings, service } = setup();
+
+    await expect(service.update({
+      expectedUpdatedAt: UPDATED_AT.toISOString(),
+      otpRequired: true,
+      phoneRegistrationOtpRequired: false,
+    } as any)).rejects.toMatchObject({
+      code: 'INVALID_AUTH_SETTINGS',
+      status: 400,
+    } satisfies Partial<DomainError>);
+    expect(authSettings.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('accepts canonical otpRequired and persists it through the legacy database column', async () => {
+    const { authSettings, service } = setup();
+    authSettings.updateMany.mockResolvedValue({ count: 1 });
+    authSettings.findUnique.mockResolvedValue({
+      ...enabledSettings,
+      phoneRegistrationOtpRequired: false,
+      updatedAt: NEXT_UPDATED_AT,
+    });
+
+    await expect(service.update({
+      expectedUpdatedAt: UPDATED_AT.toISOString(),
+      otpRequired: false,
+    } as any)).resolves.toMatchObject({ otpRequired: false });
+    expect(authSettings.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, updatedAt: UPDATED_AT },
+      data: { phoneRegistrationOtpRequired: false },
+    });
+  });
   it('reads only the singleton public/admin fields', async () => {
     const { authSettings, service } = setup();
     authSettings.findUnique.mockResolvedValue(enabledSettings);
 
-    await expect(service.readCurrent()).resolves.toEqual(enabledSettings);
+    await expect(service.readCurrent()).resolves.toEqual({ ...enabledSettings, otpRequired: true });
     expect(authSettings.findUnique).toHaveBeenCalledWith({
       where: { id: 1 },
       select: {
@@ -51,11 +94,13 @@ describe('AuthSettingsService', () => {
     await expect(service.providerAvailability()).resolves.toEqual({
       google: true,
       facebook: false,
+      otpRequired: true,
       phoneRegistrationOtpRequired: true,
     });
     await expect(service.providerAvailability()).resolves.toEqual({
       google: false,
       facebook: true,
+      otpRequired: false,
       phoneRegistrationOtpRequired: false,
     });
     expect(authSettings.findUnique).toHaveBeenCalledTimes(2);
@@ -113,7 +158,7 @@ describe('AuthSettingsService', () => {
     await expect(service.update({
       expectedUpdatedAt: UPDATED_AT.toISOString(),
       googleLoginRegistrationEnabled: false,
-    })).resolves.toEqual(updated);
+    })).resolves.toEqual({ ...updated, otpRequired: true });
     expect(authSettings.updateMany).toHaveBeenCalledWith({
       where: { id: 1, updatedAt: UPDATED_AT },
       data: { googleLoginRegistrationEnabled: false },

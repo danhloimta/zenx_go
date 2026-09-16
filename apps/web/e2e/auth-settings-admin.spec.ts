@@ -33,10 +33,10 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
   await expect(page).toHaveURL(/\/admin\/settings$/);
   await expect(page.getByRole('link', { name: 'Cài đặt' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Đăng nhập & đăng ký mạng xã hội' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đăng nhập, đăng ký & xác thực' })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
-  await expect(page.getByRole('checkbox', { name: 'Xác thực OTP số điện thoại khi đăng ký' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Yêu cầu OTP khi thực hiện thao tác bảo mật' })).toBeChecked();
   await expect(page.getByText(/liên kết và hủy liên kết/i)).toBeVisible();
 
   await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
@@ -47,7 +47,7 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await page.getByRole('checkbox', { name: 'Google' }).uncheck();
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
   await expect(page.getByRole('button', { name: 'Đang lưu…' })).toBeDisabled();
-  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
   await page.unroute('**/api/v1/admin/settings/auth-providers');
 
   await page.reload();
@@ -84,7 +84,7 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
   await page.unroute('**/api/v1/admin/settings/auth-providers');
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
-  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
 
   await page.context().clearCookies();
   await loginInBrowser(page, support.email, support.password, '/admin/support');
@@ -93,7 +93,7 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await expect(page).not.toHaveURL(/\/admin\/settings$/);
 });
 
-test('SUPER_ADMIN can disable registration phone OTP and the public form follows it', async ({
+test('SUPER_ADMIN can disable shared OTP and the public registration form follows it', async ({
   page,
   request,
 }) => {
@@ -102,15 +102,15 @@ test('SUPER_ADMIN can disable registration phone OTP and the public form follows
   adminCookie = await login(request, admin.email, admin.password);
 
   await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
-  const otpToggle = page.getByRole('checkbox', { name: 'Xác thực OTP số điện thoại khi đăng ký' });
+  const otpToggle = page.getByRole('checkbox', { name: 'Yêu cầu OTP khi thực hiện thao tác bảo mật' });
   await expect(otpToggle).toBeChecked();
   await otpToggle.uncheck();
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
-  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
 
   const publicSettings = await request.get(`${apiBase}/auth/provider-availability`);
   expect(publicSettings.status()).toBe(200);
-  expect((await publicSettings.json()).data.phoneRegistrationOtpRequired).toBe(false);
+  expect((await publicSettings.json()).data.otpRequired).toBe(false);
 
   await page.goto('/auth/register');
   await expect(page.getByLabel('Nhập số OTP')).toHaveCount(0);
@@ -129,6 +129,66 @@ test('SUPER_ADMIN can disable registration phone OTP and the public form follows
   expect(registration.status()).toBe(201);
 });
 
+test('shared OTP toggle gates password, phone, and reset flows', async ({ page, request }) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const member = {
+    username: `otp-member-${suffix}`,
+    email: `otp-member-${suffix}@example.com`,
+    phone: `+849${suffix.slice(-8)}`,
+    password: 'MemberPassword123!',
+  };
+  await register(request, member);
+  const memberCookie = await login(request, member.email, member.password);
+  const completedProfile = await request.post(`${apiBase}/account/complete-profile`, {
+    headers: authenticatedHeaders(memberCookie),
+    data: {
+      fullName: member.username,
+      dateOfBirth: '2000-01-01',
+      gender: 'UNSPECIFIED',
+      city: 'Ho Chi Minh City',
+    },
+  });
+  expect(completedProfile.status()).toBe(201);
+  const admin = await createRoleAccount(request, `otp-admin-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  const otpToggle = page.getByRole('checkbox', { name: 'Yêu cầu OTP khi thực hiện thao tác bảo mật' });
+  await otpToggle.uncheck();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
+
+  await page.context().clearCookies();
+  await loginInBrowser(page, member.email, member.password, '/account/change-password');
+  await expect(page).toHaveURL(/\/account\/change-password/);
+  await page.getByLabel('Mật khẩu hiện tại').fill(member.password);
+  await page.getByRole('textbox', { name: 'Mật khẩu mới', exact: true }).fill('ChangedPassword123!');
+  await page.getByRole('textbox', { name: 'Xác nhận mật khẩu mới', exact: true }).fill('ChangedPassword123!');
+  await expect(page.getByLabel('Nhập mã OTP')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Lưu mật khẩu mới' }).click();
+  await expect(page.getByText(/Đã đổi mật khẩu thành công/)).toBeVisible();
+
+  await page.context().clearCookies();
+  await loginInBrowser(page, member.email, 'ChangedPassword123!', '/account/profile');
+  await expect(page).toHaveURL(/\/account\/profile/);
+  await page.getByRole('button', { name: 'Đổi', exact: true }).click();
+  await page.locator('#profile-phone-edit').fill(`+849${(Number(member.phone.slice(-8)) + 1).toString().padStart(8, '0')}`);
+  await page.getByRole('button', { name: 'Lưu số điện thoại', exact: true }).click();
+  await expect(page.getByText('Đã cập nhật số điện thoại thành công.', { exact: true })).toBeVisible();
+
+  await page.context().clearCookies();
+  await page.goto('/auth/forgot-password');
+  await page.getByLabel('Email đã đăng ký').fill(member.email);
+  await page.getByRole('button', { name: 'Tiếp tục đặt lại mật khẩu', exact: true }).click();
+  await expect(page).toHaveURL(/\/auth\/reset-password\?email=/);
+  await expect(page.locator('#code')).toHaveCount(0);
+  await page.getByLabel('Email tài khoản').fill(member.email);
+  await page.getByRole('textbox', { name: 'Mật khẩu mới', exact: true }).fill('ResetAgainPassword123!');
+  await page.getByRole('textbox', { name: 'Xác nhận mật khẩu mới', exact: true }).fill('ResetAgainPassword123!');
+  await page.getByRole('button', { name: 'Cập nhật mật khẩu', exact: true }).click();
+  await expect(page.getByText(/Đặt lại mật khẩu thành công/)).toBeVisible();
+});
+
 test('settings load failure can be retried', async ({ page, request }) => {
   const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
   const admin = await createRoleAccount(request, `settings-retry-${suffix}`, 'SUPER_ADMIN');
@@ -145,7 +205,7 @@ test('settings load failure can be retried', async ({ page, request }) => {
   });
 
   await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
-  await expect(page.getByText('Không thể tải cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Không thể tải cài đặt đăng nhập và xác thực.')).toBeVisible();
   await page.getByRole('button', { name: 'Thử lại' }).click();
   await expect(page.getByRole('checkbox', { name: 'Google' })).toBeVisible();
 });
@@ -244,7 +304,7 @@ test('successful save fences an older settings response', async ({
   );
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
   await patchResponse;
-  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Google' })).not.toBeChecked();
 
   const olderGetResponse = page.waitForResponse(
@@ -359,7 +419,7 @@ test('automatic stale conflict reload locks controls and replaces the form basel
 
   await page.getByRole('checkbox', { name: 'Facebook' }).check();
   await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
-  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập và xác thực.')).toBeVisible();
 });
 
 async function createRoleAccount(
@@ -432,6 +492,7 @@ async function readSettings(request: APIRequestContext, cookie: string) {
   return (await response.json()).data as {
     googleLoginRegistrationEnabled: boolean;
     facebookLoginRegistrationEnabled: boolean;
+    otpRequired: boolean;
     phoneRegistrationOtpRequired: boolean;
     updatedAt: string;
   };

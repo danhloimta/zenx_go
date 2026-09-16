@@ -77,7 +77,14 @@ test('account screens complete the release-gate journey without placeholder stat
   await expect(page.getByRole('button', { name: 'Lưu mật khẩu' })).toBeDisabled();
   await page.getByRole('textbox', { name: 'Mật khẩu mới', exact: true }).fill('NewPassword123!');
   await page.getByRole('textbox', { name: 'Xác nhận mật khẩu mới', exact: true }).fill('NewPassword123!');
+  await page.getByRole('button', { name: 'Gửi OTP' }).click();
+  await expect(page.getByText(/Đã gửi OTP/)).toBeVisible();
+  await page.getByLabel('Nhập mã OTP').fill('123456');
   await expect(page.getByRole('button', { name: 'Lưu mật khẩu' })).toBeEnabled();
+  await page.getByLabel('Mật khẩu hiện tại').fill('WrongPassword123!');
+  await page.getByRole('button', { name: 'Lưu mật khẩu' }).click();
+  await expect(page.getByText('Thông tin xác thực không đúng.', { exact: true })).toBeVisible();
+  await page.getByLabel('Mật khẩu hiện tại').fill('Password123!');
   await page.getByRole('button', { name: 'Lưu mật khẩu' }).click();
   await expect(page.getByText(/Đã đổi mật khẩu thành công/)).toBeVisible();
 

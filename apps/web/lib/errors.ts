@@ -13,6 +13,10 @@ const messages: Record<string, string> = {
   OTP_ALREADY_USED: 'Mã xác thực đã được sử dụng.',
   OTP_RATE_LIMITED: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.',
   VERIFICATION_TOKEN_INVALID: 'Phiên xác thực không hợp lệ hoặc đã hết hạn.',
+  INVALID_AUTH_SETTINGS: 'Cài đặt xác thực không hợp lệ. Vui lòng tải lại và thử lại.',
+  PASSWORD_CHANGE_OTP_UNAVAILABLE: 'Tài khoản chưa có số điện thoại để nhận OTP đổi mật khẩu.',
+  OTP_NOT_REQUIRED: 'OTP hiện không được yêu cầu cho thao tác này.',
+  OTP_PURPOSE_RESTRICTED: 'Hãy yêu cầu mã OTP từ đúng luồng bảo mật của tài khoản.',
   CANNOT_UNLINK_LAST_LOGIN_METHOD:
     'Hãy thiết lập mật khẩu hoặc liên kết phương thức khác trước khi hủy liên kết.',
   SOCIAL_ALREADY_LINKED: 'Tài khoản này đã được liên kết.',
@@ -90,4 +94,3 @@ export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy
 
   return fallback;
 }
-

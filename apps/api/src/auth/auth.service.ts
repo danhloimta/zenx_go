@@ -40,7 +40,7 @@ export class AuthService {
     let phoneOtpRequired = true;
     if (this.authSettings) {
       try {
-        phoneOtpRequired = await this.authSettings.isPhoneRegistrationOtpRequired();
+        phoneOtpRequired = await this.authSettings.isOtpRequired();
       } catch (error) {
         if (!(error instanceof DomainError) || error.code !== ErrorCode.SETTINGS_UNAVAILABLE) {
           throw error;
@@ -282,7 +282,7 @@ export class AuthService {
   async forgotPassword(email: string) {
     const normalized = normalizeEmail(email);
     const user = await this.prisma.user.findUnique({ where: { emailNormalized: normalized } });
-    if (user)
+    if (user && (await this.isOtpRequired()))
       await this.otp.send({
         channel: 'EMAIL',
         purpose: 'RESET_PASSWORD',
@@ -297,7 +297,25 @@ export class AuthService {
       where: { emailNormalized: normalizeEmail(dto.email) },
     });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
-    await this.otp.consumeVerificationToken(dto.verificationToken, 'RESET_PASSWORD', dto.email);
+    const otpRequired = await this.isOtpRequired();
+    if (otpRequired) {
+      if (!dto.verificationToken) {
+        throw new DomainError(
+          ErrorCode.VERIFICATION_TOKEN_INVALID,
+          'Password reset verification is required',
+          400,
+        );
+      }
+      await this.otp.consumeVerificationToken(dto.verificationToken, 'RESET_PASSWORD', dto.email);
+    } else if (dto.verificationToken) {
+      try {
+        await this.otp.consumeVerificationToken(dto.verificationToken, 'RESET_PASSWORD', dto.email);
+      } catch (error) {
+        if (!(error instanceof DomainError) || error.code !== ErrorCode.VERIFICATION_TOKEN_INVALID) {
+          throw error;
+        }
+      }
+    }
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -311,6 +329,11 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     return { reset: true };
+  }
+
+  private async isOtpRequired() {
+    if (!this.authSettings) return true;
+    return this.authSettings.isOtpRequired();
   }
 
   private async issueTokens(

@@ -70,7 +70,7 @@ export default function RegisterPage() {
     ? providers.data
     : undefined;
   // Keep the current secure behavior while settings are loading or unavailable.
-  const phoneOtpRequired = availability?.phoneRegistrationOtpRequired ?? true;
+  const otpRequired = availability?.otpRequired ?? availability?.phoneRegistrationOtpRequired ?? true;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -128,7 +128,7 @@ export default function RegisterPage() {
   const register = useMutation({
     mutationFn: async ({ otpCode, confirmPassword: _confirmPassword, ...values }: Values) => {
       let verificationToken: string | undefined;
-      if (phoneOtpRequired) {
+      if (otpRequired) {
         if (!otpCode || otpCode.length !== 6) {
           throw new Error('Vui lòng nhập mã OTP 6 số trước khi đăng ký.');
         }
@@ -255,7 +255,7 @@ export default function RegisterPage() {
             <form
               className="space-y-4"
               onSubmit={form.handleSubmit((values) => {
-                if (phoneOtpRequired && (!values.otpCode || values.otpCode.length !== 6)) {
+                if (otpRequired && (!values.otpCode || values.otpCode.length !== 6)) {
                   form.setError('otpCode', { message: 'Vui lòng nhập mã OTP 6 số.' });
                   return;
                 }
@@ -381,7 +381,7 @@ export default function RegisterPage() {
               </FormField>
 
               {/* Phone OTP Verification Block */}
-              {phoneOtpRequired && (
+              {otpRequired && (
               <div className="rounded-2xl border border-slate-200/90 bg-slate-50/80 p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor="reg-otpCode" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">

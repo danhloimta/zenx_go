@@ -24,5 +24,8 @@ export class OtpController {
     if (purpose === OtpPurpose.MANAGE_SENSITIVE_PROFILE) {
       throw new DomainError(ErrorCode.INVALID_SENSITIVE_PROFILE, 'Sensitive profile OTP must be requested from the account endpoint', 400);
     }
+    if (purpose === OtpPurpose.CHANGE_PASSWORD) {
+      throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'This OTP purpose must be requested from the account endpoint', 400);
+    }
   }
 }

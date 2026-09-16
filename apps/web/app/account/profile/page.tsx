@@ -31,6 +31,7 @@ import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { cn, mediaUrl } from '@/lib/utils';
 import { useAccount } from '@/hooks/use-account';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
@@ -87,6 +88,10 @@ function ProfileContent({
 }) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const settings = useAuthProviderAvailability();
+  const otpRequired = !settings.isFetching && !settings.isPaused && settings.isSuccess
+    ? settings.data?.otpRequired ?? settings.data?.phoneRegistrationOtpRequired ?? true
+    : true;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -251,6 +256,7 @@ function ProfileContent({
                 type="phone"
                 value={account.phone}
                 verifiedAt={account.phoneVerifiedAt}
+                otpRequired={otpRequired}
                 onSuccess={() => queryClient.invalidateQueries({ queryKey: ['account', 'me'] })}
               />
             </div>
@@ -574,11 +580,13 @@ function ContactChange({
   type,
   value,
   verifiedAt,
+  otpRequired = true,
   onSuccess,
 }: {
   type: 'email' | 'phone';
   value?: string | null;
   verifiedAt?: string | null;
+  otpRequired?: boolean;
   onSuccess: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -594,6 +602,7 @@ function ContactChange({
   const purpose = type === 'email' ? 'CHANGE_EMAIL' : 'CHANGE_PHONE';
   const label = type === 'email' ? 'Email' : 'Số điện thoại';
   const Icon = type === 'email' ? Mail : Phone;
+  const requiresOtp = type === 'email' || otpRequired;
   const verificationOnly = type === 'email' && !verifiedAt && Boolean(value);
   const hasValue = Boolean(value?.trim());
   const actionLabel = verificationOnly ? 'Xác thực' : hasValue ? 'Đổi' : 'Thêm';
@@ -626,6 +635,9 @@ function ContactChange({
 
   const save = useMutation({
     mutationFn: async () => {
+      if (!requiresOtp && type === 'phone') {
+        return api.account.changePhone({ newPhone: destination });
+      }
       const verification = await api.otp.verify({ channel, purpose, destination, code });
       return type === 'email'
         ? api.account.changeEmail({
@@ -693,7 +705,7 @@ function ContactChange({
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  const handleSendOtp = () => {
+  const handleSubmit = () => {
     const trimmed = destination.trim();
     if (!trimmed) {
       setError(
@@ -711,7 +723,8 @@ function ContactChange({
       );
       return;
     }
-    sendOtp.mutate();
+    if (requiresOtp) sendOtp.mutate();
+    else save.mutate();
   };
 
   return (
@@ -788,12 +801,14 @@ function ContactChange({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleSendOtp();
+                    handleSubmit();
                   }
                 }}
               />
               <p className="mt-1.5 text-[11px] text-slate-500">
-                Mã xác thực sẽ được gửi qua {type === 'email' ? 'email' : 'SMS'} để xác nhận.
+                {requiresOtp
+                  ? `Mã xác thực sẽ được gửi qua ${type === 'email' ? 'email' : 'SMS'} để xác nhận.`
+                  : 'Số điện thoại sẽ được cập nhật ngay và cần xác thực lại sau đó.'}
               </p>
             </div>
 
@@ -809,10 +824,16 @@ function ContactChange({
                 type="button"
                 size="sm"
                 className="flex-1 text-xs font-semibold h-9"
-                onClick={handleSendOtp}
-                disabled={sendOtp.isPending}
+                onClick={handleSubmit}
+                disabled={sendOtp.isPending || save.isPending}
               >
-                {sendOtp.isPending ? 'Đang gửi mã…' : 'Gửi mã xác thực'}
+                {sendOtp.isPending
+                  ? 'Đang gửi mã…'
+                  : save.isPending
+                    ? 'Đang cập nhật…'
+                    : requiresOtp
+                      ? 'Gửi mã xác thực'
+                      : 'Lưu số điện thoại'}
               </Button>
               <Button
                 type="button"
@@ -820,7 +841,7 @@ function ContactChange({
                 variant="ghost"
                 className="text-xs text-slate-600 hover:text-slate-900 h-9 px-3"
                 onClick={cancel}
-                disabled={sendOtp.isPending}
+                disabled={sendOtp.isPending || save.isPending}
               >
                 Hủy
               </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
@@ -17,13 +17,16 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { z } from 'zod';
+import { ApiError } from '@zenx-go/api-client';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useAccount } from '@/hooks/use-account';
+import { useAuthProviderAvailability } from '@/hooks/use-auth-settings';
 import { Alert } from '@/components/ui/alert';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -49,6 +52,14 @@ type Values = z.infer<typeof schema>;
 
 export default function ChangePasswordPage() {
   const account = useAccount();
+  const settings = useAuthProviderAvailability();
+  const verifiedOtpTokenRef = useRef<string | undefined>(undefined);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const otpRequired = !settings.isFetching && !settings.isPaused && settings.isSuccess
+    ? settings.data?.otpRequired ?? settings.data?.phoneRegistrationOtpRequired ?? true
+    : true;
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
@@ -75,6 +86,12 @@ export default function ChangePasswordPage() {
   const isConfirmDirty = confirmPassword.length > 0;
   const isPasswordMatch = isConfirmDirty && newPassword === confirmPassword;
 
+  useEffect(() => {
+    if (otpCountdown <= 0) return;
+    const timer = setInterval(() => setOtpCountdown((previous) => previous - 1), 1000);
+    return () => clearInterval(timer);
+  }, [otpCountdown]);
+
   // Strength score
   const strengthLevel = useMemo(() => {
     if (!newPassword) return { label: 'Chưa nhập', color: 'bg-slate-200', text: 'text-slate-400', width: 'w-0' };
@@ -83,9 +100,36 @@ export default function ChangePasswordPage() {
     return { label: 'Rất mạnh', color: 'bg-emerald-500', text: 'text-emerald-600', width: 'w-full' };
   }, [newPassword, passedRulesCount]);
 
+  const sendOtp = useMutation({
+    mutationFn: api.account.changePasswordOtp.send,
+    onSuccess: (result) => {
+      verifiedOtpTokenRef.current = undefined;
+      setOtpCode('');
+      setOtpSent(true);
+      setOtpCountdown(result.resendAfter || 60);
+      toast.success(`Đã gửi OTP tới ${result.destination}.`);
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
   const change = useMutation({
-    mutationFn: ({ confirmPassword: _confirmPassword, ...value }: Values) =>
-      api.account.changePassword(value),
+    mutationFn: async ({ confirmPassword: _confirmPassword, ...value }: Values) => {
+      let verificationToken = verifiedOtpTokenRef.current;
+      if (otpRequired) {
+        if (!verificationToken && otpCode.length !== 6) {
+          throw new Error('Vui lòng nhập mã OTP 6 số trước khi lưu mật khẩu.');
+        }
+        if (!verificationToken) {
+          const verification = await api.account.changePasswordOtp.verify({ code: otpCode });
+          verificationToken = verification.verificationToken;
+          verifiedOtpTokenRef.current = verificationToken;
+        }
+      }
+      return api.account.changePassword({
+        ...value,
+        ...(verificationToken ? { verificationToken } : {}),
+      });
+    },
     onSuccess: () => {
       toast.success(
         hasPassword
@@ -93,9 +137,24 @@ export default function ChangePasswordPage() {
           : 'Đã tạo mật khẩu đăng nhập thành công!',
       );
       form.reset({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      verifiedOtpTokenRef.current = undefined;
+      setOtpCode('');
+      setOtpSent(false);
+      setOtpCountdown(0);
       void account.refetch();
     },
-    onError: (error) => toast.error(getErrorMessage(error)),
+    onError: (error) => {
+      if (
+        error instanceof ApiError &&
+        ['VERIFICATION_TOKEN_INVALID', 'OTP_EXPIRED', 'OTP_INVALID'].includes(error.code)
+      ) {
+        verifiedOtpTokenRef.current = undefined;
+        setOtpCode('');
+        setOtpSent(false);
+        setOtpCountdown(0);
+      }
+      toast.error(getErrorMessage(error));
+    },
   });
 
   if (account.isLoading) {
@@ -154,6 +213,10 @@ export default function ChangePasswordPage() {
             onSubmit={form.handleSubmit((value) => {
               if (hasPassword && !value.currentPassword) {
                 form.setError('currentPassword', { message: 'Vui lòng nhập mật khẩu hiện tại.' });
+                return;
+              }
+              if (otpRequired && otpCode.length !== 6) {
+                toast.error('Vui lòng nhập mã OTP 6 số trước khi lưu mật khẩu.');
                 return;
               }
               change.mutate(value);
@@ -274,6 +337,54 @@ export default function ChangePasswordPage() {
                 )}
               </div>
             </FormField>
+
+            {otpRequired && (
+              <div className="rounded-2xl border border-slate-200/90 bg-slate-50/80 p-4 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <ShieldCheck className="size-3.5 text-slate-500" /> Xác thực OTP trước khi đổi mật khẩu
+                  </p>
+                  {otpSent ? (
+                    <span className="text-[11px] font-semibold text-[#00873E]">Đã gửi mã</span>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    aria-label="Nhập mã OTP"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    placeholder="Nhập mã OTP 6 số"
+                    className="h-11 bg-white text-center font-mono font-bold tracking-[0.25em]"
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                    disabled={change.isPending}
+                  />
+                  <Button
+                    type="button"
+                    variant="zenx-outline"
+                    className="h-11 shrink-0 px-4 text-xs font-semibold"
+                    onClick={() => {
+                      verifiedOtpTokenRef.current = undefined;
+                      setOtpCode('');
+                      sendOtp.mutate();
+                    }}
+                    disabled={sendOtp.isPending || otpCountdown > 0 || change.isPending}
+                  >
+                    {sendOtp.isPending
+                      ? 'Đang gửi…'
+                      : otpCountdown > 0
+                        ? `Gửi lại (${otpCountdown}s)`
+                        : otpSent
+                          ? 'Gửi lại mã'
+                          : 'Gửi OTP'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Mã xác thực sẽ được gửi qua SMS tới số điện thoại hiện tại của tài khoản.
+                </p>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-slate-100">

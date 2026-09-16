@@ -306,7 +306,8 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     expect(weakPassword.status).toBe(400);
     const wrongPassword = await http().post('/account/change-password').set('Cookie', cookies).send({ currentPassword: 'wrong-password', newPassword: 'NewPassword123!' });
     expect(wrongPassword.status).toBe(401);
-    const changed = await http().post('/account/change-password').set('Cookie', cookies).send({ currentPassword: 'Password123!', newPassword: 'NewPassword123!' });
+    const passwordOtp = await verifyPasswordOtp(cookies);
+    const changed = await http().post('/account/change-password').set('Cookie', cookies).send({ currentPassword: 'Password123!', newPassword: 'NewPassword123!', verificationToken: passwordOtp });
     expect(changed.status).toBe(201);
     const revokedRefresh = await http().post('/auth/refresh').set('Cookie', cookies);
     expect(revokedRefresh.status).toBe(401);
@@ -326,7 +327,8 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     await expect(prisma.socialIdentity.findUnique({ where: { provider_providerUserId: { provider: 'GOOGLE', providerUserId } } })).resolves.toBeNull();
 
     await prisma.user.update({ where: { id: userId }, data: { passwordHash: null } });
-    const passwordSetup = await http().post('/account/change-password').set('Cookie', cookies).send({ newPassword: 'SocialOnly123!' });
+    const passwordOtp = await verifyPasswordOtp(cookies);
+    const passwordSetup = await http().post('/account/change-password').set('Cookie', cookies).send({ newPassword: 'SocialOnly123!', verificationToken: passwordOtp });
     expect(passwordSetup.status).toBe(201);
     const account = await http().get('/account/me').set('Cookie', cookies);
     expect(account.body.data.hasPassword).toBe(true);
@@ -358,6 +360,17 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const sent = await http().post('/otp/send').send({ channel, purpose, destination });
     expect(sent.status).toBe(201);
     const verified = await http().post('/otp/verify').send({ channel, purpose, destination, code: process.env.OTP_MOCK_FIXED_CODE ?? '123456' });
+    expect(verified.status).toBe(201);
+    return verified.body.data.verificationToken as string;
+  }
+
+  async function verifyPasswordOtp(sessionCookies: string) {
+    const sent = await http().post('/account/change-password/otp').set('Cookie', sessionCookies);
+    expect(sent.status).toBe(201);
+    const verified = await http()
+      .post('/account/change-password/otp/verify')
+      .set('Cookie', sessionCookies)
+      .send({ code: process.env.OTP_MOCK_FIXED_CODE ?? '123456' });
     expect(verified.status).toBe(201);
     return verified.body.data.verificationToken as string;
   }
