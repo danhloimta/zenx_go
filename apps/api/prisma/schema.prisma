@@ -48,9 +48,30 @@ model User {
   assignedSupportTickets SupportTicket[]          @relation("SupportTicketAssignee")
   supportMessages        SupportTicketMessage[]   @relation("SupportMessageAuthor")
   supportReadStates      SupportTicketReadState[] @relation("SupportReadUser")
+  activityLogs           UserActivityLog[]
 
   @@index([status])
   @@map("users")
+}
+
+model UserActivityLog {
+  id          String   @id @default(uuid()) @db.UniqueIdentifier
+  userId      String   @map("user_id") @db.UniqueIdentifier
+  category    String   @db.VarChar(16)
+  eventType   String   @map("event_type") @db.VarChar(64)
+  outcome     String   @db.VarChar(16)
+  actorType   String   @map("actor_type") @db.VarChar(16)
+  ipAddress   String?  @map("ip_address") @db.VarChar(64)
+  userAgent   String?  @map("user_agent") @db.NVarChar(512)
+  deviceLabel String?  @map("device_label") @db.NVarChar(160)
+  metadata    String?  @db.NVarChar(Max)
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt, id])
+  @@index([userId, category, createdAt, id])
+  @@index([createdAt])
+  @@map("user_activity_logs")
 }
 
 model UserRole {

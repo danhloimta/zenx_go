@@ -19,6 +19,7 @@ import { GameModule } from './game/game.module';
 import { DomainPolicyModule } from './common/domain-policy.module';
 import { PortalModule } from './portal/portal.module';
 import { AdminModule } from './admin/admin.module';
+import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { AdminModule } from './admin/admin.module';
         },
       ],
     }),
+    ActivityModule,
     HealthModule,
     AuthModule,
     OtpModule,

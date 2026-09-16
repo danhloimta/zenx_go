@@ -14,6 +14,7 @@ import { DomainError, ErrorCode } from '../common/errors';
 import { normalizeEmail, normalizePhone } from '../common/normalize';
 import { OtpService } from '../otp/otp.service';
 import { PrismaService } from '../database/prisma.service';
+import { ActivityContext, ActivityService } from '../activity/activity.service';
 import {
   SensitiveIdentityDto,
   SensitiveProfileChallengeDto,
@@ -139,6 +140,7 @@ export class SensitiveProfileService {
     private readonly otp: OtpService,
     private readonly jwt: JwtService,
     private readonly crypto: SensitiveProfileCrypto,
+    private readonly activity?: ActivityService,
   ) {}
 
   async summary(userId: string) {
@@ -306,7 +308,7 @@ export class SensitiveProfileService {
     };
   }
 
-  async update(userId: string, dto: SensitiveProfileUpdateDto) {
+  async update(userId: string, dto: SensitiveProfileUpdateDto, context?: ActivityContext) {
     const current = await this.authorizeToken(userId, dto.accessToken);
     const currentIdentity = current?.citizenIdCiphertext
       ? this.crypto.decrypt({
@@ -367,6 +369,7 @@ export class SensitiveProfileService {
 
     if (!nextIdentity && !nextSecurity) {
       if (current) await this.prisma.sensitiveProfile.delete({ where: { id: current.id } });
+      await this.activity?.record({ userId, category: 'SECURITY', eventType: 'SENSITIVE_PROFILE_UPDATED', context });
       return this.toSummary(null);
     }
 
@@ -419,6 +422,7 @@ export class SensitiveProfileService {
         : await this.prisma.sensitiveProfile.create({
             data: { userId, ...profileData, securityVersion: 1 },
           });
+      await this.activity?.record({ userId, category: 'SECURITY', eventType: 'SENSITIVE_PROFILE_UPDATED', context });
       return this.toSummary(profile);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

@@ -602,6 +602,13 @@ export interface Paginated<T> {
   statusCounts?: Record<AccountStatus | 'ALL', number>;
 }
 
+export type ActivityCategory = 'ALL' | 'LOGIN' | 'SECURITY';
+export interface UserActivityLog {
+  id: string; category: Exclude<ActivityCategory, 'ALL'>; eventType: string;
+  outcome: 'SUCCESS' | 'FAILED'; actorType: 'USER' | 'ADMIN' | 'SYSTEM';
+  ipAddress: string | null; deviceLabel: string | null; userAgent?: string | null; createdAt: string;
+}
+
 export interface CoinPackage {
   id: string;
   code?: string;
@@ -1403,6 +1410,8 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       ) => client.get<Paginated<AdminUserSummary>>('/admin/users', query),
       user: (userId: string) =>
         client.get<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}`),
+      activityLogs: (userId: string, query: { page?: number; pageSize?: number; category?: ActivityCategory } = {}) =>
+        client.get<Paginated<UserActivityLog>>(`/admin/users/${encodeURIComponent(userId)}/activity-logs`, query),
       updateProfile: (userId: string, input: AdminProfileUpdateRequest) =>
         client.patch<AdminUserDetail>(`/admin/users/${encodeURIComponent(userId)}/profile`, input),
       updateStatus: (userId: string, input: AdminStatusUpdateRequest) =>
@@ -1701,6 +1710,8 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
     },
     account: {
       me: () => client.get<AccountMe>('/account/me'),
+      activityLogs: (query: { page?: number; pageSize?: number; category?: ActivityCategory } = {}) =>
+        client.get<Paginated<UserActivityLog>>('/account/activity-logs', query),
       update: (input: UpdateAccountRequest) => client.patch<AccountMe>('/account/me', input),
       completeProfile: (input: CompleteProfileRequest) =>
         client.post<AccountMe>('/account/complete-profile', input),

@@ -6,6 +6,7 @@ import { AccountStatus, SocialProvider } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { normalizeEmail, normalizeUsername } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
+import { ActivityContext, ActivityService } from '../activity/activity.service';
 
 export type OAuthMode = 'login' | 'link';
 
@@ -41,7 +42,7 @@ const PROVIDER_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class SocialService {
-  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+  constructor(private readonly prisma: PrismaService, private readonly config: ConfigService, private readonly activity?: ActivityService) {}
 
   getAuthorizationUrl(provider: SocialProvider, mode: OAuthMode, userId?: string, returnTo?: string) {
     const providerConfig = this.providerConfig(provider);
@@ -122,7 +123,7 @@ export class SocialService {
     return this.fetchProfile(provider, token.access_token);
   }
 
-  async linkIdentity(userId: string, provider: SocialProvider, profile: SocialProfile) {
+  async linkIdentity(userId: string, provider: SocialProvider, profile: SocialProfile, context?: ActivityContext) {
     const existing = await this.prisma.socialIdentity.findUnique({
       where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } },
     });
@@ -130,7 +131,7 @@ export class SocialService {
     if (existing) throw new DomainError(ErrorCode.SOCIAL_LINKED_TO_ANOTHER_ACCOUNT, 'Social account is linked to another account', 409);
 
     try {
-      return await this.prisma.socialIdentity.create({
+      const identity = await this.prisma.socialIdentity.create({
         data: {
           userId,
           provider,
@@ -138,6 +139,8 @@ export class SocialService {
           emailAtLinkTime: profile.email,
         },
       });
+      await this.activity?.record({ userId, category: 'SECURITY', eventType: 'SOCIAL_LINKED', context, metadata: { provider } });
+      return identity;
     } catch (error) {
       const duplicate = await this.prisma.socialIdentity.findUnique({
         where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } },
@@ -224,12 +227,13 @@ export class SocialService {
     throw new DomainError(ErrorCode.SOCIAL_OAUTH_REQUIRED, `Start the ${provider.toLowerCase()} OAuth flow before linking an identity`, 400);
   }
 
-  async unlink(userId: string, provider: SocialProvider) {
+  async unlink(userId: string, provider: SocialProvider, context?: ActivityContext) {
     const identity = await this.prisma.socialIdentity.findFirst({ where: { userId, provider }, include: { user: { select: { passwordHash: true } } } });
     if (!identity) return { unlinked: true };
     const otherSocial = await this.prisma.socialIdentity.count({ where: { userId, NOT: { provider } } });
     if (!identity.user.passwordHash && otherSocial === 0) throw new DomainError(ErrorCode.CANNOT_UNLINK_LAST_LOGIN_METHOD, 'Create a password before unlinking the last social login', 409);
     await this.prisma.socialIdentity.delete({ where: { id: identity.id } });
+    await this.activity?.record({ userId, category: 'SECURITY', eventType: 'SOCIAL_UNLINKED', context, metadata: { provider } });
     return { unlinked: true };
   }
 

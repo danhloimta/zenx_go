@@ -5,6 +5,7 @@ import { AccountStatus, AdminRole } from '../common/domain';
 import { DomainError, ErrorCode } from '../common/errors';
 import { normalizeEmail, normalizePhone, normalizeUsername } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
+import { ActivityContext, ActivityService } from '../activity/activity.service';
 import { SensitiveProfileCrypto, validateCitizenIdentity } from '../account/sensitive-profile.service';
 import {
   AdminProfileUpdateDto,
@@ -35,6 +36,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sensitiveCrypto: SensitiveProfileCrypto,
+    private readonly activity: ActivityService,
   ) {}
 
   async me(actorUserId: string) {
@@ -222,7 +224,11 @@ export class AdminService {
     };
   }
 
-  async updateProfile(userId: string, dto: AdminProfileUpdateDto) {
+  activityLogs(userId: string, query: import('../activity/activity.dto').ActivityLogsQueryDto) {
+    return this.activity.list(userId, query, true);
+  }
+
+  async updateProfile(userId: string, dto: AdminProfileUpdateDto, context?: ActivityContext) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
@@ -346,11 +352,14 @@ export class AdminService {
           data: { revokedAt: new Date() },
         });
       }
+      if (emailChanged || phoneChanged) {
+        await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_CONTACT_CHANGED', actorType: 'ADMIN', context }, tx);
+      }
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.getUser(userId);
   }
 
-  async updateStatus(userId: string, dto: AdminStatusUpdateDto, actorUserId: string) {
+  async updateStatus(userId: string, dto: AdminStatusUpdateDto, actorUserId: string, context?: ActivityContext) {
     if (userId === actorUserId)
       throw new DomainError(
         ErrorCode.ADMIN_SELF_ACTION_FORBIDDEN,
@@ -404,11 +413,12 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_STATUS_CHANGED', actorType: 'ADMIN', context }, tx);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.getUser(userId);
   }
 
-  async updateRoles(userId: string, dto: AdminRolesUpdateDto, actorUserId: string) {
+  async updateRoles(userId: string, dto: AdminRolesUpdateDto, actorUserId: string, context?: ActivityContext) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { roles: USER_LIST_INCLUDE.roles },
@@ -479,12 +489,13 @@ export class AdminService {
           reason: dto.reason?.trim() || null,
         },
       });
+      await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_ROLES_CHANGED', actorType: 'ADMIN', context }, tx);
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     return this.getUser(userId);
   }
 
-  async revokeSessions(userId: string) {
+  async revokeSessions(userId: string, context?: ActivityContext) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true },
@@ -499,11 +510,12 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_SESSIONS_REVOKED', actorType: 'ADMIN', context }, tx);
     });
     return { revoked: true };
   }
 
-  async resetPassword(userId: string, dto: AdminResetPasswordDto) {
+  async resetPassword(userId: string, dto: AdminResetPasswordDto, context?: ActivityContext) {
     if (dto.temporaryPassword !== dto.temporaryPasswordConfirmation) {
       throw new DomainError(
         ErrorCode.INVALID_CREDENTIALS,
@@ -538,6 +550,7 @@ export class AdminService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_PASSWORD_RESET', actorType: 'ADMIN', context }, tx);
     });
     return { reset: true };
   }
@@ -559,7 +572,7 @@ export class AdminService {
     return { identity };
   }
 
-  async updateSensitiveIdentity(userId: string, dto: AdminUpdateSensitiveIdentityDto) {
+  async updateSensitiveIdentity(userId: string, dto: AdminUpdateSensitiveIdentityDto, context?: ActivityContext) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, updatedAt: true },
@@ -650,6 +663,7 @@ export class AdminService {
             }
           }
         }
+        await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_SENSITIVE_PROFILE_CHANGED', actorType: 'ADMIN', context }, tx);
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {

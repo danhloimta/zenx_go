@@ -19,7 +19,8 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
-    "admin:role": "tsx scripts/admin-role.ts"
+    "admin:role": "tsx scripts/admin-role.ts",
+    "activity-logs:cleanup": "tsx scripts/activity-log-cleanup.ts"
   },
   "dependencies": {
     "@casl/ability": "7.0.1",

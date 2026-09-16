@@ -12,6 +12,7 @@ import { OtpService } from '../otp/otp.service';
 import { DomainPolicyService } from '../common/domain-policy.service';
 import { AuthSettingsService } from '../auth-settings/auth-settings.service';
 import { LoginDto, RegisterDto, ResetPasswordDto } from './dto';
+import { ActivityContext, ActivityService } from '../activity/activity.service';
 
 export type AuthTokens = { accessToken: string; refreshToken: string; user: unknown };
 export type LoginTokens = AuthTokens & { redirectTo: string };
@@ -27,9 +28,10 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly domainPolicy: DomainPolicyService,
     @Optional() private readonly authSettings?: AuthSettingsService,
+    private readonly activity?: ActivityService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthTokens> {
+  async register(dto: RegisterDto, context?: ActivityContext): Promise<AuthTokens> {
     if (!dto.acceptTerms || !dto.acceptPrivacy) {
       throw new DomainError(
         'INVALID_CREDENTIALS',
@@ -108,10 +110,11 @@ export class AuthService {
       },
       include: { profile: true },
     });
-    return this.issueTokens(user.id, user.username, user);
+    await this.activity?.record({ userId: user.id, category: 'SECURITY', eventType: 'ACCOUNT_REGISTERED', context, actorType: 'USER' });
+    return this.issueTokens(user.id, user.username, user, undefined, context, 'LOGIN_PASSWORD');
   }
 
-  async login(dto: LoginDto): Promise<LoginTokens> {
+  async login(dto: LoginDto, context?: ActivityContext): Promise<LoginTokens> {
     const identity = dto.username.trim();
     const usernameNormalized = normalizeUsername(identity);
     const emailNormalized = normalizeEmail(identity);
@@ -133,6 +136,7 @@ export class AuthService {
       },
     });
     if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) {
+      if (user) await this.activity?.record({ userId: user.id, category: 'LOGIN', eventType: 'LOGIN_PASSWORD', outcome: 'FAILED', context });
       throw new DomainError(
         ErrorCode.INVALID_CREDENTIALS,
         'Invalid username/email or password',
@@ -149,11 +153,11 @@ export class AuthService {
     const hasAdminRole = user.roles.some(({ role }) => role.isActive && (role.code === 'SUPER_ADMIN' || role.permissions.some(({ permission }) => permission.isActive && permission.code === 'admin.access')));
     const defaultReturnTo = this.domainPolicy.portalUrl(hasAdminRole ? '/admin' : '/account');
     const redirectTo = await this.domainPolicy.resolveReturnTo(dto.returnTo || defaultReturnTo);
-    return { ...(await this.issueTokens(user.id, user.username, user)), redirectTo };
+    return { ...(await this.issueTokens(user.id, user.username, user, undefined, context, 'LOGIN_PASSWORD')), redirectTo };
 
   }
 
-  async loginWithSocial(userId: string): Promise<AuthTokens> {
+  async loginWithSocial(userId: string, context?: ActivityContext, provider = 'SOCIAL'): Promise<AuthTokens> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
@@ -165,7 +169,7 @@ export class AuthService {
       throw new DomainError(ErrorCode.ACCOUNT_SUSPENDED, 'Account is suspended', 403);
     if (user.status === AccountStatus.DELETED)
       throw new DomainError(ErrorCode.ACCOUNT_DELETED, 'Account is deleted', 403);
-    return this.issueTokens(user.id, user.username, user);
+    return this.issueTokens(user.id, user.username, user, undefined, context, `LOGIN_${provider}`);
   }
 
   async verifyAccessToken(token?: string): Promise<{ sub: string; username: string }> {
@@ -263,17 +267,19 @@ export class AuthService {
     return this.issueTokens(session.user.id, session.user.username, session.user, replacementId);
   }
 
-  async logout(refreshToken?: string) {
+  async logout(refreshToken?: string, context?: ActivityContext) {
     if (!refreshToken) return;
     try {
       const payload = await this.jwt.verifyAsync<{ sid: string }>(refreshToken, {
         secret: this.config.getOrThrow('jwtRefreshSecret'),
         ignoreExpiration: true,
       });
-      await this.prisma.refreshSession.updateMany({
+      const session = await this.prisma.refreshSession.findUnique({ where: { id: payload.sid }, select: { userId: true } });
+      const revoked = await this.prisma.refreshSession.updateMany({
         where: { id: payload.sid, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      if (session && revoked.count) await this.activity?.record({ userId: session.userId, category: 'LOGIN', eventType: 'LOGOUT', context });
     } catch {
       // Logout is intentionally idempotent.
     }
@@ -292,7 +298,7 @@ export class AuthService {
     return { accepted: true };
   }
 
-  async resetPassword(dto: ResetPasswordDto) {
+  async resetPassword(dto: ResetPasswordDto, context?: ActivityContext) {
     const user = await this.prisma.user.findUnique({
       where: { emailNormalized: normalizeEmail(dto.email) },
     });
@@ -328,6 +334,7 @@ export class AuthService {
       where: { userId: user.id, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    await this.activity?.record({ userId: user.id, category: 'SECURITY', eventType: 'PASSWORD_RESET', context });
     return { reset: true };
   }
 
@@ -340,7 +347,7 @@ export class AuthService {
     userId: string,
     username: string,
     user: unknown,
-    sessionId = randomUUID(),
+    sessionId = randomUUID(), context?: ActivityContext, loginEvent?: string,
   ): Promise<AuthTokens> {
     const sid = sessionId;
     const source = user as {
@@ -370,6 +377,7 @@ export class AuthService {
         expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
       },
     });
+    if (loginEvent) await this.activity?.record({ userId, category: 'LOGIN', eventType: loginEvent, context });
     return {
       accessToken,
       refreshToken,

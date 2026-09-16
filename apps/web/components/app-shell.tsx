@@ -51,6 +51,7 @@ const groups = [
       { href: '/wallet', label: 'Số dư', icon: WalletCards },
       { href: '/payment', label: 'Nạp Coin', icon: Coins },
       { href: '/wallet/transactions', label: 'Lịch sử giao dịch', icon: Clock3 },
+      { href: '/account/activity', label: 'Lịch sử hoạt động', icon: ShieldCheck },
     ],
   },
   {
@@ -148,6 +149,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     if (href === '/wallet') return pathname === '/wallet';
     if (href === '/payment') return pathname.startsWith('/payment');
     if (href === '/wallet/transactions') return pathname.startsWith('/wallet/transactions');
+    if (href === '/account/activity') return pathname.startsWith('/account/activity');
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
@@ -515,6 +517,8 @@ function getPageMeta(pathname: string) {
     return { category: 'VÍ ZENX', title: 'Nạp Coin', icon: Coins };
   if (pathname.startsWith('/wallet/transactions'))
     return { category: 'VÍ ZENX', title: 'Lịch sử giao dịch', icon: Clock3 };
+  if (pathname.startsWith('/account/activity'))
+    return { category: 'TÀI KHOẢN', title: 'Lịch sử hoạt động', icon: ShieldCheck };
   if (pathname.startsWith('/wallet'))
     return { category: 'VÍ ZENX', title: 'Số dư ví', icon: WalletCards };
   if (pathname.startsWith('/account/support'))

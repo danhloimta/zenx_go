@@ -18,6 +18,8 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { SensitiveIdentityDto } from '../account/dto';
+import { ActivityLogsQueryDto } from '../activity/activity.dto';
+export { ActivityLogsQueryDto };
 
 function trimOrUndefined(value: unknown) {
   if (typeof value !== 'string') return value;

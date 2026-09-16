@@ -32,6 +32,7 @@ import {
 import { SocialService } from '../social/social.service';
 import { SensitiveProfileService } from './sensitive-profile.service';
 import { AllowPasswordChangeRequired } from '../common/password-change-required.decorator';
+import { Request } from 'express';
 
 @Controller('account')
 @UseGuards(AuthGuard)
@@ -66,8 +67,8 @@ export class AccountController {
   }
   @Post('change-password')
   @AllowPasswordChangeRequired()
-  changePassword(@Req() request: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
-    return this.account.changePassword(request.user.sub, dto);
+  changePassword(@Req() request: AuthenticatedRequest & Request, @Body() dto: ChangePasswordDto) {
+    return this.account.changePassword(request.user.sub, dto, requestContext(request));
   }
   @Post('change-password/otp')
   @AllowPasswordChangeRequired()
@@ -77,7 +78,7 @@ export class AccountController {
   @Post('change-password/otp/verify')
   @AllowPasswordChangeRequired()
   verifyChangePasswordOtp(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: AuthenticatedRequest & Request,
     @Body() dto: ChangePasswordOtpVerifyDto,
   ) {
     return this.account.verifyChangePasswordOtp(request.user.sub, dto);
@@ -86,13 +87,13 @@ export class AccountController {
     @Req() request: AuthenticatedRequest,
     @Body() dto: ChangeEmailDto,
   ) {
-    return this.account.changeEmail(request.user.sub, dto);
+    return this.account.changeEmail(request.user.sub, dto, requestContext(request));
   }
   @Post('change-phone') changePhone(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: AuthenticatedRequest & Request,
     @Body() dto: ChangePhoneDto,
   ) {
-    return this.account.changePhone(request.user.sub, dto);
+    return this.account.changePhone(request.user.sub, dto, requestContext(request));
   }
   @Post('change-phone/otp')
   sendChangePhoneOtp(@Req() request: AuthenticatedRequest) {
@@ -147,10 +148,10 @@ export class AccountController {
     return this.social.link(request.user.sub, this.parseSocialProvider(provider));
   }
   @Delete('social/:provider') unlink(
-    @Req() request: AuthenticatedRequest,
+    @Req() request: AuthenticatedRequest & Request,
     @Param('provider') provider: string,
   ) {
-    return this.social.unlink(request.user.sub, this.parseSocialProvider(provider));
+    return this.social.unlink(request.user.sub, this.parseSocialProvider(provider), requestContext(request));
   }
 
   private parseSocialProvider(provider: string): SocialProvider {
@@ -160,4 +161,9 @@ export class AccountController {
     }
     return normalized as SocialProvider;
   }
+}
+
+function requestContext(request: Request) {
+  const context = { ipAddress: request.ip, userAgent: request.headers['user-agent'] };
+  return context.ipAddress || context.userAgent ? context : undefined;
 }

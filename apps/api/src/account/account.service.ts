@@ -10,6 +10,7 @@ import { normalizeEmail, normalizePhone } from '../common/normalize';
 import { PrismaService } from '../database/prisma.service';
 import { OtpService } from '../otp/otp.service';
 import { AuthSettingsService } from '../auth-settings/auth-settings.service';
+import { ActivityContext, ActivityService } from '../activity/activity.service';
 import {
   ChangeEmailDto,
   ChangePasswordDto,
@@ -35,6 +36,7 @@ export class AccountService {
     private readonly otp: OtpService,
     private readonly config: ConfigService,
     @Optional() private readonly authSettings?: AuthSettingsService,
+    private readonly activity?: ActivityService,
   ) {}
 
   getMe(userId: string) {
@@ -178,7 +180,7 @@ export class AccountService {
     return false;
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto) {
+  async changePassword(userId: string, dto: ChangePasswordDto, context?: ActivityContext) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
     if (user.passwordHash) {
@@ -261,11 +263,12 @@ export class AccountService {
         where: { userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await this.activity?.record({ userId, category: 'SECURITY', eventType: 'PASSWORD_CHANGED', context }, tx);
     });
     return { changed: true };
   }
 
-  async changeEmail(userId: string, dto: ChangeEmailDto) {
+  async changeEmail(userId: string, dto: ChangeEmailDto, context?: ActivityContext) {
     await this.otp.consumeVerificationToken(
       dto.verificationToken,
       OtpPurpose.CHANGE_EMAIL,
@@ -281,10 +284,11 @@ export class AccountService {
       where: { id: userId },
       data: { email: dto.newEmail.trim(), emailNormalized, emailVerifiedAt: new Date() },
     });
+    await this.activity?.record({ userId, category: 'SECURITY', eventType: 'EMAIL_CHANGED', context });
     return { changed: true };
   }
 
-  async changePhone(userId: string, dto: ChangePhoneDto) {
+  async changePhone(userId: string, dto: ChangePhoneDto, context?: ActivityContext) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { phone: true },
@@ -358,6 +362,7 @@ export class AccountService {
     } else {
       await this.prisma.user.update({ where: { id: userId }, data });
     }
+    await this.activity?.record({ userId, category: 'SECURITY', eventType: 'PHONE_CHANGED', context });
     return { changed: true };
   }
 

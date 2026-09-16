@@ -117,6 +117,13 @@ Avatar upload giới hạn 2 MB, chỉ JPEG/PNG/WebP và kiểm tra file signatu
 
 ## Test evidence
 
+## Lịch sử hoạt động
+
+- `user_activity_logs` lưu sự kiện đăng nhập và bảo mật tối đa 180 ngày: thời gian, IP, User-Agent, nhãn thiết bị, nhóm sự kiện và kết quả. Không lưu password, OTP, token hoặc giá trị liên hệ đầy đủ.
+- Player xem log của mình tại `GET /account/activity-logs`; `GET /admin/users/:userId/activity-logs` dùng quyền `users.view` và có thêm User-Agent kỹ thuật.
+- Giao diện player là `/account/activity`, nằm ngay sau Lịch sử giao dịch; cả player và Admin lọc `ALL`, `LOGIN`, `SECURITY`. Danh tính admin luôn được ẩn.
+- Dọn dữ liệu: chạy `pnpm --filter api activity-logs:cleanup` hằng ngày bằng cron ở deployment.
+
 - Unit: `apps/api/src/account/sensitive-profile.service.spec.ts`, `apps/api/src/otp/otp.service.spec.ts`, `apps/api/src/social/social.service.spec.ts`, `apps/api/src/auth-settings/auth-settings.service.spec.ts`, `apps/api/src/auth/auth.controller.spec.ts`, `apps/api/src/config/config.module.spec.ts`.
 - Integration: `apps/api/test/integration/vertical-slice.integration.spec.ts`, `sensitive-profile.integration.spec.ts`, `auth-settings.integration.spec.ts`.
 - Browser: `apps/web/e2e/account-screens.spec.ts`, `auth-subdomain.spec.ts`, `auth-provider-availability.spec.ts`.

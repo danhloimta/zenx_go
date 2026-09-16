@@ -28,7 +28,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AdminUserDetail, RoleDetail, RoleSummary } from '@zenx-go/api-client';
+import type { AdminUserDetail, RoleDetail, RoleSummary, UserActivityLog } from '@zenx-go/api-client';
 import { useAdminMe, useAdminUser } from '@/hooks/use-admin';
 import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
@@ -684,6 +684,8 @@ export default function AdminUserDetailPage() {
         </div>
       </div>
 
+      <ActivityLogSection userId={user.id} />
+
       {/* Modals & Dialogs */}
       {action === 'password' ? (
         <PasswordDialog
@@ -740,6 +742,18 @@ export default function AdminUserDetailPage() {
       ) : null}
     </div>
   );
+}
+
+function ActivityLogSection({ userId }: { userId: string }) {
+  const [category, setCategory] = useState<'ALL' | 'LOGIN' | 'SECURITY'>('ALL');
+  const [page, setPage] = useState(1);
+  const logs = useQuery({ queryKey: ['admin', 'users', userId, 'activity-logs', category, page], queryFn: () => api.admin.activityLogs(userId, { page, pageSize: 20, category }), retry: false });
+  return <section className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 className="font-bold text-slate-900">Lịch sử hoạt động</h3><p className="text-xs text-slate-500">Đăng nhập và hoạt động bảo mật trong 180 ngày gần đây.</p></div><div className="flex gap-1">{(['ALL', 'LOGIN', 'SECURITY'] as const).map((value) => <Button key={value} size="sm" variant={category === value ? 'default' : 'outline'} onClick={() => { setCategory(value); setPage(1); }}>{value === 'ALL' ? 'Tất cả' : value === 'LOGIN' ? 'Đăng nhập' : 'Bảo mật'}</Button>)}</div></div>{logs.isLoading ? <Skeleton className="mt-4 h-40" /> : logs.isError ? <p className="mt-4 text-sm text-red-600">Không thể tải lịch sử hoạt động.</p> : <><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-3">Thời gian</th><th className="pb-3">Hoạt động</th><th className="pb-3">IP</th><th className="pb-3">Thiết bị</th><th className="pb-3">User-Agent</th></tr></thead><tbody>{logs.data?.items.length ? logs.data.items.map((item: UserActivityLog) => <tr className="border-t border-slate-100" key={item.id}><td className="py-3 text-slate-500">{formatDate(item.createdAt)}</td><td className={item.outcome === 'FAILED' ? 'py-3 text-red-600' : 'py-3 text-slate-800'}>{adminActivityLabel(item)}{item.outcome === 'FAILED' ? ' (thất bại)' : ''}</td><td className="py-3 font-mono text-slate-600">{item.ipAddress ?? '—'}</td><td className="py-3 text-slate-600">{item.deviceLabel ?? '—'}</td><td className="max-w-xs truncate py-3 text-slate-400" title={item.userAgent ?? undefined}>{item.userAgent ?? '—'}</td></tr>) : <tr><td colSpan={5} className="py-8 text-center text-slate-400">Chưa có lịch sử hoạt động.</td></tr>}</tbody></table></div>{(logs.data?.totalPages ?? 1) > 1 ? <div className="mt-4 flex justify-end gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Trước</Button><Button size="sm" variant="outline" disabled={page >= (logs.data?.totalPages ?? 1)} onClick={() => setPage(page + 1)}>Sau</Button></div> : null}</>}</section>;
+}
+
+function adminActivityLabel(item: UserActivityLog) {
+  const labels: Record<string, string> = { ACCOUNT_REGISTERED: 'Đăng ký tài khoản', LOGIN_PASSWORD: 'Đăng nhập bằng mật khẩu', LOGIN_GOOGLE: 'Đăng nhập bằng Google', LOGIN_FACEBOOK: 'Đăng nhập bằng Facebook', LOGOUT: 'Đăng xuất', PASSWORD_CHANGED: 'Đổi mật khẩu', PASSWORD_RESET: 'Đặt lại mật khẩu', EMAIL_CHANGED: 'Đổi email', PHONE_CHANGED: 'Đổi số điện thoại', ADMIN_STATUS_CHANGED: 'Quản trị viên đã thay đổi trạng thái tài khoản', ADMIN_ROLES_CHANGED: 'Quản trị viên đã thay đổi vai trò', ADMIN_SESSIONS_REVOKED: 'Quản trị viên đã thu hồi các phiên đăng nhập', ADMIN_PASSWORD_RESET: 'Quản trị viên đã đặt lại mật khẩu' };
+  return labels[item.eventType] ?? 'Hoạt động bảo mật';
 }
 
 type ProfileForm = {

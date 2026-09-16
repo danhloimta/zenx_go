@@ -23,12 +23,12 @@ export class AuthController {
 
   @Post('register')
   register(@Req() request: Request, @Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
-    return this.auth.register(dto).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
+    return this.auth.register(dto, requestContext(request)).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
   }
 
   @Post('login')
   login(@Req() request: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-    return this.auth.login(dto).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
+    return this.auth.login(dto, requestContext(request)).then((tokens) => this.withCookies(response, tokens, request.headers.origin));
   }
 
   @Post('refresh')
@@ -38,7 +38,7 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-    await this.auth.logout(request.cookies?.[REFRESH_COOKIE]);
+    await this.auth.logout(request.cookies?.[REFRESH_COOKIE], requestContext(request));
     response.clearCookie(ACCESS_COOKIE, this.accessCookieOptions(request.headers.origin));
     response.clearCookie(REFRESH_COOKIE, this.refreshCookieOptions(request.headers.origin));
     return { loggedOut: true };
@@ -48,7 +48,7 @@ export class AuthController {
   forgotPassword(@Body() dto: ForgotPasswordDto) { return this.auth.forgotPassword(dto.email); }
 
   @Post('reset-password')
-  resetPassword(@Body() dto: ResetPasswordDto) { return this.auth.resetPassword(dto); }
+  resetPassword(@Req() request: Request, @Body() dto: ResetPasswordDto) { return this.auth.resetPassword(dto, requestContext(request)); }
 
   @UseGuards(AuthGuard)
   @Get('me')
@@ -125,7 +125,9 @@ export class AuthController {
       if (oauthState.mode === 'link') {
         const access = await this.auth.verifyAccessToken(request.cookies?.[ACCESS_COOKIE]);
         if (access.sub !== oauthState.userId) throw new DomainError('INVALID_OAUTH_STATE', 'OAuth session does not belong to the signed-in user', 401);
-        await this.social.linkIdentity(oauthState.userId!, provider, profile);
+        const activityContext = requestContext(request);
+        if (activityContext) await this.social.linkIdentity(oauthState.userId!, provider, profile, activityContext);
+        else await this.social.linkIdentity(oauthState.userId!, provider, profile);
         const target = new URL(this.domainPolicy.portalUrl('/account/social'));
         target.searchParams.set('social', 'linked');
         target.searchParams.set('provider', provider.toLowerCase());
@@ -133,7 +135,7 @@ export class AuthController {
       }
 
       const userId = await this.social.loginIdentity(provider, profile);
-      const tokens = await this.auth.loginWithSocial(userId);
+      const tokens = await this.auth.loginWithSocial(userId, requestContext(request), provider);
       this.withCookies(response, tokens);
       return response.redirect(safeReturnTo ?? this.domainPolicy.portalUrl('/account'));
     } catch (error) {
@@ -194,4 +196,9 @@ export class AuthController {
   private oauthStateCookieOptions() {
     return this.baseCookieOptions(false);
   }
+}
+
+function requestContext(request: Request) {
+  const context = { ipAddress: request.ip, userAgent: request.headers['user-agent'] };
+  return context.ipAddress || context.userAgent ? context : undefined;
 }
