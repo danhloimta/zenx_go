@@ -53,7 +53,7 @@ export class GameMaintenanceUpdateDto {
 
 export class GameAuditQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
-  @IsOptional() @Type(() => Number) @IsInt() @IsIn([20, 50]) pageSize = 20;
+  @IsOptional() @Type(() => Number) @IsInt() @IsIn([10, 20, 50]) pageSize = 20;
   @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @MaxLength(64) action?: string;
   @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @MaxLength(64) actorUserId?: string;
   @IsOptional() @IsDateString() from?: string;

@@ -299,10 +299,10 @@ export default function SupportTicketDetailPage() {
           </section>
           <div className="flex flex-wrap gap-3">
             <Button asChild variant="zenx-outline">
-              <Link href="/support">Xem FAQ</Link>
+              <Link href="/account/support?tab=faq">Xem câu hỏi thường gặp (FAQ)</Link>
             </Button>
             <Button asChild>
-              <Link href="/support/report-issue">Tạo yêu cầu mới</Link>
+              <Link href="/account/support?tab=create">Tạo yêu cầu mới</Link>
             </Button>
           </div>
         </>

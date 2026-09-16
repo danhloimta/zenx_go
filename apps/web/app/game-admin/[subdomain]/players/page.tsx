@@ -7,7 +7,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GamePlayer } from '@zenx-go/api-client';
 import {
   AlertCircle,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -23,7 +22,6 @@ import {
   Users,
   UserX,
   X,
-  Zap,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';

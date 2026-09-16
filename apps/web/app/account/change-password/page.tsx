@@ -461,7 +461,7 @@ export default function ChangePasswordPage() {
               Nếu bạn không nhớ mật khẩu cũ hoặc gặp trục trặc khi đăng nhập, hãy liên hệ ngay với CSKH.
             </p>
             <Link
-              href="/support"
+              href="/account/support"
               className="inline-flex items-center gap-1 font-bold text-[#00873E] hover:underline pt-1"
             >
               Trung tâm hỗ trợ ZENX GO →

@@ -57,8 +57,8 @@ const groups = [
   {
     title: 'HỖ TRỢ',
     items: [
-      { href: '/support', label: 'Trung tâm hỗ trợ', icon: CircleHelp },
-      { href: '/account/support', label: 'Yêu cầu của tôi', icon: MessageCircle },
+      { href: '/account/support', label: 'Trung tâm hỗ trợ', icon: CircleHelp },
+      { href: '/account/support?tab=tickets', label: 'Yêu cầu của tôi', icon: MessageCircle },
     ],
   },
 ];
@@ -150,6 +150,22 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     if (href === '/payment') return pathname.startsWith('/payment');
     if (href === '/wallet/transactions') return pathname.startsWith('/wallet/transactions');
     if (href === '/account/activity') return pathname.startsWith('/account/activity');
+    if (href === '/account/support?tab=tickets') {
+      if (pathname.startsWith('/account/support/')) return true;
+      if (typeof window !== 'undefined') {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        return pathname === '/account/support' && tab === 'tickets';
+      }
+      return false;
+    }
+    if (href === '/account/support') {
+      if (pathname.startsWith('/account/support/')) return false;
+      if (typeof window !== 'undefined') {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab === 'tickets') return false;
+      }
+      return pathname === '/account/support';
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
@@ -217,7 +233,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                         strokeWidth={active ? 2.2 : 1.8}
                       />
                       <span>{item.label}</span>
-                      {item.href === '/account/support' && supportUnread.data?.count ? (
+                      {item.href.includes('/account/support') && supportUnread.data?.count ? (
                         <span className="ml-auto rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
                           {supportUnread.data.count}
                         </span>
@@ -522,7 +538,7 @@ function getPageMeta(pathname: string) {
   if (pathname.startsWith('/wallet'))
     return { category: 'VÍ ZENX', title: 'Số dư ví', icon: WalletCards };
   if (pathname.startsWith('/account/support'))
-    return { category: 'HỖ TRỢ', title: 'Yêu cầu của tôi', icon: MessageCircle };
+    return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ & Yêu cầu', icon: CircleHelp };
   if (pathname.startsWith('/support'))
     return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ', icon: CircleHelp };
   if (pathname.includes('change-password'))

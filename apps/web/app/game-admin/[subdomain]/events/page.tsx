@@ -26,12 +26,10 @@ import {
   SearchX,
   ShieldAlert,
   Sparkles,
-  Tag,
   X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
