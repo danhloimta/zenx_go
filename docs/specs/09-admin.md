@@ -29,7 +29,7 @@ Phase 1 ưu tiên vận hành tài khoản; Phase 2 bổ sung vận hành suppor
 | Support operations                | `IMPLEMENTED`     | Role `SUPPORT`, queue, conversation, unread và FAQ management; chi tiết ở `04-support.md`. |
 | Content CMS                       | `IMPLEMENTED`     | `SUPER_ADMIN` quản lý game, genre, article, event và portal announcement; chi tiết ở `05-game-hub-content.md`. |
 | Finance operations                | `IMPLEMENTED`     | Gói nạp, payment search/actions, ledger/export và cộng/trừ Coin thủ công; chỉ `SUPER_ADMIN`. |
-| Auth provider settings            | `IMPLEMENTED`     | `/admin/settings` bật/tắt login-registration Google/Facebook với fresh-read enforcement và optimistic concurrency. |
+| Auth provider settings            | `IMPLEMENTED`     | `/admin/settings` bật/tắt login-registration Google/Facebook và yêu cầu OTP phone khi đăng ký với fresh-read enforcement và optimistic concurrency. |
 
 ## Access model
 
@@ -80,7 +80,7 @@ Khi admin đặt mật khẩu tạm:
 | `SCR-ADMIN-PACKAGES`  | `/admin/finance/packages` | CRUD gói nạp, active/inactive và xóa gói chưa từng dùng.              | `GET/POST/PATCH/DELETE /admin/finance/coin-packages` |
 | `SCR-ADMIN-PAYMENTS`  | `/admin/finance/payments*` | Search/detail và command success/fail/expire/cancel/refund.            | `GET /admin/finance/payments*`, payment commands |
 | `SCR-ADMIN-LEDGER`    | `/admin/finance/transactions` | Ledger toàn hệ thống, filter và CSV export.                            | `GET /admin/finance/transactions*`            |
-| `SCR-ADMIN-SETTINGS`  | `/admin/settings`       | Bật/tắt Google/Facebook login-registration; loading/error/dirty/save/stale-reload states. | `GET/PATCH /admin/settings/auth-providers` |
+| `SCR-ADMIN-SETTINGS`  | `/admin/settings`       | Bật/tắt Google/Facebook login-registration và OTP phone khi đăng ký; loading/error/dirty/save/stale-reload states. | `GET/PATCH /admin/settings/auth-providers` |
 
 `AdminShell` là layout riêng, không dùng player `AppShell`. Mọi screen có loading/error/empty state và mutation pending state cơ bản.
 
@@ -141,8 +141,8 @@ CCCD được lưu AES-256-GCM ở `SensitiveProfile`; admin detail chỉ nhận
 
 ## Authentication provider settings
 
-- `GET /auth/provider-availability` là public dependency của login/register, trả `{ google, facebook }` và `Cache-Control: no-store`.
-- `GET /admin/settings/auth-providers` trả `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một boolean.
+- `GET /auth/provider-availability` là public dependency của login/register, trả `{ google, facebook, phoneRegistrationOtpRequired }` và `Cache-Control: no-store`.
+- `GET /admin/settings/auth-providers` trả `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled`, `phoneRegistrationOtpRequired` và ISO `updatedAt`; `PATCH` nhận `expectedUpdatedAt` cùng ít nhất một trong ba boolean.
 - Update dùng optimistic concurrency trên singleton `id=1`; stale write trả `409 STALE_AUTH_SETTINGS_UPDATE` để UI reload/merge có chủ đích.
 - Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. JSON settings APIs fail closed với HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. OAuth start/callback chuyển internal `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` thành HTTP `302` redirect với lowercase query `social_error=settings_unavailable` / `social_error=provider_disabled`.
 - Enforcement chỉ áp dụng login/registration. Password login/reset/change, OAuth `mode=link` và unlink giữ nguyên hành vi.
@@ -163,8 +163,8 @@ Base path: `/api/v1`.
 | `API-ADMIN-REVOKE-SESSIONS`  | `POST /admin/users/:userId/revoke-sessions`          | Access + `SUPER_ADMIN` | —                                                               | `{ revoked: true }`.                       |
 | `API-ADMIN-RESET-PASSWORD`   | `POST /admin/users/:userId/reset-password`           | Access + `SUPER_ADMIN` | Temporary password, confirmation, `expectedUpdatedAt`           | `{ reset: true }`.                         |
 | `API-ADMIN-SENSITIVE-REVEAL` | `POST /admin/users/:userId/sensitive-profile/reveal` | Access + `SUPER_ADMIN` | —                                                               | Identity plaintext or `null`.              |
-| `API-ADMIN-AUTH-SETTINGS-GET` | `GET /admin/settings/auth-providers`                 | Access + `settings.auth.manage` | —                                                     | Auth settings + `updatedAt`.               |
-| `API-ADMIN-AUTH-SETTINGS-PATCH` | `PATCH /admin/settings/auth-providers`             | Access + `settings.auth.manage` | `expectedUpdatedAt` + ≥1 provider boolean              | Updated auth settings.                     |
+| `API-ADMIN-AUTH-SETTINGS-GET` | `GET /admin/settings/auth-providers`                 | Access + `settings.auth.manage` | —                                                     | Auth settings (Google/Facebook/phone OTP) + `updatedAt`. |
+| `API-ADMIN-AUTH-SETTINGS-PATCH` | `PATCH /admin/settings/auth-providers`             | Access + `settings.auth.manage` | `expectedUpdatedAt` + ≥1 auth-setting boolean              | Updated auth settings.                     |
 
 All JSON responses follow `{ data, error }`. Browser mutations remain protected by `OriginGuard`.
 
@@ -216,7 +216,7 @@ Migration: `202609030003_admin_phase1`, `202609030004_support_operations`, `2026
 
 ### `AuthSettings`
 
-`AuthSettings` maps to `auth_settings` with `id=1`, `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled` and `updatedAt`. Migration `202609150001_auth_settings_phase1` creates the table with database defaults `true`, enforces `CHECK (id = 1)`, inserts row `id=1`, registers `settings.auth.manage`, and grants it to the system `SUPER_ADMIN` role. The seed upserts the same singleton and permission/default grant; `SUPPORT` remains excluded.
+`AuthSettings` maps to `auth_settings` with `id=1`, `googleLoginRegistrationEnabled`, `facebookLoginRegistrationEnabled`, `phoneRegistrationOtpRequired` and `updatedAt`. Migration `202609150001_auth_settings_phase1` creates the table; migration `202609160001_registration_otp_setting` adds the OTP flag with database default `true`. The singleton enforces `CHECK (id = 1)`, and the original migration inserts row `id=1`, registers `settings.auth.manage`, and grants it to the system `SUPER_ADMIN` role. The seed upserts the same singleton without overwriting live choices; `SUPPORT` remains excluded.
 
 ### Support data model
 
@@ -314,6 +314,6 @@ Các mục sau đã được phát hiện khi review implementation và chưa đ
 - MFA/SSO riêng cho admin.
 - Admin subdomain, DNS/TLS boundary riêng.
 - User create/delete và chỉnh sửa sensitive profile.
-- Generic settings infrastructure, cache, activity log, OAuth credential/secret UI or storage, provider configuration/health checks, OTP/DOB/CCCD/wallet changes, và mọi claim về provider production readiness.
+- Generic settings infrastructure, cache, activity log, OAuth credential/secret UI or storage, provider configuration/health checks, các OTP purpose ngoài đăng ký phone/DOB/CCCD/wallet changes, và mọi claim về provider production readiness.
 
 Các phần trên sẽ được tách thành phase riêng để tránh mở rộng phạm vi CMS cơ bản.

@@ -11,6 +11,7 @@ model AuthSettings {
   id                               Int      @id @default(1)
   googleLoginRegistrationEnabled   Boolean  @default(true) @map("google_login_registration_enabled")
   facebookLoginRegistrationEnabled Boolean  @default(true) @map("facebook_login_registration_enabled")
+  phoneRegistrationOtpRequired     Boolean  @default(true) @map("phone_registration_otp_required")
   updatedAt                        DateTime @updatedAt @map("updated_at")
 
   @@map("auth_settings")

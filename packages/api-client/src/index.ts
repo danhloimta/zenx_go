@@ -231,16 +231,19 @@ export type AuthProvider = 'google' | 'facebook';
 export interface AuthProviderAvailability {
   google: boolean;
   facebook: boolean;
+  phoneRegistrationOtpRequired: boolean;
 }
 export interface AdminAuthSettings {
   googleLoginRegistrationEnabled: boolean;
   facebookLoginRegistrationEnabled: boolean;
+  phoneRegistrationOtpRequired: boolean;
   updatedAt: string;
 }
 export interface AdminAuthSettingsUpdateRequest {
   expectedUpdatedAt: string;
   googleLoginRegistrationEnabled?: boolean;
   facebookLoginRegistrationEnabled?: boolean;
+  phoneRegistrationOtpRequired?: boolean;
 }
 export type OtpChannel = 'SMS' | 'ZALO' | 'EMAIL';
 export type OtpPurpose =
@@ -299,7 +302,7 @@ export interface RegisterRequest {
   email: string;
   phone: string;
   password: string;
-  verificationToken: string;
+  verificationToken?: string;
   acceptTerms: boolean;
   acceptPrivacy: boolean;
 }

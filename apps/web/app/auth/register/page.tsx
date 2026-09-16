@@ -47,7 +47,10 @@ const schema = z
       .max(15, 'Số điện thoại không hợp lệ.'),
     password: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự.'),
     confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu.'),
-    otpCode: z.string().trim().length(6, 'Mã OTP gồm 6 chữ số.'),
+    otpCode: z
+      .string()
+      .trim()
+      .refine((value) => value.length === 0 || /^\d{6}$/.test(value), 'Mã OTP gồm 6 chữ số.'),
     acceptTerms: z.boolean().refine(Boolean, 'Bạn cần đồng ý Điều khoản sử dụng & Chính sách bảo mật.'),
   })
   .refine((value) => value.password === value.confirmPassword, {
@@ -66,6 +69,8 @@ export default function RegisterPage() {
   const availability = !providers.isFetching && !providers.isPaused && providers.isSuccess
     ? providers.data
     : undefined;
+  // Keep the current secure behavior while settings are loading or unavailable.
+  const phoneOtpRequired = availability?.phoneRegistrationOtpRequired ?? true;
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
@@ -122,16 +127,23 @@ export default function RegisterPage() {
 
   const register = useMutation({
     mutationFn: async ({ otpCode, confirmPassword: _confirmPassword, ...values }: Values) => {
-      const verification = await api.otp.verify({
-        channel: 'SMS',
-        purpose: 'VERIFY_PHONE',
-        destination: values.phone,
-        code: otpCode,
-      });
+      let verificationToken: string | undefined;
+      if (phoneOtpRequired) {
+        if (!otpCode || otpCode.length !== 6) {
+          throw new Error('Vui lòng nhập mã OTP 6 số trước khi đăng ký.');
+        }
+        const verification = await api.otp.verify({
+          channel: 'SMS',
+          purpose: 'VERIFY_PHONE',
+          destination: values.phone,
+          code: otpCode,
+        });
+        verificationToken = verification.verificationToken;
+      }
       return api.auth.register({
         ...values,
         acceptPrivacy: values.acceptTerms,
-        verificationToken: verification.verificationToken,
+        ...(verificationToken ? { verificationToken } : {}),
       });
     },
     onSuccess: () => {
@@ -242,7 +254,13 @@ export default function RegisterPage() {
             {/* Registration Form */}
             <form
               className="space-y-4"
-              onSubmit={form.handleSubmit((values) => register.mutate(values))}
+              onSubmit={form.handleSubmit((values) => {
+                if (phoneOtpRequired && (!values.otpCode || values.otpCode.length !== 6)) {
+                  form.setError('otpCode', { message: 'Vui lòng nhập mã OTP 6 số.' });
+                  return;
+                }
+                register.mutate(values);
+              })}
             >
               {/* Username Field */}
               <FormField
@@ -363,6 +381,7 @@ export default function RegisterPage() {
               </FormField>
 
               {/* Phone OTP Verification Block */}
+              {phoneOtpRequired && (
               <div className="rounded-2xl border border-slate-200/90 bg-slate-50/80 p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor="reg-otpCode" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -433,6 +452,7 @@ export default function RegisterPage() {
                   </p>
                 )}
               </div>
+              )}
 
               {/* Terms Checkbox */}
               <div className="pt-1">

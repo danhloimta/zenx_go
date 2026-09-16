@@ -10,7 +10,7 @@
 
 | ID                 | Chức năng                     | Actor      | Flow chính                                                                                                                 | Status        |
 | ------------------ | ----------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `FEAT-AUTH-001`    | Đăng ký username/password     | Guest      | Nhập username/email/phone/password → verify phone OTP → accept Terms/Privacy → tạo account, profile và wallet.             | `IMPLEMENTED` |
+| `FEAT-AUTH-001`    | Đăng ký username/password     | Guest      | Nhập username/email/phone/password → nếu policy yêu cầu thì verify phone OTP → accept Terms/Privacy → tạo account, profile và wallet. | `IMPLEMENTED` |
 | `FEAT-AUTH-002`    | Đăng nhập và session          | User       | Login bằng username/email + password → access/refresh cookie; refresh xoay session; logout revoke refresh và clear cookie. | `IMPLEMENTED` |
 | `FEAT-AUTH-003`    | Quên/reset password           | User       | Nhập email → email OTP → verification token → đặt password mới; revoke session cũ.                                         | `IMPLEMENTED` |
 | `FEAT-AUTH-004`    | Social login/link             | User       | OAuth state ký và hết hạn → provider code exchange → profile lookup → link hoặc login; không auto-link chỉ bằng email.     | `PARTIAL`     |
@@ -25,8 +25,9 @@
 ### Register/login/session
 
 - Username và email normalize case-insensitive; phone normalize về format `+84...` trước unique check.
-- Register bắt buộc `acceptTerms` và `acceptPrivacy`; phone phải có verification token đúng destination.
-- Account tạo thành công có status `ACTIVE`, `phoneVerifiedAt`, `UserProfile` và wallet `ZENX` balance `0`.
+- Register bắt buộc `acceptTerms` và `acceptPrivacy`; `phoneRegistrationOtpRequired` quyết định phone có cần verification token đúng destination hay không.
+- Khi policy bật, token thiếu/sai/hết hạn bị từ chối; khi policy tắt, account vẫn tạo được với `phoneVerifiedAt = null`. Token hợp lệ được cung cấp tùy chọn vẫn đánh dấu phone đã xác thực.
+- Account tạo thành công có status `ACTIVE`, `UserProfile` và wallet `ZENX` balance `0`; `phoneVerifiedAt` phụ thuộc kết quả xác thực ở trên.
 - Access token và refresh token được gửi bằng HttpOnly cookie; refresh session lưu hash và bị revoke khi xoay/logout/password change.
 - Access JWT có `type: access`; sensitive profile JWT có type riêng và không được AuthGuard chấp nhận như session.
 - Account `LOCKED`/`SUSPENDED` bị từ chối dù access JWT còn hạn.
@@ -55,7 +56,8 @@
 - Google/Facebook provider identity được lưu riêng, unique theo `(provider, providerUserId)`.
 - OAuth state ký bằng secret, có mode `login`/`link`, return URL được domain policy validate.
 - Với mode `login`, cả endpoint start và callback đọc mới singleton `AuthSettings` từ database và từ chối provider đang tắt. Không cache quyết định nên thay đổi có hiệu lực ở request kế tiếp, kể cả callback của flow đã bắt đầu.
-- `GET /auth/provider-availability` trả projection public `{ google, facebook }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
+- `GET /auth/provider-availability` trả projection public `{ google, facebook, phoneRegistrationOtpRequired }` với `Cache-Control: no-store`; login/register ẩn social entry points khi provider tắt và fail closed khi settings không đọc được.
+- Cùng response public trả `phoneRegistrationOtpRequired` để register ẩn/hiện khối OTP. Backend đọc policy mới nhất trên mỗi request đăng ký; khi settings không đọc được, policy mặc định an toàn là vẫn yêu cầu OTP.
 - Với JSON settings APIs, thiếu row singleton hoặc lỗi database trả HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. Với OAuth navigation start/callback, các internal domain code `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` được chuyển thành HTTP `302` redirect với query lần lượt `social_error=settings_unavailable` / `social_error=provider_disabled`; không code uppercase nào được dùng làm query value.
 - Identity đã thuộc account khác bị từ chối; email trùng không tự động link.
 - Unlink không được làm mất login method cuối nếu account chưa có password và không còn social identity khác.

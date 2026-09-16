@@ -29,6 +29,7 @@ describe('Auth settings persistence', () => {
       data: {
         googleLoginRegistrationEnabled: true,
         facebookLoginRegistrationEnabled: true,
+        phoneRegistrationOtpRequired: true,
       },
     });
     await prisma.$disconnect();
@@ -40,6 +41,7 @@ describe('Auth settings persistence', () => {
     expect(settings).toMatchObject({
       googleLoginRegistrationEnabled: true,
       facebookLoginRegistrationEnabled: true,
+      phoneRegistrationOtpRequired: true,
     });
   });
 
@@ -63,6 +65,7 @@ describe('Auth settings persistence', () => {
       data: {
         googleLoginRegistrationEnabled: false,
         facebookLoginRegistrationEnabled: false,
+        phoneRegistrationOtpRequired: false,
       },
     });
 
@@ -74,6 +77,7 @@ describe('Auth settings persistence', () => {
     await expect(prisma.authSettings.findUniqueOrThrow({ where: { id: 1 } })).resolves.toMatchObject({
       googleLoginRegistrationEnabled: false,
       facebookLoginRegistrationEnabled: false,
+      phoneRegistrationOtpRequired: false,
     });
   });
 });
@@ -106,6 +110,7 @@ describe('Auth settings API (SQL Server)', () => {
       data: {
         googleLoginRegistrationEnabled: true,
         facebookLoginRegistrationEnabled: true,
+        phoneRegistrationOtpRequired: true,
       },
     });
     adminCookies = await createRoleUser('SUPER_ADMIN', 'auth-settings-admin');
@@ -118,6 +123,7 @@ describe('Auth settings API (SQL Server)', () => {
       data: {
         googleLoginRegistrationEnabled: true,
         facebookLoginRegistrationEnabled: true,
+        phoneRegistrationOtpRequired: true,
       },
     });
     await prisma.$transaction([
@@ -135,8 +141,122 @@ describe('Auth settings API (SQL Server)', () => {
 
     expect(publicRead.status).toBe(200);
     expect(publicRead.headers['cache-control']).toBe('no-store');
-    expect(publicRead.body.data).toEqual({ google: true, facebook: true });
-    expect(Object.keys(publicRead.body.data).sort()).toEqual(['facebook', 'google']);
+    expect(publicRead.body.data).toEqual({
+      google: true,
+      facebook: true,
+      phoneRegistrationOtpRequired: true,
+    });
+    expect(Object.keys(publicRead.body.data).sort()).toEqual([
+      'facebook',
+      'google',
+      'phoneRegistrationOtpRequired',
+    ]);
+  });
+
+  it('enforces the registration phone OTP setting and preserves optional proof', async () => {
+    const saved = await prisma.authSettings.findUniqueOrThrow({ where: { id: 1 } });
+    const suffix = `${Date.now()}${Math.floor(Math.random() * 10_000)}`;
+    const withoutOtp = {
+      username: `nootp${suffix.slice(-8)}`,
+      email: `nootp-${suffix}@example.com`,
+      phone: `+849${suffix.slice(-8)}`,
+      password: 'RegistrationPassword123!',
+      acceptTerms: true,
+      acceptPrivacy: true,
+    };
+
+    try {
+      await prisma.authSettings.update({
+        where: { id: 1 },
+        data: { phoneRegistrationOtpRequired: false },
+      });
+
+      const createdWithoutOtp = await http().post('/auth/register').send(withoutOtp);
+      expect(createdWithoutOtp.status).toBe(201);
+      const unverified = await prisma.user.findUniqueOrThrow({
+        where: { phoneNormalized: withoutOtp.phone },
+        select: { id: true, phoneVerifiedAt: true },
+      });
+      userIds.push(unverified.id);
+      expect(unverified.phoneVerifiedAt).toBeNull();
+
+      await prisma.authSettings.update({
+        where: { id: 1 },
+        data: { phoneRegistrationOtpRequired: true },
+      });
+      await expect(prisma.user.findUniqueOrThrow({
+        where: { id: unverified.id },
+        select: { phoneVerifiedAt: true },
+      })).resolves.toEqual({ phoneVerifiedAt: null });
+      const missingToken = await http().post('/auth/register').send({
+        ...withoutOtp,
+        username: `required${suffix.slice(-8)}`,
+        email: `required-${suffix}@example.com`,
+        phone: `+849${(Number(suffix.slice(-8)) + 1).toString().padStart(8, '0')}`,
+      });
+      expect(missingToken.status).toBe(400);
+      expect(missingToken.body.error.code).toBe('VERIFICATION_TOKEN_INVALID');
+
+      const withProof = {
+        ...withoutOtp,
+        username: `proof${suffix.slice(-8)}`,
+        email: `proof-${suffix}@example.com`,
+        phone: `+849${(Number(suffix.slice(-8)) + 2).toString().padStart(8, '0')}`,
+      };
+      const sent = await http().post('/otp/send').send({
+        channel: 'SMS',
+        purpose: 'VERIFY_PHONE',
+        destination: withProof.phone,
+      });
+      expect(sent.status).toBe(201);
+      const verified = await http().post('/otp/verify').send({
+        channel: 'SMS',
+        purpose: 'VERIFY_PHONE',
+        destination: withProof.phone,
+        code: '123456',
+      });
+      expect(verified.status).toBe(201);
+
+      await prisma.authSettings.update({
+        where: { id: 1 },
+        data: { phoneRegistrationOtpRequired: false },
+      });
+      const createdWithOptionalProof = await http().post('/auth/register').send({
+        ...withProof,
+        verificationToken: verified.body.data.verificationToken,
+      });
+      expect(createdWithOptionalProof.status).toBe(201);
+      const verifiedUser = await prisma.user.findUniqueOrThrow({
+        where: { phoneNormalized: withProof.phone },
+        select: { id: true, phoneVerifiedAt: true },
+      });
+      userIds.push(verifiedUser.id);
+      expect(verifiedUser.phoneVerifiedAt).toEqual(expect.any(Date));
+
+      const invalidOptional = await http().post('/auth/register').send({
+        ...withoutOtp,
+        username: `invalid${suffix.slice(-8)}`,
+        email: `invalid-${suffix}@example.com`,
+        phone: `+849${(Number(suffix.slice(-8)) + 3).toString().padStart(8, '0')}`,
+        verificationToken: 'obsolete-token',
+      });
+      expect(invalidOptional.status).toBe(201);
+      const invalidTokenUser = await prisma.user.findUniqueOrThrow({
+        where: { phoneNormalized: `+849${(Number(suffix.slice(-8)) + 3).toString().padStart(8, '0')}` },
+        select: { id: true, phoneVerifiedAt: true },
+      });
+      userIds.push(invalidTokenUser.id);
+      expect(invalidTokenUser.phoneVerifiedAt).toBeNull();
+    } finally {
+      await prisma.authSettings.update({
+        where: { id: 1 },
+        data: {
+          googleLoginRegistrationEnabled: saved.googleLoginRegistrationEnabled,
+          facebookLoginRegistrationEnabled: saved.facebookLoginRegistrationEnabled,
+          phoneRegistrationOtpRequired: saved.phoneRegistrationOtpRequired,
+        },
+      });
+    }
   });
 
   it('protects admin reads with authentication and the auth settings permission', async () => {
@@ -155,6 +275,7 @@ describe('Auth settings API (SQL Server)', () => {
     expect(adminRead.body.data).toMatchObject({
       googleLoginRegistrationEnabled: true,
       facebookLoginRegistrationEnabled: true,
+      phoneRegistrationOtpRequired: true,
     });
     expect(adminRead.body.data.updatedAt).toEqual(expect.any(String));
   });
@@ -168,11 +289,16 @@ describe('Auth settings API (SQL Server)', () => {
     const updated = await http()
       .patch('/admin/settings/auth-providers')
       .set('Cookie', adminCookies)
-      .send({ expectedUpdatedAt, googleLoginRegistrationEnabled: false });
+      .send({
+        expectedUpdatedAt,
+        googleLoginRegistrationEnabled: false,
+        phoneRegistrationOtpRequired: false,
+      });
     expect(updated.status).toBe(200);
     expect(updated.body.data).toMatchObject({
       googleLoginRegistrationEnabled: false,
       facebookLoginRegistrationEnabled: true,
+      phoneRegistrationOtpRequired: false,
       updatedAt: expect.any(String),
     });
 

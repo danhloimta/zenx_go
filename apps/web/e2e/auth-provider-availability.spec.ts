@@ -153,20 +153,26 @@ for (const { code, message } of [
 
 async function mockAvailability(
   page: Page,
-  availability: { google: boolean; facebook: boolean },
+  availability: { google: boolean; facebook: boolean; phoneRegistrationOtpRequired?: boolean },
 ) {
   await page.route(availabilityUrl, (route) => fulfillAvailability(route, availability));
 }
 
 async function fulfillAvailability(
   route: Route,
-  availability: { google: boolean; facebook: boolean },
+  availability: { google: boolean; facebook: boolean; phoneRegistrationOtpRequired?: boolean },
 ) {
   await route.fulfill({
     status: 200,
     contentType: 'application/json',
     headers: { 'cache-control': 'no-store' },
-    body: JSON.stringify({ data: availability, error: null }),
+    body: JSON.stringify({
+      data: {
+        ...availability,
+        phoneRegistrationOtpRequired: availability.phoneRegistrationOtpRequired ?? true,
+      },
+      error: null,
+    }),
   });
 }
 

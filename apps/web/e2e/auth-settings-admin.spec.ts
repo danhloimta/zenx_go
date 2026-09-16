@@ -17,6 +17,7 @@ test.afterEach(async ({ request }) => {
       expectedUpdatedAt: current.updatedAt,
       googleLoginRegistrationEnabled: true,
       facebookLoginRegistrationEnabled: true,
+      phoneRegistrationOtpRequired: true,
     },
   });
   expect(restored.status()).toBe(200);
@@ -35,6 +36,7 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await expect(page.getByRole('heading', { name: 'Đăng nhập & đăng ký mạng xã hội' })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Google' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Facebook' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Xác thực OTP số điện thoại khi đăng ký' })).toBeChecked();
   await expect(page.getByText(/liên kết và hủy liên kết/i)).toBeVisible();
 
   await page.route('**/api/v1/admin/settings/auth-providers', async (route) => {
@@ -89,6 +91,42 @@ test('SUPER_ADMIN manages auth settings and SUPPORT cannot reach them', async ({
   await expect(page.getByRole('link', { name: 'Cài đặt' })).toHaveCount(0);
   await page.goto('/admin/settings');
   await expect(page).not.toHaveURL(/\/admin\/settings$/);
+});
+
+test('SUPER_ADMIN can disable registration phone OTP and the public form follows it', async ({
+  page,
+  request,
+}) => {
+  const suffix = `${Date.now()}${randomInt(1000, 9999)}`;
+  const admin = await createRoleAccount(request, `settings-otp-${suffix}`, 'SUPER_ADMIN');
+  adminCookie = await login(request, admin.email, admin.password);
+
+  await loginInBrowser(page, admin.email, admin.password, '/admin/settings');
+  const otpToggle = page.getByRole('checkbox', { name: 'Xác thực OTP số điện thoại khi đăng ký' });
+  await expect(otpToggle).toBeChecked();
+  await otpToggle.uncheck();
+  await page.getByRole('button', { name: 'Lưu thay đổi' }).click();
+  await expect(page.getByText('Đã lưu cài đặt đăng nhập mạng xã hội.')).toBeVisible();
+
+  const publicSettings = await request.get(`${apiBase}/auth/provider-availability`);
+  expect(publicSettings.status()).toBe(200);
+  expect((await publicSettings.json()).data.phoneRegistrationOtpRequired).toBe(false);
+
+  await page.goto('/auth/register');
+  await expect(page.getByLabel('Nhập số OTP')).toHaveCount(0);
+
+  const registration = await request.post(`${apiBase}/auth/register`, {
+    headers: { origin },
+    data: {
+      username: `nootp${suffix.slice(-8)}`,
+      email: `nootp-${suffix}@example.com`,
+      phone: `+849${suffix.slice(-8)}`,
+      password: 'RegistrationPassword123!',
+      acceptTerms: true,
+      acceptPrivacy: true,
+    },
+  });
+  expect(registration.status()).toBe(201);
 });
 
 test('settings load failure can be retried', async ({ page, request }) => {
@@ -394,6 +432,7 @@ async function readSettings(request: APIRequestContext, cookie: string) {
   return (await response.json()).data as {
     googleLoginRegistrationEnabled: boolean;
     facebookLoginRegistrationEnabled: boolean;
+    phoneRegistrationOtpRequired: boolean;
     updatedAt: string;
   };
 }

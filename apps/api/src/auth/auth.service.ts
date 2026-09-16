@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AccountStatus } from '../common/domain';
@@ -10,6 +10,7 @@ import { ACCESS_TTL_SECONDS, REFRESH_TTL_SECONDS } from '../common/constants';
 import { PrismaService } from '../database/prisma.service';
 import { OtpService } from '../otp/otp.service';
 import { DomainPolicyService } from '../common/domain-policy.service';
+import { AuthSettingsService } from '../auth-settings/auth-settings.service';
 import { LoginDto, RegisterDto, ResetPasswordDto } from './dto';
 
 export type AuthTokens = { accessToken: string; refreshToken: string; user: unknown };
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly otp: OtpService,
     private readonly domainPolicy: DomainPolicyService,
+    @Optional() private readonly authSettings?: AuthSettingsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokens> {
@@ -34,6 +36,18 @@ export class AuthService {
         'Terms and privacy acceptance are required',
         400,
       );
+    }
+    let phoneOtpRequired = true;
+    if (this.authSettings) {
+      try {
+        phoneOtpRequired = await this.authSettings.isPhoneRegistrationOtpRequired();
+      } catch (error) {
+        if (!(error instanceof DomainError) || error.code !== ErrorCode.SETTINGS_UNAVAILABLE) {
+          throw error;
+        }
+        // Keep the secure default if a replacement/legacy settings provider
+        // surfaces the outage instead of handling it internally.
+      }
     }
     const usernameNormalized = normalizeUsername(dto.username);
     const emailNormalized = normalizeEmail(dto.email);
@@ -48,7 +62,27 @@ export class AuthService {
       throw new DomainError(ErrorCode.EMAIL_ALREADY_EXISTS, 'Email already exists', 409);
     if (existing?.phoneNormalized === phoneNormalized)
       throw new DomainError(ErrorCode.PHONE_ALREADY_EXISTS, 'Phone already exists', 409);
-    await this.otp.consumeVerificationToken(dto.verificationToken, 'VERIFY_PHONE', dto.phone);
+    let phoneVerifiedAt: Date | null = null;
+    if (phoneOtpRequired || dto.verificationToken) {
+      if (!dto.verificationToken) {
+        throw new DomainError(
+          ErrorCode.VERIFICATION_TOKEN_INVALID,
+          'Phone verification is required to register',
+          400,
+        );
+      }
+      try {
+        await this.otp.consumeVerificationToken(dto.verificationToken, 'VERIFY_PHONE', dto.phone);
+        phoneVerifiedAt = new Date();
+      } catch (error) {
+        // When OTP is optional, an obsolete/invalid token must not turn an
+        // otherwise valid registration into a failure. A valid token is still
+        // consumed above so its proof is preserved when the client supplies it.
+        if (phoneOtpRequired || !(error instanceof DomainError) || error.code !== ErrorCode.VERIFICATION_TOKEN_INVALID) {
+          throw error;
+        }
+      }
+    }
     const passwordHash = await argon2.hash(dto.password);
     const user = await this.prisma.user.create({
       data: {
@@ -60,7 +94,7 @@ export class AuthService {
         phoneNormalized,
         passwordHash,
         status: AccountStatus.ACTIVE,
-        phoneVerifiedAt: new Date(),
+        phoneVerifiedAt,
         profile: {
           create: {
             fullName: dto.username.trim(),

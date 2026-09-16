@@ -6,20 +6,27 @@ import { PrismaService } from '../database/prisma.service';
 export type AuthSettingsState = {
   googleLoginRegistrationEnabled: boolean;
   facebookLoginRegistrationEnabled: boolean;
+  phoneRegistrationOtpRequired: boolean;
   updatedAt: Date;
 };
 
-export type AuthProviderAvailability = { google: boolean; facebook: boolean };
+export type AuthProviderAvailability = {
+  google: boolean;
+  facebook: boolean;
+  phoneRegistrationOtpRequired: boolean;
+};
 
 export type UpdateAuthSettingsInput = {
   expectedUpdatedAt: string;
   googleLoginRegistrationEnabled?: boolean;
   facebookLoginRegistrationEnabled?: boolean;
+  phoneRegistrationOtpRequired?: boolean;
 };
 
 const AUTH_SETTINGS_SELECT = {
   googleLoginRegistrationEnabled: true,
   facebookLoginRegistrationEnabled: true,
+  phoneRegistrationOtpRequired: true,
   updatedAt: true,
 } as const;
 
@@ -45,7 +52,24 @@ export class AuthSettingsService {
     return {
       google: settings.googleLoginRegistrationEnabled,
       facebook: settings.facebookLoginRegistrationEnabled,
+      phoneRegistrationOtpRequired: settings.phoneRegistrationOtpRequired !== false,
     };
+  }
+
+  /**
+   * Registration must fail closed if the settings row cannot be read. Returning
+   * true here keeps the existing OTP requirement during a transient settings
+   * outage while allowing the public settings endpoint to report the outage.
+   */
+  async isPhoneRegistrationOtpRequired(): Promise<boolean> {
+    try {
+      return (await this.readCurrent()).phoneRegistrationOtpRequired !== false;
+    } catch (error) {
+      if (error instanceof DomainError && error.code === ErrorCode.SETTINGS_UNAVAILABLE) {
+        return true;
+      }
+      throw error;
+    }
   }
 
   async update(input: UpdateAuthSettingsInput): Promise<AuthSettingsState> {
@@ -55,6 +79,9 @@ export class AuthSettingsService {
         : {}),
       ...(input.facebookLoginRegistrationEnabled !== undefined
         ? { facebookLoginRegistrationEnabled: input.facebookLoginRegistrationEnabled }
+        : {}),
+      ...(input.phoneRegistrationOtpRequired !== undefined
+        ? { phoneRegistrationOtpRequired: input.phoneRegistrationOtpRequired }
         : {}),
     };
 

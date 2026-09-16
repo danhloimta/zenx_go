@@ -12,6 +12,7 @@ import { useAdminAuthSettings, useUpdateAdminAuthSettings } from '@/hooks/use-au
 type FormState = {
   google: boolean;
   facebook: boolean;
+  phoneOtpRequired: boolean;
 };
 
 type FormBaseline = FormState & { updatedAt: string };
@@ -70,6 +71,7 @@ export default function AdminAuthSettingsPage() {
         expectedUpdatedAt: baseline.updatedAt,
         googleLoginRegistrationEnabled: form.google,
         facebookLoginRegistrationEnabled: form.facebook,
+        phoneRegistrationOtpRequired: form.phoneOtpRequired,
       },
       {
         onSuccess: (updated) => {
@@ -171,6 +173,7 @@ export default function AdminAuthSettingsPage() {
           <CardDescription className="leading-6 text-slate-500">
             Bật hoặc tắt khả năng đăng nhập và đăng ký mới theo từng nhà cung cấp.
             Việc liên kết và hủy liên kết tài khoản mạng xã hội hiện có không bị ảnh hưởng.
+            Công tắc OTP bên dưới chỉ áp dụng cho đăng ký bằng tài khoản và không thay đổi các luồng OTP khác.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -196,6 +199,17 @@ export default function AdminAuthSettingsPage() {
               setForm((current) => current ? { ...current, facebook: checked } : current);
             }}
           />
+          <ProviderCheckbox
+            id="phone-registration-otp-enabled"
+            label="Xác thực OTP số điện thoại khi đăng ký"
+            description="Khi bật, người dùng phải nhập OTP SMS trước khi tạo tài khoản. Khi tắt, người dùng chỉ cần cung cấp số điện thoại; số điện thoại sẽ chưa được đánh dấu xác thực."
+            checked={form.phoneOtpRequired}
+            disabled={controlsDisabled}
+            onCheckedChange={(checked) => {
+              setNotice(null);
+              setForm((current) => current ? { ...current, phoneOtpRequired: checked } : current);
+            }}
+          />
           <div className="flex justify-end border-t border-slate-100 pt-5">
             <Button onClick={save} disabled={controlsDisabled}>
               {pending ? 'Đang lưu…' : 'Lưu thay đổi'}
@@ -211,11 +225,14 @@ function formStateFrom(settings: AdminAuthSettings): FormState {
   return {
     google: settings.googleLoginRegistrationEnabled,
     facebook: settings.facebookLoginRegistrationEnabled,
+    phoneOtpRequired: settings.phoneRegistrationOtpRequired,
   };
 }
 
 function isDirty(form: FormState, baseline: FormState) {
-  return form.google !== baseline.google || form.facebook !== baseline.facebook;
+  return form.google !== baseline.google ||
+    form.facebook !== baseline.facebook ||
+    form.phoneOtpRequired !== baseline.phoneOtpRequired;
 }
 
 function ProviderCheckbox({

@@ -7,6 +7,7 @@ const NEXT_UPDATED_AT = new Date('2026-09-15T10:01:00.000Z');
 const enabledSettings = {
   googleLoginRegistrationEnabled: true,
   facebookLoginRegistrationEnabled: false,
+  phoneRegistrationOtpRequired: true,
   updatedAt: UPDATED_AT,
 };
 
@@ -30,6 +31,7 @@ describe('AuthSettingsService', () => {
       select: {
         googleLoginRegistrationEnabled: true,
         facebookLoginRegistrationEnabled: true,
+        phoneRegistrationOtpRequired: true,
         updatedAt: true,
       },
     });
@@ -42,16 +44,19 @@ describe('AuthSettingsService', () => {
       .mockResolvedValueOnce({
         googleLoginRegistrationEnabled: false,
         facebookLoginRegistrationEnabled: true,
+        phoneRegistrationOtpRequired: false,
         updatedAt: NEXT_UPDATED_AT,
       });
 
     await expect(service.providerAvailability()).resolves.toEqual({
       google: true,
       facebook: false,
+      phoneRegistrationOtpRequired: true,
     });
     await expect(service.providerAvailability()).resolves.toEqual({
       google: false,
       facebook: true,
+      phoneRegistrationOtpRequired: false,
     });
     expect(authSettings.findUnique).toHaveBeenCalledTimes(2);
   });
@@ -99,6 +104,7 @@ describe('AuthSettingsService', () => {
     const updated = {
       googleLoginRegistrationEnabled: false,
       facebookLoginRegistrationEnabled: false,
+      phoneRegistrationOtpRequired: true,
       updatedAt: NEXT_UPDATED_AT,
     };
     authSettings.updateMany.mockResolvedValue({ count: 1 });
@@ -113,6 +119,23 @@ describe('AuthSettingsService', () => {
       data: { googleLoginRegistrationEnabled: false },
     });
     expect(authSettings.findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed to OTP when the settings row cannot be read', async () => {
+    const { authSettings, service } = setup();
+    authSettings.findUnique.mockResolvedValue(null);
+
+    await expect(service.isPhoneRegistrationOtpRequired()).resolves.toBe(true);
+  });
+
+  it('projects the persisted OTP registration requirement', async () => {
+    const { authSettings, service } = setup();
+    authSettings.findUnique.mockResolvedValue({
+      ...enabledSettings,
+      phoneRegistrationOtpRequired: false,
+    });
+
+    await expect(service.isPhoneRegistrationOtpRequired()).resolves.toBe(false);
   });
 
   it('preserves an explicitly supplied facebook flag in the partial update', async () => {
@@ -132,6 +155,26 @@ describe('AuthSettingsService', () => {
     expect(authSettings.updateMany).toHaveBeenCalledWith({
       where: { id: 1, updatedAt: UPDATED_AT },
       data: { facebookLoginRegistrationEnabled: true },
+    });
+  });
+
+  it('updates the phone OTP requirement through the same compare-and-swap path', async () => {
+    const { authSettings, service } = setup();
+    authSettings.updateMany.mockResolvedValue({ count: 1 });
+    authSettings.findUnique.mockResolvedValue({
+      ...enabledSettings,
+      phoneRegistrationOtpRequired: false,
+      updatedAt: NEXT_UPDATED_AT,
+    });
+
+    await expect(service.update({
+      expectedUpdatedAt: UPDATED_AT.toISOString(),
+      phoneRegistrationOtpRequired: false,
+    })).resolves.toMatchObject({ phoneRegistrationOtpRequired: false });
+
+    expect(authSettings.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, updatedAt: UPDATED_AT },
+      data: { phoneRegistrationOtpRequired: false },
     });
   });
 

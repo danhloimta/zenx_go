@@ -10,7 +10,7 @@ async function main() {
   await prisma.authSettings.upsert({
     where: { id: 1 },
     update: {},
-    create: { id: 1 },
+    create: { id: 1, phoneRegistrationOtpRequired: true },
   });
   await seedRolesAndPermissions();
   await seedUsers();
