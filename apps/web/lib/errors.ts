@@ -5,6 +5,7 @@ const messages: Record<string, string> = {
   PASSWORD_REUSE: 'Mật khẩu mới phải khác mật khẩu hiện tại.',
   EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',
   PHONE_ALREADY_EXISTS: 'Số điện thoại này đã được sử dụng.',
+  AGE_REQUIREMENT_NOT_MET: 'Bạn phải đủ 18 tuổi để đăng ký tài khoản.',
   ACCOUNT_NOT_FOUND: 'Không tìm thấy tài khoản.',
   ACCOUNT_LOCKED: 'Tài khoản của bạn đã bị khóa.',
   ACCOUNT_SUSPENDED: 'Tài khoản của bạn đã bị tạm ngưng.',

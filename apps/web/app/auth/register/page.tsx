@@ -45,6 +45,7 @@ const schema = z
       .trim()
       .min(8, 'Vui lòng nhập số điện thoại hợp lệ.')
       .max(15, 'Số điện thoại không hợp lệ.'),
+    dateOfBirth: z.string().min(1, 'Vui lòng nhập ngày sinh.').refine((value) => isAtLeast18(value), 'Bạn phải đủ 18 tuổi để đăng ký tài khoản.'),
     password: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự.'),
     confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu.'),
     otpCode: z
@@ -78,6 +79,7 @@ export default function RegisterPage() {
       username: '',
       email: '',
       phone: '',
+      dateOfBirth: '',
       password: '',
       confirmPassword: '',
       otpCode: '',
@@ -87,6 +89,7 @@ export default function RegisterPage() {
   });
 
   const phone = form.watch('phone');
+  const dateOfBirth = form.watch('dateOfBirth');
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
 
@@ -320,9 +323,56 @@ export default function RegisterPage() {
                     onChange={(e) => {
                       const cleaned = e.target.value.replace(/[^\d+]/g, '');
                       form.setValue('phone', cleaned, { shouldValidate: true });
+                      if (otpSent) {
+                        setOtpSent(false);
+                        setCountdown(0);
+                        form.setValue('otpCode', '', { shouldValidate: true });
+                      }
                     }}
                   />
                 </div>
+                {otpRequired && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-[11px] text-slate-600">
+                        {otpSent ? <>Mã OTP đã gửi tới <span className="font-semibold text-slate-800">{phone}</span>.</> : 'Xác thực số điện thoại bằng mã OTP SMS.'}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="zenx-outline"
+                        aria-label="Gửi OTP"
+                        className="h-9 shrink-0 px-3 text-xs font-semibold"
+                        onClick={() => sendOtp.mutate()}
+                        disabled={!isPhoneValid || sendOtp.isPending || countdown > 0}
+                      >
+                        {sendOtp.isPending ? <span className="flex items-center gap-1"><RefreshCw className="size-3.5 animate-spin" /> Gửi…</span> : countdown > 0 ? `Gửi lại (${countdown}s)` : otpSent ? 'Gửi lại mã' : 'Gửi mã OTP'}
+                      </Button>
+                    </div>
+                    {otpSent && (
+                      <div className="relative mt-3">
+                        <Shield className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                        <Input
+                          ref={otpInputRef}
+                          id="reg-otpCode"
+                          aria-label="Nhập mã OTP 6 số"
+                          inputMode="numeric"
+                          maxLength={6}
+                          autoComplete="one-time-code"
+                          placeholder="Nhập mã OTP 6 số"
+                          className="h-11 bg-white pl-10 font-mono font-bold tracking-[0.2em]"
+                          value={form.watch('otpCode')}
+                          onChange={(e) => form.setValue('otpCode', e.target.value.replace(/\D/g, '').slice(0, 6), { shouldValidate: true })}
+                        />
+                      </div>
+                    )}
+                    {form.formState.errors.otpCode?.message && <p className="mt-2 text-xs font-medium text-red-600">{form.formState.errors.otpCode.message}</p>}
+                  </div>
+                )}
+              </FormField>
+
+              <FormField label="Ngày tháng năm sinh" htmlFor="reg-dateOfBirth" required error={form.formState.errors.dateOfBirth?.message}>
+                <Input id="reg-dateOfBirth" type="date" autoComplete="bday" max={todayDate()} className="h-11" {...form.register('dateOfBirth')} />
+                {dateOfBirth && !isAtLeast18(dateOfBirth) && <p className="mt-1 text-xs font-medium text-red-600">Bạn phải đủ 18 tuổi để đăng ký tài khoản.</p>}
               </FormField>
 
               {/* Password Field */}
@@ -379,80 +429,6 @@ export default function RegisterPage() {
                   )}
                 </div>
               </FormField>
-
-              {/* Phone OTP Verification Block */}
-              {otpRequired && (
-              <div className="rounded-2xl border border-slate-200/90 bg-slate-50/80 p-4 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="reg-otpCode" className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Shield className="size-3.5 text-slate-500" />
-                    Xác thực số điện thoại
-                    <span className="text-red-500 font-semibold">*</span>
-                  </label>
-                  {otpSent && (
-                    <span className="text-[11px] font-semibold text-[#00873E] flex items-center gap-1">
-                      <CheckCircle2 className="size-3" /> Đã gửi mã
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      ref={otpInputRef}
-                      id="reg-otpCode"
-                      aria-label="Nhập số OTP"
-                      inputMode="numeric"
-                      maxLength={6}
-                      autoComplete="one-time-code"
-                      autoCorrect="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      data-lpignore="true"
-                      data-1p-ignore="true"
-                      placeholder="Nhập mã OTP 6 số"
-                      className="bg-white text-center font-mono font-bold tracking-[0.25em] h-11 text-base placeholder:tracking-normal placeholder:font-normal placeholder:text-sm placeholder:text-slate-400"
-                      value={form.watch('otpCode')}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        form.setValue('otpCode', cleaned, { shouldValidate: true });
-                      }}
-                    />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="zenx-outline"
-                    aria-label="Gửi OTP"
-                    className="shrink-0 px-4 text-xs font-semibold h-11 min-w-[110px]"
-                    onClick={() => sendOtp.mutate()}
-                    disabled={!isPhoneValid || sendOtp.isPending || countdown > 0}
-                  >
-                    {sendOtp.isPending ? (
-                      <span className="flex items-center gap-1">
-                        <RefreshCw className="size-3.5 animate-spin" /> Gửi…
-                      </span>
-                    ) : countdown > 0 ? (
-                      `Gửi lại (${countdown}s)`
-                    ) : otpSent ? (
-                      'Gửi lại mã'
-                    ) : (
-                      'Gửi mã OTP'
-                    )}
-                  </Button>
-                </div>
-
-                {form.formState.errors.otpCode?.message ? (
-                  <p className="text-xs text-red-600 font-medium">
-                    {form.formState.errors.otpCode.message}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Mã xác thực gồm 6 chữ số sẽ được gửi qua SMS tới số điện thoại của bạn.
-                  </p>
-                )}
-              </div>
-              )}
 
               {/* Terms Checkbox */}
               <div className="pt-1">
@@ -512,6 +488,16 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+function isAtLeast18(value: string) {
+  if (!value) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return false;
+  const today = new Date();
+  return today >= new Date(year + 18, month - 1, day);
+}
+
+function todayDate() { return new Date().toLocaleDateString('en-CA'); }
 
 function FeatureItem({
   icon,

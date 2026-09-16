@@ -1,10 +1,11 @@
 import { OtpChannel, OtpPurpose } from '../common/domain';
-import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString() @MinLength(3) username!: string;
   @IsEmail() email!: string;
   @IsString() @Matches(/^\+?[0-9\s().-]{8,20}$/) phone!: string;
+  @IsDateString() dateOfBirth!: string;
   @IsString() @MinLength(8) password!: string;
   @IsOptional() @IsString() verificationToken?: string;
   @IsBoolean() acceptTerms!: boolean;

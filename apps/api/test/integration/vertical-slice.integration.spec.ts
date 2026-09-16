@@ -53,7 +53,7 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const username = `slice${suffix.slice(-8)}`;
     const verificationToken = await verifyOtp(phone, 'VERIFY_PHONE');
     const response = await http().post('/auth/register').send({
-      username, email, phone, password: 'Password123!', verificationToken, acceptTerms: true, acceptPrivacy: true,
+      username, email, phone, dateOfBirth: '1990-01-01', password: 'Password123!', verificationToken, acceptTerms: true, acceptPrivacy: true,
     });
     expect(response.status).toBe(201);
     expect(response.body.data.user.passwordHash).toBeUndefined();
@@ -81,7 +81,7 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const otherPhone = `+849${(Number(phone.slice(-8)) + 1).toString().padStart(8, '0')}`;
     const token = await verifyOtp(phone, 'VERIFY_PHONE');
     const response = await http().post('/auth/register').send({
-      username: `wrong${Date.now()}`, email: `wrong-${Date.now()}@example.com`, phone: otherPhone,
+      username: `wrong${Date.now()}`, email: `wrong-${Date.now()}@example.com`, phone: otherPhone, dateOfBirth: '1990-01-01',
       password: 'Password123!', verificationToken: token, acceptTerms: true, acceptPrivacy: true,
     });
     expect(response.status).toBe(400);

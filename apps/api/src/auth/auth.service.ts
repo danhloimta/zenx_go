@@ -13,6 +13,7 @@ import { DomainPolicyService } from '../common/domain-policy.service';
 import { AuthSettingsService } from '../auth-settings/auth-settings.service';
 import { LoginDto, RegisterDto, ResetPasswordDto } from './dto';
 import { ActivityContext, ActivityService } from '../activity/activity.service';
+import { isAtLeastAge } from '../common/age';
 
 export type AuthTokens = { accessToken: string; refreshToken: string; user: unknown };
 export type LoginTokens = AuthTokens & { redirectTo: string };
@@ -32,6 +33,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto, context?: ActivityContext): Promise<AuthTokens> {
+    if (!isAtLeastAge(dto.dateOfBirth, 18)) {
+      throw new DomainError(ErrorCode.AGE_REQUIREMENT_NOT_MET, 'You must be at least 18 years old to register', 400);
+    }
     if (!dto.acceptTerms || !dto.acceptPrivacy) {
       throw new DomainError(
         'INVALID_CREDENTIALS',
@@ -100,6 +104,7 @@ export class AuthService {
         profile: {
           create: {
             fullName: dto.username.trim(),
+            dateOfBirth: new Date(`${dto.dateOfBirth}T00:00:00`),
             gender: 'UNSPECIFIED',
             termsVersion: this.config.getOrThrow('termsVersion'),
             privacyVersion: this.config.getOrThrow('privacyVersion'),

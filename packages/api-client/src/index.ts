@@ -308,6 +308,7 @@ export interface RegisterRequest {
   username: string;
   email: string;
   phone: string;
+  dateOfBirth: string;
   password: string;
   verificationToken?: string;
   acceptTerms: boolean;
