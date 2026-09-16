@@ -62,9 +62,9 @@ export function EventEditor({ eventId, workspace }: { eventId?: string; workspac
   const queryClient = useQueryClient();
   const editing = Boolean(eventId);
   const platformEventQuery = useAdminContentEvent(eventId ?? '', editing && !workspace);
-  const scopedEventQuery = useQuery({ queryKey: ['game-admin', 'events', workspace?.gameId, eventId], queryFn: () => api.gameAdmin.content.event(workspace!.gameId, eventId!), enabled: Boolean(workspace && editing), retry: false });
+  const scopedEventQuery = useQuery({ queryKey: ['game-admin', 'events', workspace?.gameId, eventId], queryFn: () => workspace!.event(eventId!), enabled: Boolean(workspace && editing), retry: false });
   const eventQuery = workspace ? scopedEventQuery : platformEventQuery;
-  const games = useAdminContentGames({ page: 1, pageSize: 50 });
+  const games = useAdminContentGames({ page: 1, pageSize: 50 }, !workspace);
   const event = eventQuery.data;
 
   const [form, setForm] = useState<EventForm>(() => defaultForm());
@@ -96,7 +96,7 @@ export function EventEditor({ eventId, workspace }: { eventId?: string; workspac
   };
 
   const create = useMutation({
-    mutationFn: () => workspace ? api.gameAdmin.content.createEvent(workspace.gameId, omitGameId(toRequest(form))) : api.admin.content.createEvent(toRequest(form)),
+    mutationFn: () => workspace ? workspace.createEvent(omitGameId(toRequest(form))) : api.admin.content.createEvent(toRequest(form)),
     onSuccess: () => {
       toast.success('Đã tạo sự kiện thành công.');
       void queryClient.invalidateQueries({ queryKey: ['admin', 'content', 'events'] });
@@ -122,7 +122,7 @@ export function EventEditor({ eventId, workspace }: { eventId?: string; workspac
         expectedUpdatedAt: event!.updatedAt,
       };
       return workspace
-        ? api.gameAdmin.content.updateEvent(workspace.gameId, eventId!, omitGameId(input))
+        ? workspace.updateEvent(eventId!, omitGameId(input))
         : api.admin.content.updateEvent(eventId!, input);
     },
     onSuccess: () => {

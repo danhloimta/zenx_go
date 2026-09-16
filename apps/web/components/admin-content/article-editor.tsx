@@ -102,9 +102,9 @@ export function ArticleEditor({ articleId, workspace }: { articleId?: string; wo
   const queryClient = useQueryClient();
   const editing = Boolean(articleId);
   const platformArticleQuery = useAdminContentArticle(articleId ?? '', editing && !workspace);
-  const scopedArticleQuery = useQuery({ queryKey: ['game-admin', 'articles', workspace?.gameId, articleId], queryFn: () => api.gameAdmin.content.article(workspace!.gameId, articleId!), enabled: Boolean(workspace && editing), retry: false });
+  const scopedArticleQuery = useQuery({ queryKey: ['game-admin', 'articles', workspace?.gameId, articleId], queryFn: () => workspace!.article(articleId!), enabled: Boolean(workspace && editing), retry: false });
   const articleQuery = workspace ? scopedArticleQuery : platformArticleQuery;
-  const games = useAdminContentGames({ page: 1, pageSize: 50 });
+  const games = useAdminContentGames({ page: 1, pageSize: 50 }, !workspace);
   const article = articleQuery.data;
 
   const [form, setForm] = useState<ArticleForm>(() => defaultForm());
@@ -117,7 +117,7 @@ export function ArticleEditor({ articleId, workspace }: { articleId?: string; wo
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const platformDeleteMutation = useAdminDeleteArticle();
-  const scopedDeleteMutation = useMutation({ mutationFn: (id: string) => api.gameAdmin.content.deleteArticle(workspace!.gameId, id) });
+  const scopedDeleteMutation = useMutation({ mutationFn: (id: string) => workspace!.deleteArticle(id) });
   const deleteMutation = workspace ? scopedDeleteMutation : platformDeleteMutation;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -154,7 +154,7 @@ export function ArticleEditor({ articleId, workspace }: { articleId?: string; wo
   const create = useMutation({
     mutationFn: () =>
       workspace
-        ? api.gameAdmin.content.createArticle(workspace.gameId, { ...form, coverImageUrl: form.coverImageUrl || null })
+        ? workspace.createArticle(articleCreateInput(form))
         : api.admin.content.createArticle({ ...form, coverImageUrl: form.coverImageUrl || null }),
     onSuccess: () => {
       toast.success('Đã tạo bài viết thành công.');
@@ -179,7 +179,7 @@ export function ArticleEditor({ articleId, workspace }: { articleId?: string; wo
         expectedUpdatedAt: article!.updatedAt,
       };
       return workspace
-        ? api.gameAdmin.content.updateArticle(workspace.gameId, articleId!, input)
+        ? workspace.updateArticle(articleId!, input)
         : api.admin.content.updateArticle(articleId!, input);
     },
     onSuccess: () => {
@@ -1090,6 +1090,11 @@ function toForm(article: AdminContentArticle): ArticleForm {
     seoDescription: article.seoDescription ?? '',
     status: article.status,
   };
+}
+
+function articleCreateInput(form: ArticleForm) {
+  const { gameId: _gameId, ...input } = form;
+  return { ...input, coverImageUrl: input.coverImageUrl || null };
 }
 
 function slugify(text: string): string {
