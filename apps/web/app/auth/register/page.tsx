@@ -89,7 +89,6 @@ export default function RegisterPage() {
   });
 
   const phone = form.watch('phone');
-  const dateOfBirth = form.watch('dateOfBirth');
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
 
@@ -372,7 +371,6 @@ export default function RegisterPage() {
 
               <FormField label="Ngày tháng năm sinh" htmlFor="reg-dateOfBirth" required error={form.formState.errors.dateOfBirth?.message}>
                 <Input id="reg-dateOfBirth" type="date" autoComplete="bday" max={todayDate()} className="h-11" {...form.register('dateOfBirth')} />
-                {dateOfBirth && !isAtLeast18(dateOfBirth) && <p className="mt-1 text-xs font-medium text-red-600">Bạn phải đủ 18 tuổi để đăng ký tài khoản.</p>}
               </FormField>
 
               {/* Password Field */}
