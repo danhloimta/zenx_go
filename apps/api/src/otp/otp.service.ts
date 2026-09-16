@@ -55,6 +55,9 @@ export class OtpService {
     if (purpose === OtpPurpose.CHANGE_PASSWORD && !input.userId) {
       throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Password-change OTP must be bound to an account', 400);
     }
+    if (purpose === OtpPurpose.CHANGE_PHONE && !input.userId) {
+      throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Phone-change OTP must be bound to an account', 400);
+    }
     const destinationNormalized = input.channel === OtpChannel.EMAIL ? normalizeEmail(input.destination) : normalizePhone(input.destination);
     const latest = await this.prisma.otpRequest.findFirst({ where: { destinationNormalized, purpose, createdAt: { gte: new Date(Date.now() - OTP_RESEND_SECONDS * 1000) }, status: OtpStatus.PENDING }, orderBy: { createdAt: 'desc' } });
     if (latest) throw new DomainError(ErrorCode.OTP_RATE_LIMITED, 'Please wait before requesting another code', 429);
@@ -77,6 +80,9 @@ export class OtpService {
     }
     if (purpose === OtpPurpose.CHANGE_PASSWORD && !input.userId) {
       throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Password-change OTP must be bound to an account', 400);
+    }
+    if (purpose === OtpPurpose.CHANGE_PHONE && !input.userId) {
+      throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Phone-change OTP must be bound to an account', 400);
     }
     const destinationNormalized = input.destination
       ? input.channel === OtpChannel.EMAIL ? normalizeEmail(input.destination) : normalizePhone(input.destination)
@@ -109,6 +115,9 @@ export class OtpService {
     }
     if (purpose === OtpPurpose.CHANGE_PASSWORD && !userId) {
       throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Password-change OTP must be bound to an account', 400);
+    }
+    if (purpose === OtpPurpose.CHANGE_PHONE && !userId) {
+      throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'Phone-change OTP must be bound to an account', 400);
     }
     const candidates = await this.prisma.otpVerification.findMany({
       where: { purpose: purpose as OtpPurpose, consumedAt: null, expiresAt: { gt: new Date() } },

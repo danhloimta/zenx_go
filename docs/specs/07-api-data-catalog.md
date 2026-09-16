@@ -46,7 +46,9 @@
 | `API-ACCOUNT-PASSWORD-OTP-SEND`    | `POST /account/change-password/otp`          | Access                   | `IMPLEMENTED` | Sends SMS OTP only when policy is enabled, bound to current user phone; returns masked destination. | account service/controller; account OTP integration |
 | `API-ACCOUNT-PASSWORD-OTP-VERIFY`  | `POST /account/change-password/otp/verify`   | Access                   | `IMPLEMENTED` | Verifies user-bound SMS code and returns one-time password-change token. | account service/controller; account OTP integration |
 | `API-ACCOUNT-EMAIL`                | `POST /account/change-email`                 | Access + OTP token       | `IMPLEMENTED` | New email + verification token; unique/verified update.                                          | account service; vertical integration                              |
-| `API-ACCOUNT-PHONE`                | `POST /account/change-phone`                 | Access                   | `IMPLEMENTED` | New phone; token required only when `otpRequired=true`, normalize/unique update; without token it is unverified when disabled, while a valid optional token marks it verified. | account service; account OTP integration |
+| `API-ACCOUNT-PHONE`                | `POST /account/change-phone`                 | Access                   | `IMPLEMENTED` | New phone; token required only when `otpRequired=true`, token must prove the current phone, normalize/unique update; new phone is always unverified. | account service; account OTP integration |
+| `API-ACCOUNT-PHONE-OTP-SEND`       | `POST /account/change-phone/otp`             | Access                   | `IMPLEMENTED` | Sends SMS OTP only when policy is enabled, bound to current user phone; returns masked destination. | account service/controller; account OTP integration |
+| `API-ACCOUNT-PHONE-OTP-VERIFY`     | `POST /account/change-phone/otp/verify`      | Access                   | `IMPLEMENTED` | Verifies user-bound SMS code sent to current phone and returns one-time change-phone token. | account service/controller; account OTP integration |
 | `API-ACCOUNT-SENSITIVE-SUMMARY`    | `GET /account/sensitive-profile`             | Access                   | `IMPLEMENTED` | Masked CCCD last4, security status/question code; không plaintext/hash.                          | sensitive service; sensitive integration                           |
 | `API-ACCOUNT-SENSITIVE-QUESTIONS`  | `GET /account/sensitive-profile/questions`   | Access                   | `IMPLEMENTED` | Active `security_questions` ordered by sortOrder.                                                | sensitive service; sensitive integration                           |
 | `API-ACCOUNT-SENSITIVE-OTP-SEND`   | `POST /account/sensitive-profile/otp`        | Access                   | `IMPLEMENTED` | Không nhận destination; ưu tiên verified phone, fallback verified email; trả masked destination. | sensitive service; sensitive integration                           |
@@ -61,8 +63,8 @@
 
 | ID               | Method/path        | Auth   | Status | Input/output boundary                                                                                            | Source/test                                           |
 | ---------------- | ------------------ | ------ | ------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `API-OTP-SEND`   | `POST /otp/send`   | Public | `MOCK` | Channel + purpose + destination; từ chối `MANAGE_SENSITIVE_PROFILE` và `CHANGE_PASSWORD` vì các purpose này phải đi qua account endpoint. | `apps/api/src/otp/otp.controller.ts`; OTP/integration |
-| `API-OTP-VERIFY` | `POST /otp/verify` | Public | `MOCK` | Channel + purpose + destination + 6-digit code; trả one-time verification token; purpose `CHANGE_PASSWORD` bị restricted. | OTP controller/service; OTP/integration               |
+| `API-OTP-SEND`   | `POST /otp/send`   | Public | `MOCK` | Channel + purpose + destination; từ chối `MANAGE_SENSITIVE_PROFILE`, `CHANGE_PASSWORD` và `CHANGE_PHONE` vì các purpose này phải đi qua account endpoint. | `apps/api/src/otp/otp.controller.ts`; OTP/integration |
+| `API-OTP-VERIFY` | `POST /otp/verify` | Public | `MOCK` | Channel + purpose + destination + 6-digit code; trả one-time verification token; purposes `CHANGE_PASSWORD` và `CHANGE_PHONE` bị restricted. | OTP controller/service; OTP/integration               |
 
 ## Wallet API
 
@@ -219,7 +221,7 @@ Các surface này được mount trong `apps/api/src/main.ts`, không phải met
 
 - Auth/session: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `ACCOUNT_SUSPENDED`, `VERIFICATION_TOKEN_INVALID`.
 - Identity uniqueness: `USERNAME_ALREADY_EXISTS`, `EMAIL_ALREADY_EXISTS`, `PHONE_ALREADY_EXISTS`, `CITIZEN_ID_ALREADY_EXISTS`.
-- OTP: `OTP_INVALID`, `OTP_EXPIRED`, `OTP_RATE_LIMITED`, `OTP_ALREADY_USED`, `OTP_NOT_REQUIRED`, `OTP_PURPOSE_RESTRICTED`, `PASSWORD_CHANGE_OTP_UNAVAILABLE`.
+- OTP: `OTP_INVALID`, `OTP_EXPIRED`, `OTP_RATE_LIMITED`, `OTP_ALREADY_USED`, `OTP_NOT_REQUIRED`, `OTP_PURPOSE_RESTRICTED`, `PASSWORD_CHANGE_OTP_UNAVAILABLE`, `PHONE_CHANGE_OTP_UNAVAILABLE`, `PHONE_CHANGE_CONFLICT`.
 - Auth settings JSON: `SETTINGS_UNAVAILABLE` (`503`, fail closed), `INVALID_AUTH_SETTINGS` (`400`) và `STALE_AUTH_SETTINGS_UPDATE` (`409`). OAuth navigation dùng internal domain codes `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` nhưng transport là `302` redirect với lowercase query `social_error=settings_unavailable` / `social_error=provider_disabled`, không phải JSON status response.
 - Sensitive profile: `INVALID_SENSITIVE_PROFILE`, `INVALID_SENSITIVE_CHALLENGE`, `SENSITIVE_CHALLENGE_LOCKED`, `SENSITIVE_PROFILE_OTP_UNAVAILABLE`, `SENSITIVE_ACCESS_TOKEN_INVALID`, `SENSITIVE_SECURITY_REQUIRED`.
 - Wallet/payment: `INSUFFICIENT_BALANCE`, `PAYMENT_NOT_FOUND`, `PAYMENT_FAILED`, `INVALID_PAYMENT_CALLBACK`, `PAYMENT_ALREADY_PROCESSED` và các filter/idempotency errors.

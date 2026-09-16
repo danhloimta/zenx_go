@@ -298,9 +298,12 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     const emailChange = await http().post('/account/change-email').set('Cookie', cookies).send({ newEmail, verificationToken: emailToken });
     expect(emailChange.status).toBe(201);
     const newPhone = `+849${(Number(phone.slice(-8)) + 10).toString().padStart(8, '0')}`;
-    const phoneToken = await verifyOtp(newPhone, 'CHANGE_PHONE');
+    const phoneToken = await verifyPhoneChangeOtp(cookies);
     const phoneChange = await http().post('/account/change-phone').set('Cookie', cookies).send({ newPhone, verificationToken: phoneToken });
     expect(phoneChange.status).toBe(201);
+    phone = newPhone;
+    const changedPhone = await http().get('/account/me').set('Cookie', cookies);
+    expect(changedPhone.body.data.phoneVerifiedAt).toBeNull();
 
     const weakPassword = await http().post('/account/change-password').set('Cookie', cookies).send({ currentPassword: 'Password123!', newPassword: 'weakpassword' });
     expect(weakPassword.status).toBe(400);
@@ -369,6 +372,17 @@ describe('ZENX GO vertical slice (SQL Server)', () => {
     expect(sent.status).toBe(201);
     const verified = await http()
       .post('/account/change-password/otp/verify')
+      .set('Cookie', sessionCookies)
+      .send({ code: process.env.OTP_MOCK_FIXED_CODE ?? '123456' });
+    expect(verified.status).toBe(201);
+    return verified.body.data.verificationToken as string;
+  }
+
+  async function verifyPhoneChangeOtp(sessionCookies: string) {
+    const sent = await http().post('/account/change-phone/otp').set('Cookie', sessionCookies);
+    expect(sent.status).toBe(201);
+    const verified = await http()
+      .post('/account/change-phone/otp/verify')
       .set('Cookie', sessionCookies)
       .send({ code: process.env.OTP_MOCK_FIXED_CODE ?? '123456' });
     expect(verified.status).toBe(201);

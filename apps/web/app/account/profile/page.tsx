@@ -594,6 +594,7 @@ function ContactChange({
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [otpDestination, setOtpDestination] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const otpInputRef = useRef<HTMLInputElement>(null);
@@ -620,10 +621,14 @@ function ContactChange({
   }, [countdown]);
 
   const sendOtp = useMutation({
-    mutationFn: () => api.otp.send({ channel, purpose, destination }),
+    mutationFn: async (): Promise<{ expiresIn: number; resendAfter: number; destination?: string }> => {
+      if (type === 'phone') return api.account.changePhoneOtp.send();
+      return api.otp.send({ channel, purpose, destination });
+    },
     onSuccess: (result) => {
       setError('');
       setSent(true);
+      setOtpDestination(result.destination ?? destination);
       setCountdown(60);
       toast.success(
         `Đã gửi mã xác thực. Mã có hiệu lực trong ${Math.round((result?.expiresIn ?? 300) / 60)} phút.`,
@@ -638,16 +643,18 @@ function ContactChange({
       if (!requiresOtp && type === 'phone') {
         return api.account.changePhone({ newPhone: destination });
       }
+      if (type === 'phone') {
+        const verification = await api.account.changePhoneOtp.verify({ code });
+        return api.account.changePhone({
+          newPhone: destination,
+          verificationToken: verification.verificationToken,
+        });
+      }
       const verification = await api.otp.verify({ channel, purpose, destination, code });
-      return type === 'email'
-        ? api.account.changeEmail({
-            newEmail: destination,
-            verificationToken: verification.verificationToken,
-          })
-        : api.account.changePhone({
-            newPhone: destination,
-            verificationToken: verification.verificationToken,
-          });
+      return api.account.changeEmail({
+        newEmail: destination,
+        verificationToken: verification.verificationToken,
+      });
     },
     onSuccess: () => {
       toast.success(`Đã cập nhật ${label.toLowerCase()} thành công.`);
@@ -665,8 +672,19 @@ function ContactChange({
       ) {
         setSent(false);
         setCode('');
+        setOtpDestination(null);
         setError('Số điện thoại này đã được sử dụng. Hãy nhập số khác rồi gửi mã mới.');
         return;
+      }
+      if (
+        type === 'phone' &&
+        requestError instanceof ApiError &&
+        requestError.code === 'PHONE_CHANGE_CONFLICT'
+      ) {
+        setSent(false);
+        setCode('');
+        setOtpDestination(null);
+        setCountdown(0);
       }
       if (
         type === 'email' &&
@@ -675,6 +693,7 @@ function ContactChange({
       ) {
         setSent(false);
         setCode('');
+        setOtpDestination(null);
         setError('Email này đã được sử dụng. Hãy nhập email khác rồi gửi mã mới.');
         return;
       }
@@ -686,6 +705,7 @@ function ContactChange({
     setEditing(true);
     setSent(false);
     setCode('');
+    setOtpDestination(null);
     setError('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -694,6 +714,7 @@ function ContactChange({
     setEditing(false);
     setSent(false);
     setCode('');
+    setOtpDestination(null);
     setError('');
     setDestination(value ?? '');
   };
@@ -701,6 +722,7 @@ function ContactChange({
   const changeDestination = () => {
     setSent(false);
     setCode('');
+    setOtpDestination(null);
     setError('');
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -807,7 +829,9 @@ function ContactChange({
               />
               <p className="mt-1.5 text-[11px] text-slate-500">
                 {requiresOtp
-                  ? `Mã xác thực sẽ được gửi qua ${type === 'email' ? 'email' : 'SMS'} để xác nhận.`
+                  ? type === 'phone'
+                    ? 'Mã xác thực sẽ được gửi qua SMS tới số điện thoại hiện tại để xác nhận.'
+                    : 'Mã xác thực sẽ được gửi qua email để xác nhận.'
                   : 'Số điện thoại sẽ được cập nhật ngay và cần xác thực lại sau đó.'}
               </p>
             </div>
@@ -853,7 +877,8 @@ function ContactChange({
             <div className="rounded-xl bg-slate-50/90 border border-slate-200 p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 truncate">
-                  Mã gửi đến: <strong className="font-semibold text-slate-900">{destination}</strong>
+                  {type === 'phone' ? 'Mã gửi tới số hiện tại: ' : 'Mã gửi đến: '}
+                  <strong className="font-semibold text-slate-900">{otpDestination ?? destination}</strong>
                 </span>
                 <button
                   type="button"

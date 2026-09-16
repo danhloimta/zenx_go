@@ -14,6 +14,7 @@ import {
   ChangeEmailDto,
   ChangePasswordDto,
   ChangePasswordOtpVerifyDto,
+  ChangePhoneOtpVerifyDto,
   ChangePhoneDto,
   CompleteProfileDto,
   UpdateAccountDto,
@@ -284,25 +285,32 @@ export class AccountService {
   }
 
   async changePhone(userId: string, dto: ChangePhoneDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+
     const otpRequired = await this.isOtpRequired();
-    let phoneVerifiedAt: Date | null = null;
+    const originalPhoneNormalized = user.phone ? normalizePhone(user.phone) : undefined;
     if (otpRequired || dto.verificationToken) {
-      if (!dto.verificationToken) {
+      if (!user.phone) {
         if (otpRequired) {
           throw new DomainError(
-            ErrorCode.VERIFICATION_TOKEN_INVALID,
-            'Phone verification is required to change the phone number',
+            ErrorCode.PHONE_CHANGE_OTP_UNAVAILABLE,
+            'A current phone number is required to change the phone number with OTP enabled',
             400,
           );
         }
-      } else {
+      } else if (dto.verificationToken) {
         try {
           await this.otp.consumeVerificationToken(
             dto.verificationToken,
             OtpPurpose.CHANGE_PHONE,
-            dto.newPhone,
+            user.phone,
+            userId,
+            OtpChannel.SMS,
           );
-          phoneVerifiedAt = new Date();
         } catch (error) {
           if (
             otpRequired ||
@@ -313,6 +321,15 @@ export class AccountService {
           }
         }
       }
+      if (!dto.verificationToken) {
+        if (otpRequired) {
+          throw new DomainError(
+            ErrorCode.VERIFICATION_TOKEN_INVALID,
+            'Phone verification is required to change the phone number',
+            400,
+          );
+        }
+      }
     }
     const phoneNormalized = normalizePhone(dto.newPhone);
     const duplicate = await this.prisma.user.findFirst({
@@ -320,15 +337,86 @@ export class AccountService {
     });
     if (duplicate)
       throw new DomainError(ErrorCode.PHONE_ALREADY_EXISTS, 'Phone already exists', 409);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        phone: dto.newPhone.trim(),
-        phoneNormalized,
-        phoneVerifiedAt,
-      },
-    });
+
+    const data = {
+      phone: dto.newPhone.trim(),
+      phoneNormalized,
+      phoneVerifiedAt: null,
+    };
+    if (otpRequired && originalPhoneNormalized) {
+      const updated = await this.prisma.user.updateMany({
+        where: { id: userId, phoneNormalized: originalPhoneNormalized },
+        data,
+      });
+      if (updated.count === 0) {
+        throw new DomainError(
+          ErrorCode.PHONE_CHANGE_CONFLICT,
+          'The current phone number changed before verification completed; request a new OTP',
+          409,
+        );
+      }
+    } else {
+      await this.prisma.user.update({ where: { id: userId }, data });
+    }
     return { changed: true };
+  }
+
+  async sendChangePhoneOtp(userId: string) {
+    if (!(await this.isOtpRequired())) {
+      throw new DomainError(
+        ErrorCode.OTP_NOT_REQUIRED,
+        'OTP is not required for phone changes',
+        400,
+      );
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    if (!user.phone) {
+      throw new DomainError(
+        ErrorCode.PHONE_CHANGE_OTP_UNAVAILABLE,
+        'A current phone number is required to change the phone number with OTP enabled',
+        400,
+      );
+    }
+    const result = await this.otp.send({
+      channel: OtpChannel.SMS,
+      purpose: OtpPurpose.CHANGE_PHONE,
+      destination: user.phone,
+      userId,
+    });
+    return { ...result, destination: maskPhone(user.phone) };
+  }
+
+  async verifyChangePhoneOtp(userId: string, dto: ChangePhoneOtpVerifyDto) {
+    if (!(await this.isOtpRequired())) {
+      throw new DomainError(
+        ErrorCode.OTP_NOT_REQUIRED,
+        'OTP is not required for phone changes',
+        400,
+      );
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { phone: true },
+    });
+    if (!user) throw new DomainError(ErrorCode.ACCOUNT_NOT_FOUND, 'Account not found', 404);
+    if (!user.phone) {
+      throw new DomainError(
+        ErrorCode.PHONE_CHANGE_OTP_UNAVAILABLE,
+        'A current phone number is required to change the phone number with OTP enabled',
+        400,
+      );
+    }
+    return this.otp.verify({
+      channel: OtpChannel.SMS,
+      purpose: OtpPurpose.CHANGE_PHONE,
+      destination: user.phone,
+      code: dto.code,
+      userId,
+    });
   }
 
   async sendChangePasswordOtp(userId: string) {

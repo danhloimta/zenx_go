@@ -146,8 +146,8 @@ CCCD được lưu AES-256-GCM ở `SensitiveProfile`; admin detail chỉ nhận
 - Update dùng optimistic concurrency trên singleton `id=1`; stale write trả `409 STALE_AUTH_SETTINGS_UPDATE` để UI reload/merge có chủ đích.
 - API trả `400 INVALID_AUTH_SETTINGS` nếu client gửi hai alias OTP với giá trị mâu thuẫn.
 - Mỗi public availability read, OAuth login start và login callback đều đọc database mới, không cache. JSON settings APIs fail closed với HTTP `503` + `SETTINGS_UNAVAILABLE`; admin stale update trả HTTP `409` + `STALE_AUTH_SETTINGS_UPDATE`. OAuth start/callback chuyển internal `SETTINGS_UNAVAILABLE` / `SOCIAL_PROVIDER_DISABLED` thành HTTP `302` redirect với lowercase query `social_error=settings_unavailable` / `social_error=provider_disabled`.
-- Social provider enforcement chỉ áp dụng login/registration. Password change/reset và phone change tuân theo `otpRequired`; password login, OAuth `mode=link` và unlink giữ nguyên hành vi.
-- Khi `otpRequired=false`, register, password change, phone change và forgot/reset password không bắt buộc verify OTP; token hợp lệ tùy chọn vẫn được tiêu thụ. Khi bật lại, backend bắt buộc policy ở request kế tiếp và không phụ thuộc trạng thái frontend.
+- Social provider enforcement chỉ áp dụng login/registration. Password change/reset và phone change tuân theo `otpRequired`; khi bật, OTP đổi mật khẩu/đổi SĐT được gửi tới SĐT hiện tại; password login, OAuth `mode=link` và unlink giữ nguyên hành vi.
+- Khi `otpRequired=false`, register, password change, phone change và forgot/reset password không bắt buộc verify OTP; token hợp lệ tùy chọn vẫn được tiêu thụ, nhưng SĐT mới luôn chưa xác thực. Khi bật lại, backend bắt buộc policy ở request kế tiếp và không phụ thuộc trạng thái frontend.
 - Phase 1 không lưu OAuth credentials/secrets, không cấu hình hoặc health-check provider, và không chứng minh provider production readiness.
 
 ## API contract

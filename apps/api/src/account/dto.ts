@@ -34,6 +34,10 @@ export class ChangePasswordOtpVerifyDto {
   @IsString() @Matches(/^\d{6}$/) code!: string;
 }
 
+export class ChangePhoneOtpVerifyDto {
+  @IsString() @Matches(/^\d{6}$/) code!: string;
+}
+
 export class ChangeEmailDto {
   @IsString() verificationToken!: string;
   @IsEmail() newEmail!: string;

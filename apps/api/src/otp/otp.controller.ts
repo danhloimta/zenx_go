@@ -27,5 +27,8 @@ export class OtpController {
     if (purpose === OtpPurpose.CHANGE_PASSWORD) {
       throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'This OTP purpose must be requested from the account endpoint', 400);
     }
+    if (purpose === OtpPurpose.CHANGE_PHONE) {
+      throw new DomainError(ErrorCode.OTP_PURPOSE_RESTRICTED, 'This OTP purpose must be requested from the account endpoint', 400);
+    }
   }
 }

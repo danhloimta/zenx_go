@@ -63,6 +63,52 @@ describe('AccountService OTP policy', () => {
     expect(otp.send).not.toHaveBeenCalled();
   });
 
+  it('sends phone-change OTP only to the current phone and binds it to the user', async () => {
+    settings.isOtpRequired.mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
+    otp.send.mockResolvedValue({ expiresIn: 600, resendAfter: 60, requestId: 'otp-phone-1' });
+
+    await expect((service as any).sendChangePhoneOtp('user-1')).resolves.toMatchObject({
+      destination: '+84******4567',
+      expiresIn: 600,
+      resendAfter: 60,
+    });
+    expect(otp.send).toHaveBeenCalledWith({
+      channel: 'SMS',
+      purpose: 'CHANGE_PHONE',
+      destination: '+84901234567',
+      userId: 'user-1',
+    });
+  });
+
+  it('rejects phone-change OTP when the account has no current phone', async () => {
+    settings.isOtpRequired.mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ phone: null });
+
+    await expect((service as any).sendChangePhoneOtp('user-1')).rejects.toMatchObject({
+      code: 'PHONE_CHANGE_OTP_UNAVAILABLE',
+    } satisfies Partial<DomainError>);
+    expect(otp.send).not.toHaveBeenCalled();
+  });
+
+  it('verifies phone-change OTP against the current phone and user id', async () => {
+    settings.isOtpRequired.mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
+    otp.verify.mockResolvedValue({ verificationToken: 'phone-verification-token', expiresIn: 600 });
+
+    await expect((service as any).verifyChangePhoneOtp('user-1', { code: '123456' })).resolves.toEqual({
+      verificationToken: 'phone-verification-token',
+      expiresIn: 600,
+    });
+    expect(otp.verify).toHaveBeenCalledWith({
+      channel: 'SMS',
+      purpose: 'CHANGE_PHONE',
+      destination: '+84901234567',
+      code: '123456',
+      userId: 'user-1',
+    });
+  });
+
   it('verifies password-change OTP against the current phone and user id', async () => {
     settings.isOtpRequired.mockResolvedValue(true);
     prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
@@ -126,6 +172,7 @@ describe('AccountService OTP policy', () => {
 
   it('changes phone without OTP when the shared policy is disabled', async () => {
     settings.isOtpRequired.mockResolvedValue(false);
+    prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
     prisma.user.update.mockResolvedValue({});
 
     await expect(service.changePhone('user-1', {
@@ -171,6 +218,7 @@ describe('AccountService OTP policy', () => {
 
   it('consumes an optional phone-change token when OTP is disabled', async () => {
     settings.isOtpRequired.mockResolvedValue(false);
+    prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
     otp.consumeVerificationToken.mockResolvedValue({});
 
     await expect(service.changePhone('user-1', {
@@ -180,16 +228,42 @@ describe('AccountService OTP policy', () => {
     expect(otp.consumeVerificationToken).toHaveBeenCalledWith(
       'verification-token',
       'CHANGE_PHONE',
-      '+84909876543',
+      '+84901234567',
+      'user-1',
+      'SMS',
     );
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
       data: {
         phone: '+84909876543',
         phoneNormalized: '+84909876543',
-        phoneVerifiedAt: expect.any(Date),
+        phoneVerifiedAt: null,
       },
     });
+  });
+
+  it('rejects phone changes when the current phone changes after OTP verification', async () => {
+    settings.isOtpRequired.mockResolvedValue(true);
+    prisma.user.findUnique.mockResolvedValue({ phone: '+84901234567' });
+    otp.consumeVerificationToken.mockResolvedValue({});
+    prisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.changePhone('user-1', {
+      newPhone: '+84909876543',
+      verificationToken: 'verification-token',
+    } as any)).rejects.toMatchObject({
+      code: 'PHONE_CHANGE_CONFLICT',
+      status: 409,
+    } satisfies Partial<DomainError>);
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { id: 'user-1', phoneNormalized: '+84901234567' },
+      data: {
+        phone: '+84909876543',
+        phoneNormalized: '+84909876543',
+        phoneVerifiedAt: null,
+      },
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('does not mark a replacement phone verified when the original phone changed before persistence', async () => {

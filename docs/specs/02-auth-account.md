@@ -26,8 +26,8 @@
 
 - Username và email normalize case-insensitive; phone normalize về format `+84...` trước unique check.
 - Register bắt buộc `acceptTerms` và `acceptPrivacy`; canonical policy `otpRequired` (legacy alias: `phoneRegistrationOtpRequired`) quyết định các luồng OTP được yêu cầu.
-- Khi policy bật, đăng ký/đổi mật khẩu/đổi SĐT/reset password phải có verification token đúng purpose và destination; khi policy tắt, các luồng này không cần OTP. Nếu không gửi token, đăng ký hoặc đổi SĐT khi tắt giữ `phoneVerifiedAt = null`; token hợp lệ tùy chọn vẫn được tiêu thụ và đánh dấu đã xác thực.
-- OTP hợp lệ khi đổi mật khẩu xác nhận SĐT hiện tại và đánh dấu `phoneVerifiedAt` nếu trước đó chưa có; email change và sensitive-profile OTP luôn giữ policy bắt buộc riêng.
+- Khi policy bật, đăng ký/đổi mật khẩu/đổi SĐT/reset password phải có verification token đúng purpose và destination; khi policy tắt, các luồng này không bắt buộc OTP. Nếu không gửi token, đăng ký hoặc đổi SĐT khi tắt giữ `phoneVerifiedAt = null`; token hợp lệ tùy chọn vẫn được tiêu thụ, và token đăng ký hợp lệ đánh dấu số đăng ký đã xác thực.
+- OTP hợp lệ khi đổi mật khẩu xác nhận SĐT hiện tại và đánh dấu `phoneVerifiedAt` nếu trước đó chưa có. Khi đổi SĐT, OTP luôn gửi tới SĐT hiện tại và SĐT mới luôn bắt đầu ở trạng thái chưa xác thực; email change và sensitive-profile OTP luôn giữ policy bắt buộc riêng.
 - Account tạo thành công có status `ACTIVE`, `UserProfile` và wallet `ZENX` balance `0`; `phoneVerifiedAt` phụ thuộc kết quả xác thực ở trên.
 - Access token và refresh token được gửi bằng HttpOnly cookie; refresh session lưu hash và bị revoke khi xoay/logout/password change.
 - Access JWT có `type: access`; sensitive profile JWT có type riêng và không được AuthGuard chấp nhận như session.
@@ -46,8 +46,8 @@
 
 ### OTP
 
-- Public OTP dùng cho register, đổi SĐT/email và password reset khi policy yêu cầu; OTP đổi mật khẩu được gửi/verify qua account endpoint authenticated.
-- Purpose `CHANGE_PASSWORD` luôn yêu cầu `userId` và bị từ chối trên public `/otp/*` (`OTP_PURPOSE_RESTRICTED`).
+- Public OTP dùng cho register và password reset khi policy yêu cầu; OTP email change vẫn dùng purpose riêng, còn OTP đổi mật khẩu/đổi SĐT được gửi/verify qua account endpoint authenticated.
+- Purpose `CHANGE_PASSWORD` và `CHANGE_PHONE` luôn yêu cầu `userId` và bị từ chối trên public `/otp/*` (`OTP_PURPOSE_RESTRICTED`).
 - OTP lưu hash Argon2, có TTL, resend delay, attempt limit; code cũ pending bị expire khi tạo code mới.
 - Sensitive-profile OTP chỉ được gọi qua authenticated account endpoint và gắn với `userId`; public `/otp/*` từ chối purpose `MANAGE_SENSITIVE_PROFILE`.
 - Sensitive recovery ưu tiên phone đã xác thực, fallback email đã xác thực; không có kênh hợp lệ thì trả lỗi rõ ràng.
@@ -74,7 +74,7 @@
 | ---------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `SCR-ACCOUNT-HOME`     | `/account`                  | Account dashboard, greeting/avatar, wallet shortcut, links tới profile/security/payment/support.     | `/account/me`, `/wallet`; `apps/web/app/account/page.tsx`; account/vertical E2E                                   |
 | `SCR-ACCOUNT-COMPLETE` | `/account/complete-profile` | Required onboarding form; save xong cập nhật query cache và chuyển profile.                          | `POST /account/complete-profile`; `apps/web/app/account/complete-profile/page.tsx`; account E2E                   |
-| `SCR-ACCOUNT-PROFILE`  | `/account/profile`          | Contact cards, basic profile form, avatar upload, social/password summary và sensitive-profile card. | `/account/me`, `/account/*`, `/account/sensitive-profile/*`; `apps/web/app/account/profile/page.tsx`; account E2E |
+| `SCR-ACCOUNT-PROFILE`  | `/account/profile`          | Contact cards, basic profile form, avatar upload, social/password summary và sensitive-profile card. | `/account/me`, `/account/change-phone/otp*`, `/account/*`, `/account/sensitive-profile/*`; `apps/web/app/account/profile/page.tsx`; account E2E |
 | `SCR-ACCOUNT-SECURITY` | `/account/security`         | Email/phone/password security status và shortcut actions.                                            | `/account/me`; `apps/web/app/account/security/page.tsx`; account E2E                                              |
 | `SCR-ACCOUNT-PASSWORD` | `/account/change-password`  | Strength checklist, current/new password, social-only first password và policy-gated SMS OTP.          | `POST /account/change-password`, `/account/change-password/otp*`; `apps/web/app/account/change-password/page.tsx`; account E2E |
 | `SCR-ACCOUNT-SOCIAL`   | `/account/social`           | Link/unlink Google/Facebook, provider status và lỗi OAuth.                                           | `/auth/google                                                                                                     | facebook`, `/account/social/*`; `apps/web/app/account/social/page.tsx`; link initiation E2E, unlink API integration |

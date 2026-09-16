@@ -116,18 +116,15 @@ describe('Account OTP policy (SQL Server)', () => {
 
   it('requires an OTP token for changing phone while enabled', async () => {
     const newPhone = `+849${(Number(phone.slice(-8)) + 1).toString().padStart(8, '0')}`;
-    const sent = await http().post('/otp/send').send({
-      channel: 'SMS',
-      purpose: 'CHANGE_PHONE',
-      destination: newPhone,
-    });
+    const unauthenticated = await http().post('/account/change-phone/otp');
+    expect(unauthenticated.status).toBe(401);
+    const sent = await http().post('/account/change-phone/otp').set('Cookie', cookies);
     expect(sent.status).toBe(201);
-    const verified = await http().post('/otp/verify').send({
-      channel: 'SMS',
-      purpose: 'CHANGE_PHONE',
-      destination: newPhone,
-      code: '123456',
-    });
+    expect(sent.body.data.destination).toBe('+84******' + phone.slice(-4));
+    const verified = await http()
+      .post('/account/change-phone/otp/verify')
+      .set('Cookie', cookies)
+      .send({ code: '123456' });
     expect(verified.status).toBe(201);
 
     const missing = await http()
@@ -143,6 +140,8 @@ describe('Account OTP policy (SQL Server)', () => {
       .send({ newPhone, verificationToken: verified.body.data.verificationToken });
     expect(changed.status).toBe(201);
     phone = newPhone;
+    await expect(prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { phoneVerifiedAt: true } }))
+      .resolves.toEqual({ phoneVerifiedAt: null });
   });
 
   it('requires reset-password verification while the shared policy is enabled', async () => {
@@ -156,6 +155,10 @@ describe('Account OTP policy (SQL Server)', () => {
 
   it('disables OTP for password, phone, and reset-password operations', async () => {
     await setOtpRequired(false);
+
+    const phoneOtpOff = await http().post('/account/change-phone/otp').set('Cookie', cookies);
+    expect(phoneOtpOff.status).toBe(400);
+    expect(phoneOtpOff.body.error.code).toBe('OTP_NOT_REQUIRED');
 
     const directPhone = `+849${(Number(phone.slice(-8)) + 2).toString().padStart(8, '0')}`;
     const phoneChange = await http()
@@ -197,6 +200,23 @@ describe('Account OTP policy (SQL Server)', () => {
     });
     expect(send.status).toBe(400);
     expect(send.body.error.code).toBe('OTP_PURPOSE_RESTRICTED');
+
+    const phoneChange = await http().post('/otp/send').send({
+      channel: 'SMS',
+      purpose: 'CHANGE_PHONE',
+      destination: phone,
+    });
+    expect(phoneChange.status).toBe(400);
+    expect(phoneChange.body.error.code).toBe('OTP_PURPOSE_RESTRICTED');
+
+    const phoneVerify = await http().post('/otp/verify').send({
+      channel: 'SMS',
+      purpose: 'CHANGE_PHONE',
+      destination: phone,
+      code: '123456',
+    });
+    expect(phoneVerify.status).toBe(400);
+    expect(phoneVerify.body.error.code).toBe('OTP_PURPOSE_RESTRICTED');
   });
 
   it('fails closed to OTP when settings cannot be read', async () => {
@@ -226,18 +246,12 @@ describe('Account OTP policy (SQL Server)', () => {
     expect(passwordVerification.status).toBe(201);
 
     const verifiedPhone = `+849${(Number(phone.slice(-8)) + 1).toString().padStart(8, '0')}`;
-    const phoneOtp = await http().post('/otp/send').send({
-      channel: 'SMS',
-      purpose: 'CHANGE_PHONE',
-      destination: verifiedPhone,
-    });
+    const phoneOtp = await http().post('/account/change-phone/otp').set('Cookie', cookies);
     expect(phoneOtp.status).toBe(201);
-    const phoneVerification = await http().post('/otp/verify').send({
-      channel: 'SMS',
-      purpose: 'CHANGE_PHONE',
-      destination: verifiedPhone,
-      code: '123456',
-    });
+    const phoneVerification = await http()
+      .post('/account/change-phone/otp/verify')
+      .set('Cookie', cookies)
+      .send({ code: '123456' });
     expect(phoneVerification.status).toBe(201);
 
     await setOtpRequired(false);
@@ -261,7 +275,7 @@ describe('Account OTP policy (SQL Server)', () => {
     expect(phoneChange.status).toBe(201);
     phone = verifiedPhone;
     await expect(prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { phoneVerifiedAt: true } }))
-      .resolves.toMatchObject({ phoneVerifiedAt: expect.any(Date) });
+      .resolves.toEqual({ phoneVerifiedAt: null });
   });
 
   async function setOtpRequired(value: boolean) {

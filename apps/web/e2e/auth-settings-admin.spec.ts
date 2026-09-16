@@ -149,6 +149,27 @@ test('shared OTP toggle gates password, phone, and reset flows', async ({ page, 
     },
   });
   expect(completedProfile.status()).toBe(201);
+  await page.context().clearCookies();
+  await loginInBrowser(page, member.email, member.password, '/account/profile');
+  const enabledChangedPhone = `+849${(Number(member.phone.slice(-8)) + 1).toString().padStart(8, '0')}`;
+  await page.getByRole('button', { name: 'Đổi', exact: true }).click();
+  await page.locator('#profile-phone-edit').fill(enabledChangedPhone);
+  await page.getByRole('button', { name: 'Gửi mã xác thực', exact: true }).click();
+  await expect(page.getByText(`Mã gửi tới số hiện tại: +84******${member.phone.slice(-4)}`)).toBeVisible();
+  await page.getByLabel('Mã xác thực số điện thoại').fill('123456');
+  await page.getByRole('button', { name: 'Xác nhận', exact: true }).click();
+  await expect(page.getByText('Đã cập nhật số điện thoại thành công.', { exact: true })).toBeVisible();
+  const enabledPhoneState = await request.get(`${apiBase}/account/me`, {
+    headers: authenticatedHeaders(await login(request, member.email, member.password)),
+  });
+  expect(enabledPhoneState.status()).toBe(200);
+  expect((await enabledPhoneState.json()).data).toMatchObject({
+    phone: enabledChangedPhone,
+    phoneVerifiedAt: null,
+  });
+  member.phone = enabledChangedPhone;
+
+  await page.context().clearCookies();
   const admin = await createRoleAccount(request, `otp-admin-${suffix}`, 'SUPER_ADMIN');
   adminCookie = await login(request, admin.email, admin.password);
 

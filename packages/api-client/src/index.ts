@@ -491,6 +491,14 @@ export interface ChangePasswordOtpVerifyRequest {
   code: string;
 }
 
+export interface ChangePhoneOtpSendResponse extends OtpSendResponse {
+  destination: string;
+}
+
+export interface ChangePhoneOtpVerifyRequest {
+  code: string;
+}
+
 export interface SensitiveProfileSummary {
   identity: {
     configured: boolean;
@@ -1708,6 +1716,11 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
           client.post<ChangePasswordOtpSendResponse>('/account/change-password/otp'),
         verify: (input: ChangePasswordOtpVerifyRequest) =>
           client.post<OtpVerifyResponse>('/account/change-password/otp/verify', input),
+      },
+      changePhoneOtp: {
+        send: () => client.post<ChangePhoneOtpSendResponse>('/account/change-phone/otp'),
+        verify: (input: ChangePhoneOtpVerifyRequest) =>
+          client.post<OtpVerifyResponse>('/account/change-phone/otp/verify', input),
       },
       changeEmail: (input: ChangeEmailRequest) => client.post<void>('/account/change-email', input),
       changePhone: (input: ChangePhoneRequest) => client.post<void>('/account/change-phone', input),

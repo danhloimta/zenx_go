@@ -20,6 +20,7 @@ import {
   ChangeEmailDto,
   ChangePasswordDto,
   ChangePasswordOtpVerifyDto,
+  ChangePhoneOtpVerifyDto,
   ChangePhoneDto,
   CompleteProfileDto,
   SensitiveProfileChallengeDto,
@@ -92,6 +93,17 @@ export class AccountController {
     @Body() dto: ChangePhoneDto,
   ) {
     return this.account.changePhone(request.user.sub, dto);
+  }
+  @Post('change-phone/otp')
+  sendChangePhoneOtp(@Req() request: AuthenticatedRequest) {
+    return this.account.sendChangePhoneOtp(request.user.sub);
+  }
+  @Post('change-phone/otp/verify')
+  verifyChangePhoneOtp(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: ChangePhoneOtpVerifyDto,
+  ) {
+    return this.account.verifyChangePhoneOtp(request.user.sub, dto);
   }
 
   @Get('sensitive-profile') sensitiveSummary(@Req() request: AuthenticatedRequest) {

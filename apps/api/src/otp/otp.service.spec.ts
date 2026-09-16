@@ -51,4 +51,41 @@ describe('OtpService demo mode', () => {
     })).rejects.toMatchObject({ code: 'OTP_PURPOSE_RESTRICTED' });
     expect(prisma.otpRequest.create).not.toHaveBeenCalled();
   });
+
+  it.each(['send', 'verify', 'consumeVerificationToken'] as const)(
+    'requires a user binding for phone-change OTP (%s)',
+    async (method) => {
+      const prisma = {
+        otpRequest: {
+          findFirst: jest.fn().mockResolvedValue(null),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          create: jest.fn().mockResolvedValue({ id: 'otp-1' }),
+        },
+        otpVerification: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+      };
+      const config = {
+        get: (key: string) => ({
+          nodeEnv: 'test',
+          demoMode: true,
+          otpSmsProvider: 'mock',
+          otpMockFixedCode: '123456',
+        } as Record<string, unknown>)[key],
+      };
+      const service = new OtpService(
+        prisma as never,
+        config as never,
+        new MockOtpProvider(),
+        new MockMailProvider(),
+      );
+
+      const operation = method === 'send'
+        ? service.send({ channel: 'SMS', purpose: 'CHANGE_PHONE', destination: '+84901234567' })
+        : method === 'verify'
+          ? service.verify({ channel: 'SMS', purpose: 'CHANGE_PHONE', destination: '+84901234567', code: '123456' })
+          : service.consumeVerificationToken('token', 'CHANGE_PHONE', '+84901234567');
+      await expect(operation).rejects.toMatchObject({ code: 'OTP_PURPOSE_RESTRICTED' });
+    },
+  );
 });

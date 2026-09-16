@@ -15,6 +15,8 @@ const messages: Record<string, string> = {
   VERIFICATION_TOKEN_INVALID: 'Phiên xác thực không hợp lệ hoặc đã hết hạn.',
   INVALID_AUTH_SETTINGS: 'Cài đặt xác thực không hợp lệ. Vui lòng tải lại và thử lại.',
   PASSWORD_CHANGE_OTP_UNAVAILABLE: 'Tài khoản chưa có số điện thoại để nhận OTP đổi mật khẩu.',
+  PHONE_CHANGE_OTP_UNAVAILABLE: 'Tài khoản chưa có số điện thoại hiện tại để nhận OTP đổi số.',
+  PHONE_CHANGE_CONFLICT: 'Số điện thoại hiện tại đã thay đổi. Vui lòng gửi lại mã OTP rồi thử lại.',
   OTP_NOT_REQUIRED: 'OTP hiện không được yêu cầu cho thao tác này.',
   OTP_PURPOSE_RESTRICTED: 'Hãy yêu cầu mã OTP từ đúng luồng bảo mật của tài khoản.',
   CANNOT_UNLINK_LAST_LOGIN_METHOD:
