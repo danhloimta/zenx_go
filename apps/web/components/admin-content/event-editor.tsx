@@ -989,7 +989,8 @@ function toRequest(form: EventForm) {
 }
 
 function omitGameId<T extends { gameId: unknown }>(input: T): Omit<T, 'gameId'> {
-  const { gameId: _gameId, ...scoped } = input;
+  const { gameId, ...scoped } = input;
+  void gameId;
   return scoped;
 }
 

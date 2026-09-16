@@ -1093,7 +1093,8 @@ function toForm(article: AdminContentArticle): ArticleForm {
 }
 
 function articleCreateInput(form: ArticleForm) {
-  const { gameId: _gameId, ...input } = form;
+  const { gameId, ...input } = form;
+  void gameId;
   return { ...input, coverImageUrl: input.coverImageUrl || null };
 }
 
