@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
 
 const trim = (value: unknown) => typeof value === 'string' ? value.trim() : value;
 
@@ -24,6 +24,20 @@ export class GamePlayerStatusDto {
   @IsIn(['ACTIVE', 'BLOCKED']) status!: 'ACTIVE' | 'BLOCKED';
   @IsDateString() expectedUpdatedAt!: string;
   @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class GamePlayerSupportNoteDto {
+  @Transform(({ value }) => {
+    const normalized = trim(value);
+    return normalized === '' ? null : normalized;
+  })
+  @ValidateIf((_object, value) => value !== null) @IsString() @MaxLength(2000) note!: string | null;
+  @IsDateString() expectedUpdatedAt!: string;
+}
+
+export class GamePlayerActivityQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 20;
 }
 
 export class GameAuditQueryDto {

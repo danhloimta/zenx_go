@@ -24,4 +24,12 @@ describe('permission registry', () => {
       subject: 'AuthSettings',
     });
   });
+
+  it('registers player support notes as a narrow game permission', () => {
+    expect(PERMISSIONS.GAME_PLAYERS_SUPPORT_NOTE).toEqual({
+      code: 'game.players.support-note',
+      action: 'support-note',
+      subject: 'GamePlayer',
+    });
+  });
 });

@@ -225,6 +225,7 @@ model GamePlayer {
   blockedAt       DateTime? @map("blocked_at")
   blockedByUserId String?  @map("blocked_by_user_id") @db.UniqueIdentifier
   blockReason     String?  @map("block_reason") @db.NVarChar(500)
+  supportNote     String?  @map("support_note") @db.NVarChar(2000)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation("GamePlayerUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
