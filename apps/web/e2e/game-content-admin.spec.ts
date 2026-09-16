@@ -47,7 +47,7 @@ test.describe('scoped game content workspace', () => {
     const articleLink = contentPage.getByRole('link', { name: articleTitle });
     await expect(articleLink).toBeVisible();
     const articleHref = await articleLink.getAttribute('href');
-    expect(articleHref).toMatch(/^\/game-admin\/orion\/articles\//);
+    expect(articleHref).toMatch(/^\/admin\/articles\//);
     const articleId = articleHref!.split('/').at(-1)!;
 
     await articleLink.click();

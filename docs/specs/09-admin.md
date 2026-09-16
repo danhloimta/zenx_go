@@ -206,15 +206,17 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 ### Multi-game admin and player SSO
 
 - Platform roles remain in `user_roles`; game-scoped system roles (`GAME_ADMIN`, `GAME_CONTENT_MANAGER`, `GAME_PLAYER_MODERATOR`) are assigned through `game_role_assignments` and are valid only for one `game_id`.
-- `game_players` records a player only after a game server successfully exchanges a one-time SSO authorization code. It stores first/last login, login count and per-game `ACTIVE`/`BLOCKED` status.
+- `game_players` records a player only after a game server successfully exchanges a one-time SSO authorization code. It stores first/last login, login count, per-game `ACTIVE`/`BLOCKED` status and one internal `supportNote` (maximum 2,000 characters).
 - Root `/admin` remains the platform command hub. Each known game subdomain exposes its own `/admin` workspace; `SUPER_ADMIN` may access every workspace while child admins require a matching game assignment.
-- `GET /game-sso/authorize` issues a 60-second one-time code after validating an active game client and exact callback URI. `POST /game-sso/exchange` uses HTTP Basic client credentials and returns minimal player identity. Blocking a player prevents future SSO only; it does not terminate an existing game session.
+- `GET /game-sso/authorize` issues a 60-second one-time code after validating an active game client and exact callback URI. `POST /game-sso/exchange` uses HTTP Basic client credentials and returns minimal player identity. Blocking a player prevents future SSO only; it does not terminate an existing game session. `MAINTENANCE` and `UNAVAILABLE` return `503 GAME_SSO_UNAVAILABLE` from both endpoints.
 - Only platform administrators with game-management permission can assign game roles or create/rotate SSO credentials. Client secrets are hashed and returned once only when created or rotated.
-- Game workspaces expose scoped presentation, article, event, player and audit routes under `/game-admin/games/:gameId/*`; all resource reads and mutations validate the current `gameId` before calling shared CMS services.
-- Public game payloads return an SSO authorize URL only for active game clients. The browser adds a one-time `state`; neither client secret nor authorization code appears in public responses or audit data.
+- Game workspaces expose scoped presentation, article, event, player, player-support, operations and audit routes under `/game-admin/games/:gameId/*`; all resource reads and mutations validate the current `gameId` before calling shared CMS services.
+- `GAME_PLAYER_MODERATOR` may update a player's support note and view that player's support/moderation timeline, but cannot view game-wide audit or maintenance. `GAME_ADMIN` additionally owns `game.operations.manage`; Content Manager has neither player nor operations permissions.
+- Game Admin may only transition `AVAILABLE ↔ MAINTENANCE` using a reason, message and optimistic version. A platform-set `DEGRADED` or `UNAVAILABLE` state is locked to Command Hub. Maintenance message/end fields are cleared when Command Hub changes the game away from `MAINTENANCE`.
+- Public game payloads return an SSO authorize URL only for active, available game clients. They project `{ maintenance: { message, expectedEndsAt } }` during maintenance; the browser adds a one-time `state`, and neither client secret nor authorization code appears in public responses or audit data.
 - The Command Hub access workspace uses an explicit role/reason dialog and confirmation before replacing a role set with none. Callback URL changes and active-state toggles are independent operations. The secret dialog clears its local secret value on close.
 - `GAME_CONTENT_MANAGER` sees only presentation/articles/events; `GAME_PLAYER_MODERATOR` sees dashboard/players only; audit navigation and API are reserved for `GAME_ADMIN` (or `SUPER_ADMIN`). A role assignment for Orion does not grant a Hoa Long workspace.
-- Audit records role assignment, SSO configuration/activation/rotation, CMS mutations and player moderation with actor, game and target. Secret material, client-secret hashes, Basic authorization and raw authorization codes are excluded.
+- Audit records role assignment, SSO configuration/activation/rotation, CMS mutations, player moderation, support-note edits and maintenance transitions with actor, game and target. Secret material, client-secret hashes, Basic authorization and raw authorization codes are excluded.
 
 ### `User` additions
 
