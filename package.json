@@ -13,6 +13,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:infra": "bash scripts/infra-scripts.test.sh",
     "test:integration": "pnpm --filter api test:integration",
     "test:e2e": "pnpm --filter api test:db:prepare && pnpm --filter api test:db:reset && cross-env NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_BASE_URL=/api/v1 API_PROXY_ORIGIN=http://127.0.0.1:4300 PUBLIC_BASE_DOMAIN=lvh.me PUBLIC_WEB_ORIGIN=http://lvh.me:3300 pnpm build && turbo test:e2e",
     "test:db:prepare": "pnpm --filter api test:db:prepare",
