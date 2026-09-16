@@ -212,6 +212,9 @@ User-facing conversation routes là `GET/POST /support/tickets/:ticketNo/message
 - Only platform administrators with game-management permission can assign game roles or create/rotate SSO credentials. Client secrets are hashed and returned once only when created or rotated.
 - Game workspaces expose scoped presentation, article, event, player and audit routes under `/game-admin/games/:gameId/*`; all resource reads and mutations validate the current `gameId` before calling shared CMS services.
 - Public game payloads return an SSO authorize URL only for active game clients. The browser adds a one-time `state`; neither client secret nor authorization code appears in public responses or audit data.
+- The Command Hub access workspace uses an explicit role/reason dialog and confirmation before replacing a role set with none. Callback URL changes and active-state toggles are independent operations. The secret dialog clears its local secret value on close.
+- `GAME_CONTENT_MANAGER` sees only presentation/articles/events; `GAME_PLAYER_MODERATOR` sees dashboard/players only; audit navigation and API are reserved for `GAME_ADMIN` (or `SUPER_ADMIN`). A role assignment for Orion does not grant a Hoa Long workspace.
+- Audit records role assignment, SSO configuration/activation/rotation, CMS mutations and player moderation with actor, game and target. Secret material, client-secret hashes, Basic authorization and raw authorization codes are excluded.
 
 ### `User` additions
 
