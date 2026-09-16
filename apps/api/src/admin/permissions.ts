@@ -52,6 +52,9 @@ export const PERMISSIONS = {
   GAME_EVENTS_MANAGE: define('game.events.manage', 'manage', 'GameEvent'),
   GAME_PLAYERS_VIEW: define('game.players.view', 'read', 'GamePlayer'),
   GAME_PLAYERS_MODERATE: define('game.players.moderate', 'moderate', 'GamePlayer'),
+  GAME_PLAYERS_SUPPORT_NOTE: define('game.players.support-note', 'support-note', 'GamePlayer'),
+  GAME_PLAYERS_PROFILE_MANAGE: define('game.players.profile.manage', 'manage', 'GamePlayerProfile'),
+  GAME_OPERATIONS_MANAGE: define('game.operations.manage', 'manage', 'GameOperations'),
   GAME_AUDIT_VIEW: define('game.audit.view', 'read', 'GameAudit'),
 } as const;
 

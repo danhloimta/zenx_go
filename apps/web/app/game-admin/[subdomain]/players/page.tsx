@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -584,7 +585,7 @@ export default function GamePlayersPage() {
                           </div>
 
                           {/* Tên & Username & ID */}
-                          <div className="min-w-0 flex-1">
+                          <Link href={`/admin/players/${encodeURIComponent(player.userId)}`} className="min-w-0 flex-1 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
                             <div className="flex items-center gap-1.5">
                               <p className="font-bold text-slate-900 text-sm leading-snug truncate">
                                 {displayName}
@@ -600,7 +601,7 @@ export default function GamePlayersPage() {
                               <span>•</span>
                               <span>Tham gia: {firstLoginExact}</span>
                             </div>
-                          </div>
+                          </Link>
                         </div>
                       </td>
 

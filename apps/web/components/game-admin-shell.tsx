@@ -15,9 +15,11 @@ import {
   Globe,
   Gamepad2,
   ExternalLink,
+  Settings2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getPublicBaseDomain, portalUrl } from '@/lib/domain';
+import { ApiError } from '@zenx-go/api-client';
 
 export function GameAdminShell({ children }: { children: React.ReactNode }) {
   const params = useParams<{ subdomain: string }>();
@@ -31,7 +33,7 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    if (context.error && typeof window !== 'undefined') {
+    if (context.error instanceof ApiError && context.error.status === 401 && typeof window !== 'undefined') {
       const origin = new URL(window.location.href);
       origin.hostname = getPublicBaseDomain();
       origin.pathname = '/auth/login';
@@ -91,6 +93,11 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
     .concat(
       can('read', 'GamePlayer')
         ? [{ href: '/admin/players', label: 'Người chơi', icon: Users }]
+        : [],
+    )
+    .concat(
+      can('manage', 'GameOperations')
+        ? [{ href: '/admin/operations', label: 'Vận hành', icon: Settings2 }]
         : [],
     )
     .concat(

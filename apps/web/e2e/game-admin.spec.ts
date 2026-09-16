@@ -64,6 +64,23 @@ test.describe('game administrator and player SSO journey', () => {
     await expect(superAdminPage.getByText(/Đang bật/)).toBeVisible();
     await ctaPage.reload();
     await expect(ctaPage.getByRole('button', { name: 'Chơi ngay' })).toBeVisible();
+
+    await superAdminPage.goto('http://orion.lvh.me:3300/admin/operations');
+    await expect(superAdminPage.getByRole('heading', { name: 'Vận hành' })).toBeVisible();
+    await superAdminPage.getByLabel('Bật chế độ bảo trì').check();
+    await superAdminPage.locator('#maintenance-message').fill('E2E bảo trì Orion trong thời gian ngắn.');
+    await superAdminPage.locator('#maintenance-reason').fill('Kiểm tra chế độ bảo trì qua giao diện.');
+    await superAdminPage.getByRole('button', { name: 'Bật bảo trì', exact: true }).click();
+    await expect(superAdminPage.getByText('Đang bảo trì', { exact: true })).toBeVisible();
+    await ctaPage.reload();
+    await expect(ctaPage.getByText('E2E bảo trì Orion trong thời gian ngắn.')).toBeVisible();
+    await expect(ctaPage.getByRole('button', { name: 'Chơi ngay' })).toHaveCount(0);
+    await superAdminPage.getByLabel('Bật chế độ bảo trì').uncheck();
+    await superAdminPage.locator('#maintenance-reason').fill('Kết thúc kiểm tra bảo trì qua giao diện.');
+    await superAdminPage.getByRole('button', { name: 'Tắt bảo trì', exact: true }).click();
+    await expect(superAdminPage.getByText('Sẵn sàng phục vụ', { exact: true })).toBeVisible();
+    await ctaPage.reload();
+    await expect(ctaPage.getByRole('button', { name: 'Chơi ngay' })).toBeVisible();
     await ctaPage.close();
 
     const moderatorContext = await signedInContext(browser, moderator);
@@ -75,9 +92,10 @@ test.describe('game administrator and player SSO journey', () => {
     await expect(moderatorPage.getByRole('link', { name: 'Sự kiện' })).toHaveCount(0);
     await expect(moderatorPage.getByRole('link', { name: 'Giao diện' })).toHaveCount(0);
     await expect(moderatorPage.getByRole('link', { name: 'Nhật ký hoạt động' })).toHaveCount(0);
+    await expect(moderatorPage.getByRole('link', { name: 'Vận hành' })).toHaveCount(0);
 
     await moderatorPage.goto('http://hoalong.lvh.me:3300/admin');
-    await expect(moderatorPage).toHaveURL(/http:\/\/lvh\.me:3300\/auth\/login/);
+    await expect(moderatorPage.getByText('Không thể truy cập khu vực quản trị game.')).toBeVisible();
 
     const playerContext = await signedInContext(browser, player);
     const playerPage = await playerContext.newPage();
@@ -90,20 +108,31 @@ test.describe('game administrator and player SSO journey', () => {
     await expect(moderatorPage.getByRole('heading', { name: 'Người chơi' })).toBeVisible();
     await moderatorPage.getByPlaceholder('Tìm username, tên hiển thị hoặc User ID').fill(player.username);
     await expect(moderatorPage.getByText(player.username, { exact: true })).toBeVisible();
-    await moderatorPage.getByRole('button', { name: 'Khóa', exact: true }).click();
+    await moderatorPage.locator('a[href^="/admin/players/"]').first().click();
+    await expect(moderatorPage.getByRole('heading', { name: player.username, exact: true })).toBeVisible();
+    await moderatorPage.getByPlaceholder('Thêm ghi chú hỗ trợ nội bộ…').fill('E2E note for this Orion player.');
+    await moderatorPage.getByRole('button', { name: 'Lưu ghi chú', exact: true }).click();
+    await expect(moderatorPage.getByText('Đã cập nhật ghi chú nội bộ', { exact: true })).toBeVisible();
+    await moderatorPage.reload();
+    await expect(moderatorPage.getByPlaceholder('Thêm ghi chú hỗ trợ nội bộ…')).toHaveValue('E2E note for this Orion player.');
+    await expect(moderatorPage.getByText('Đã cập nhật ghi chú nội bộ', { exact: true })).toBeVisible();
+
+    await moderatorPage.getByRole('button', { name: 'Khóa player', exact: true }).click();
     await moderatorPage.getByPlaceholder('Nhập lý do (tối thiểu 3 ký tự)').fill('E2E block the Orion player.');
     await moderatorPage.getByRole('button', { name: 'Xác nhận', exact: true }).click();
     await expect(moderatorPage.getByText('Đã khóa', { exact: true })).toBeVisible();
+    await expect(moderatorPage.getByText('Đã khóa player', { exact: true })).toBeVisible();
 
     await playerPage.goto('http://orion.lvh.me:3300/');
     await playerPage.getByRole('button', { name: 'Chơi ngay' }).click();
     await expect(playerPage).toHaveURL(/\/api\/v1\/game-sso\/authorize/);
     await expect(playerPage.getByText('GAME_PLAYER_BLOCKED')).toBeVisible();
 
-    await moderatorPage.getByRole('button', { name: 'Mở khóa', exact: true }).click();
+    await moderatorPage.getByRole('button', { name: 'Mở khóa player', exact: true }).click();
     await moderatorPage.getByPlaceholder('Nhập lý do (tối thiểu 3 ký tự)').fill('E2E unblock the Orion player.');
     await moderatorPage.getByRole('button', { name: 'Xác nhận', exact: true }).click();
     await expect(moderatorPage.getByText('Hoạt động', { exact: true })).toBeVisible();
+    await expect(moderatorPage.getByText('Đã mở khóa player', { exact: true })).toBeVisible();
 
     const secondExchange = await launchGameAndReadMockResult(playerPage, request);
     expect(secondExchange.state).toBe(secondExchange.authorizeState);

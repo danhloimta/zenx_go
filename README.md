@@ -39,6 +39,8 @@ Admin account operations and the intentionally deferred CMS/support/finance admi
 
 Production domain routing uses `PUBLIC_BASE_DOMAIN`, `PUBLIC_WEB_ORIGIN`, `ALLOWED_WEB_ORIGINS`, `ALLOW_GAME_SUBDOMAINS`, and `COOKIE_DOMAIN`. Configure wildcard DNS/TLS and route `/api/v1` on every public hostname to the same API before enabling cross-subdomain login.
 
+For a new production server, use the idempotent Nginx/systemd bootstrap and game-host verification instructions in [docs/operations/subdomain-bootstrap.md](docs/operations/subdomain-bootstrap.md). This is a one-time wildcard-host setup; creating an additional game is done in Command Hub and does not require a new vhost or deploy.
+
 The default OTP and payment implementations are mocks. The mock OTP provider logs a development code and the mock payment provider exposes deterministic callback data for local development.
 
 To enable SePay VietQR, set `PAYMENT_PROVIDER=sepay`, then fill `SEPAY_BANK_ACCOUNT`, `SEPAY_BANK_CODE`, `SEPAY_ACCOUNT_HOLDER`, and `SEPAY_WEBHOOK_SECRET` in `.env`. In both SePay Test and Live settings, configure the payment-code structure as alphanumeric with the same 2–5 character prefix as `SEPAY_TRANSFER_PREFIX` and an exact 12-character suffix. SePay should POST signed callbacks to `/api/v1/webhooks/sepay`; the webhook endpoint requires the HMAC-SHA256 headers documented by SePay.
@@ -49,6 +51,7 @@ To enable SePay VietQR, set `PAYMENT_PROVIDER=sepay`, then fill `SEPAY_BANK_ACCO
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:infra
 pnpm build
 ```
 

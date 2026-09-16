@@ -31,6 +31,20 @@ const USER_LIST_INCLUDE = {
   roles: { select: { role: { select: { id: true, code: true, name: true } } } },
 } as const;
 
+export type AdminProfileAuditSnapshot = {
+  username: string;
+  email: string;
+  phone: string | null;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  profile: { fullName: string; dateOfBirth: Date | null; gender: string; city: string | null; address: string | null } | null;
+};
+
+export type AdminProfileUpdateHook = (
+  tx: Prisma.TransactionClient,
+  change: { before: AdminProfileAuditSnapshot; after: AdminProfileAuditSnapshot },
+) => Promise<void>;
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -232,7 +246,7 @@ export class AdminService {
     return this.activity.list(userId, query, true);
   }
 
-  async updateProfile(userId: string, dto: AdminProfileUpdateDto, context?: ActivityContext) {
+  async updateProfile(userId: string, dto: AdminProfileUpdateDto, context?: ActivityContext, onUpdated?: AdminProfileUpdateHook) {
     const current = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
@@ -358,6 +372,10 @@ export class AdminService {
       }
       if (emailChanged || phoneChanged) {
         await this.activity.record({ userId, category: 'SECURITY', eventType: 'ADMIN_CONTACT_CHANGED', actorType: 'ADMIN', context }, tx);
+      }
+      if (onUpdated) {
+        const next = await tx.user.findUniqueOrThrow({ where: { id: userId }, include: { profile: true } });
+        await onUpdated(tx, { before: this.profileAuditSnapshot(current), after: this.profileAuditSnapshot(next) });
       }
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     return this.getUser(userId);
@@ -692,6 +710,20 @@ export class AdminService {
         409,
       );
     }
+  }
+
+  private profileAuditSnapshot(user: {
+    username: string; email: string; phone: string | null; emailVerifiedAt: Date | null; phoneVerifiedAt: Date | null;
+    profile: { fullName: string; dateOfBirth: Date | null; gender: string; city: string | null; address: string | null } | null;
+  }): AdminProfileAuditSnapshot {
+    return {
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      emailVerified: Boolean(user.emailVerifiedAt),
+      phoneVerified: Boolean(user.phoneVerifiedAt),
+      profile: user.profile ? { fullName: user.profile.fullName, dateOfBirth: user.profile.dateOfBirth, gender: user.profile.gender, city: user.profile.city, address: user.profile.address } : null,
+    };
   }
 
   private publicUser(user: {

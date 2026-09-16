@@ -24,4 +24,28 @@ describe('permission registry', () => {
       subject: 'AuthSettings',
     });
   });
+
+  it('registers player support notes as a narrow game permission', () => {
+    expect(PERMISSIONS.GAME_PLAYERS_SUPPORT_NOTE).toEqual({
+      code: 'game.players.support-note',
+      action: 'support-note',
+      subject: 'GamePlayer',
+    });
+  });
+
+  it('registers full player profile management as a Game Admin permission', () => {
+    expect(PERMISSIONS.GAME_PLAYERS_PROFILE_MANAGE).toEqual({
+      code: 'game.players.profile.manage',
+      action: 'manage',
+      subject: 'GamePlayerProfile',
+    });
+  });
+
+  it('registers maintenance operations as a Game Admin-only permission subject', () => {
+    expect(PERMISSIONS.GAME_OPERATIONS_MANAGE).toEqual({
+      code: 'game.operations.manage',
+      action: 'manage',
+      subject: 'GameOperations',
+    });
+  });
 });

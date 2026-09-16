@@ -78,6 +78,11 @@ const messages: Record<string, string> = {
   FINANCE_PROVIDER_TRANSACTION_EXISTS: 'Mã giao dịch ngân hàng chưa được nhập hoặc đã được sử dụng cho một đơn nạp khác.',
   FINANCE_INVALID_AMOUNT: 'Số tiền phải là số nguyên dương hợp lệ.',
   INSUFFICIENT_BALANCE: 'Số dư Coin không đủ để thực hiện hoàn/trừ.',
+  STALE_GAME_PLAYER_UPDATE: 'Player đã được cập nhật bởi người khác. Hãy tải dữ liệu mới rồi thử lại.',
+  STALE_GAME_OPERATION_UPDATE: 'Trạng thái vận hành đã thay đổi. Hãy tải lại trang rồi thử lại.',
+  GAME_OPERATION_STATUS_LOCKED: 'Trạng thái này chỉ có admin tổng mới có thể thay đổi.',
+  GAME_SSO_UNAVAILABLE: 'SSO game đang tạm thời không khả dụng do trạng thái vận hành.',
+  GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED: 'Tài khoản có quyền quản trị nền tảng chỉ Super Admin mới được chỉnh sửa.',
 };
 
 export function getErrorMessage(error: unknown, fallback = 'Đã có lỗi xảy ra. Vui lòng thử lại.') {

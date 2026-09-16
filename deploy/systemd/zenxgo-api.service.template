@@ -1,0 +1,20 @@
+[Unit]
+Description=ZENX GO API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{SERVICE_USER}}
+WorkingDirectory={{DEPLOY_DIR}}/apps/api
+EnvironmentFile=-{{DEPLOY_DIR}}/.env
+EnvironmentFile=-{{DEPLOY_DIR}}/apps/api/.env
+Environment=NODE_ENV=production
+Environment=API_PORT=4100
+ExecStart={{NODE_BIN_DIR}}/node {{DEPLOY_DIR}}/apps/api/dist/src/main.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

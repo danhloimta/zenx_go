@@ -403,10 +403,14 @@ export interface GameAdminContext {
 }
 export interface GamePlayer {
   id: string; userId: string; user: { id: string; username: string; profile: { fullName: string; avatarUrl?: string | null } | null };
-  status: 'ACTIVE' | 'BLOCKED'; firstLoginAt: string; lastLoginAt: string; loginCount: number; blockedAt: string | null; blockReason: string | null; updatedAt: string;
+  status: 'ACTIVE' | 'BLOCKED'; firstLoginAt: string; lastLoginAt: string; loginCount: number; blockedAt: string | null; blockReason: string | null; supportNote: string | null; updatedAt: string;
 }
-export interface GameAdminDashboard { totals: { totalPlayers: number; newToday: number; new7d: number; new30d: number; active7d: number; active30d: number; returning: number; totalSsoLogins: number }; recentPlayers: GamePlayer[]; }
+export interface GameRecentPlayer { id: string; userId: string; user: { id: string; username: string; profile: { fullName: string; avatarUrl?: string | null } | null }; firstLoginAt: string; lastLoginAt: string; loginCount: number; updatedAt: string; }
+export interface GameAdminDashboard { totals: { totalPlayers: number; newToday: number; new7d: number; new30d: number; active7d: number; active30d: number; returning: number; totalSsoLogins: number }; recentPlayers: GameRecentPlayer[]; }
 export interface GameAuditEntry { id: string; action: string; targetType: string; targetId: string | null; reason: string | null; beforeData: unknown; afterData: unknown; actor: { id: string; username: string; displayName: string } | null; createdAt: string; }
+export interface GamePlayerActivityEntry { id: string; action: 'GAME_PLAYER_BLOCKED' | 'GAME_PLAYER_UNBLOCKED' | 'GAME_PLAYER_SUPPORT_NOTE_UPDATED'; targetType: 'GAME_PLAYER'; targetId: string; reason: string | null; beforeData: unknown; afterData: unknown; actor: { id: string; username: string; displayName: string } | null; createdAt: string; }
+export interface GamePlayerProfile { playerId: string; userId: string; username: string; email: string; phone: string | null; emailVerified: boolean; phoneVerified: boolean; profile: UserProfile | null; updatedAt: string; }
+export interface GameOperations { operationalStatus: GameOperationalStatus; maintenanceMessage: string | null; maintenanceEndsAt: string | null; updatedAt: string; }
 export interface GameSsoClient { id: string; clientId: string; redirectUri: string; isActive: boolean; createdAt: string; updatedAt: string; clientSecret?: string; }
 
 export interface AdminSensitiveSummary {
@@ -1042,6 +1046,7 @@ export interface GameSummary {
   genres: GameGenre[];
   platforms: string[];
   sso: null | { authorizeUrl: string };
+  maintenance: null | { message: string; expectedEndsAt: string | null };
 }
 
 export interface GameArticleSummary {
@@ -1418,7 +1423,13 @@ export function createZenxApiClient(options: ApiClientOptions = {}) {
       dashboard: (gameId: string) => client.get<GameAdminDashboard>(`/game-admin/games/${encodeURIComponent(gameId)}/dashboard`),
       players: (gameId: string, query: { page?: number; pageSize?: number; search?: string; status?: 'ACTIVE' | 'BLOCKED' } = {}) => client.get<Paginated<GamePlayer>>(`/game-admin/games/${encodeURIComponent(gameId)}/players`, query),
       player: (gameId: string, userId: string) => client.get<GamePlayer>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}`),
+      playerProfile: (gameId: string, userId: string) => client.get<GamePlayerProfile>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/profile`),
+      updatePlayerProfile: (gameId: string, userId: string, input: AdminProfileUpdateRequest) => client.patch<GamePlayerProfile>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/profile`, input),
       updatePlayerStatus: (gameId: string, userId: string, input: { status: 'ACTIVE' | 'BLOCKED'; expectedUpdatedAt: string; reason: string }) => client.patch<GamePlayer>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/status`, input),
+      updatePlayerSupportNote: (gameId: string, userId: string, input: { note: string | null; expectedUpdatedAt: string }) => client.patch<GamePlayer>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/support-note`, input),
+      playerActivity: (gameId: string, userId: string, query: { page?: number; pageSize?: number } = {}) => client.get<Paginated<GamePlayerActivityEntry>>(`/game-admin/games/${encodeURIComponent(gameId)}/players/${encodeURIComponent(userId)}/activity`, query),
+      operations: (gameId: string) => client.get<GameOperations>(`/game-admin/games/${encodeURIComponent(gameId)}/operations`),
+      updateMaintenance: (gameId: string, input: { enabled: boolean; message: string | null; expectedEndsAt: string | null; expectedUpdatedAt: string; reason: string }) => client.patch<GameOperations>(`/game-admin/games/${encodeURIComponent(gameId)}/operations/maintenance`, input),
       audit: (gameId: string, query: { page?: number; pageSize?: 20 | 50; action?: string; actorUserId?: string; from?: string; to?: string } = {}) => client.get<Paginated<GameAuditEntry>>(`/game-admin/games/${encodeURIComponent(gameId)}/audit`, query),
       content: {
         presentation: (gameId: string) => client.get<AdminContentGame>(`/game-admin/games/${encodeURIComponent(gameId)}/presentation`),

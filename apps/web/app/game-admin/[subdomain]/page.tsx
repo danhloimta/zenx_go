@@ -30,7 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { GamePlayer } from '@zenx-go/api-client';
+import type { GameRecentPlayer } from '@zenx-go/api-client';
 
 export default function GameAdminDashboardPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
@@ -786,7 +786,7 @@ export default function GameAdminDashboardPage() {
   );
 }
 
-function ModernGamePlayerRow({ player }: { player: GamePlayer }) {
+function ModernGamePlayerRow({ player }: { player: GameRecentPlayer }) {
   const displayName = player.user.profile?.fullName || player.user.username;
 
   return (
@@ -797,8 +797,6 @@ function ModernGamePlayerRow({ player }: { player: GamePlayer }) {
           name={displayName}
           username={player.user.username}
           avatarUrl={player.user.profile?.avatarUrl}
-          status={player.status === 'BLOCKED' ? 'LOCKED' : 'ACTIVE'}
-          showStatusDot
           size="sm"
         />
         <div className="min-w-0">
@@ -809,15 +807,6 @@ function ModernGamePlayerRow({ player }: { player: GamePlayer }) {
             >
               {displayName}
             </Link>
-            <span
-              className={`rounded px-1 py-0.2 text-[9px] font-bold ${
-                player.status === 'ACTIVE'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-rose-50 text-rose-700'
-              }`}
-            >
-              {player.status === 'ACTIVE' ? 'Bình thường' : 'Bị chặn'}
-            </span>
           </div>
           <p className="truncate text-[10.5px] text-slate-500">
             <span className="font-medium text-slate-700">@{player.user.username}</span>

@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { randomInt } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -47,7 +47,7 @@ test.describe('scoped game content workspace', () => {
     const articleLink = contentPage.getByRole('link', { name: articleTitle });
     await expect(articleLink).toBeVisible();
     const articleHref = await articleLink.getAttribute('href');
-    expect(articleHref).toMatch(/^\/game-admin\/orion\/articles\//);
+    expect(articleHref).toMatch(/^\/admin\/articles\//);
     const articleId = articleHref!.split('/').at(-1)!;
 
     await articleLink.click();

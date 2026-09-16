@@ -282,7 +282,11 @@ function GameFrame({ children }: { children: React.ReactNode }) {
         ) : null}
       </header>
 
-      {game.operationalStatus !== 'AVAILABLE' ? <div className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">{game.operationalStatus === 'MAINTENANCE' ? 'Website đang bảo trì.' : game.operationalStatus === 'DEGRADED' ? 'Một số tính năng có thể tạm thời không ổn định.' : 'Game hiện chưa khả dụng.'}</div> : null}
+      {game.operationalStatus !== 'AVAILABLE' ? <div className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">{
+        game.operationalStatus === 'MAINTENANCE'
+          ? <><span>{game.maintenance?.message ?? 'Website đang bảo trì.'}</span>{game.maintenance?.expectedEndsAt ? <span className="ml-1">Dự kiến mở lại: {new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(game.maintenance.expectedEndsAt))}.</span> : null}</>
+          : game.operationalStatus === 'DEGRADED' ? 'Một số tính năng có thể tạm thời không ổn định.' : 'Game hiện chưa khả dụng.'
+      }</div> : null}
 
       <main>{children}</main>
 

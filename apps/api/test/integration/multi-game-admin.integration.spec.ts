@@ -21,13 +21,16 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
   let hoaLongSubdomain = '';
   let orionCallback = '';
   let hoaLongCallback = '';
+  let superAdminId = '';
   let gameAdminId = '';
   let contentManagerId = '';
+  let contentOnlyId = '';
   let moderatorId = '';
   let playerId = '';
   let superAdminCookies = '';
   let gameAdminCookies = '';
   let contentManagerCookies = '';
+  let contentOnlyCookies = '';
   let moderatorCookies = '';
   let playerCookies = '';
   let contentRoleId = '';
@@ -79,14 +82,18 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     const superAdmin = await createUser('multisuper', true);
     const gameAdminUser = await createUser('multigameadmin');
     const contentManagerUser = await createUser('multicontent');
+    const contentOnlyUser = await createUser('multicontentonly');
     const moderator = await createUser('multimoderator');
     const player = await createUser('multiplayer');
     contentManagerId = contentManagerUser.id;
+    superAdminId = superAdmin.id;
+    contentOnlyId = contentOnlyUser.id;
     moderatorId = moderator.id;
     playerId = player.id;
     superAdminCookies = await login(superAdmin.email);
     gameAdminCookies = await login(gameAdminUser.email);
     contentManagerCookies = await login(contentManagerUser.email);
+    contentOnlyCookies = await login(contentOnlyUser.email);
     moderatorCookies = await login(moderator.email);
     playerCookies = await login(player.email);
   });
@@ -146,6 +153,9 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     expect(superAdminAssignment.roles).toHaveLength(1);
     const gameAdminAssignment = await replaceRoles(orionId, gameAdminId, [gameAdminRoleId]);
     expect(gameAdminAssignment.roles.map((role: { id: string }) => role.id)).toEqual([gameAdminRoleId]);
+    const contentOnlyAssignment = await replaceRoles(orionId, contentOnlyId, [contentRoleId]);
+    expect(contentOnlyAssignment.roles.map((role: { id: string }) => role.id)).toEqual([contentRoleId]);
+
   });
 
   it('scopes CMS mutations to Orion, publishes content, and prevents moderator access', async () => {
@@ -273,6 +283,80 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     expect(JSON.stringify(players.body.data.items[0])).not.toMatch(/email|phone|wallet|password/i);
     const player = players.body.data.items[0];
 
+    const playerDetail = await http().get(`/game-admin/games/${orionId}/players/${playerId}`).set('Cookie', moderatorCookies);
+    expect(playerDetail.status).toBe(200);
+    expect(JSON.stringify(playerDetail.body.data)).not.toMatch(/email|phone|wallet|password/i);
+
+    const supportNote = await http()
+      .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)
+      .set('Cookie', moderatorCookies)
+      .send({ note: '  Integration support note.  ', expectedUpdatedAt: player.updatedAt });
+    expect(supportNote.status).toBe(200);
+    expect(supportNote.body.data.supportNote).toBe('Integration support note.');
+
+    const contentDashboard = await http().get(`/game-admin/games/${orionId}/dashboard`).set('Cookie', contentOnlyCookies);
+    expect(contentDashboard.status).toBe(200);
+    expect(JSON.stringify(contentDashboard.body.data.recentPlayers)).not.toMatch(/supportNote|blockReason/i);
+
+    const deniedProfile = await http().get(`/game-admin/games/${orionId}/players/${playerId}/profile`).set('Cookie', moderatorCookies);
+    expect(deniedProfile.status).toBe(403);
+    const fullProfile = await http().get(`/game-admin/games/${orionId}/players/${playerId}/profile`).set('Cookie', gameAdminCookies);
+    expect(fullProfile.status).toBe(200);
+    expect(JSON.stringify(fullProfile.body.data)).not.toMatch(/wallet|roles|sensitiveProfile|password/i);
+    const updatedProfile = await http()
+      .patch(`/game-admin/games/${orionId}/players/${playerId}/profile`)
+      .set('Cookie', gameAdminCookies)
+      .send({
+        username: fullProfile.body.data.username,
+        email: fullProfile.body.data.email,
+        phone: '+84912345678',
+        fullName: 'Profile updated by Orion Game Admin',
+        dateOfBirth: '1990-01-01',
+        gender: 'OTHER',
+        city: 'Hồ Chí Minh',
+        address: 'Game support address',
+        emailVerified: true,
+        phoneVerified: true,
+        expectedUpdatedAt: fullProfile.body.data.updatedAt,
+      });
+    expect(updatedProfile.status).toBe(200);
+    expect(updatedProfile.body.data).toMatchObject({ phone: '+84912345678', phoneVerified: true, profile: { fullName: 'Profile updated by Orion Game Admin', city: 'Hồ Chí Minh' } });
+    const revokedPlayerSession = await http().post('/auth/refresh').set('Cookie', playerCookies).send({});
+    expect(revokedPlayerSession.status).toBe(401);
+    playerCookies = await login(fullProfile.body.data.username);
+    const crossGameProfile = await http().get(`/game-admin/games/${hoaLongId}/players/${playerId}/profile`).set('Cookie', superAdminCookies);
+    expect(crossGameProfile.status).toBe(404);
+
+    await (prisma.gamePlayer as any).upsert({ where: { userId_gameId: { userId: superAdminId, gameId: orionId } }, create: { userId: superAdminId, gameId: orionId }, update: {} });
+    const protectedProfile = await http().get(`/game-admin/games/${orionId}/players/${superAdminId}/profile`).set('Cookie', superAdminCookies);
+    expect(protectedProfile.status).toBe(200);
+    const deniedPrivilegedTarget = await http()
+      .patch(`/game-admin/games/${orionId}/players/${superAdminId}/profile`)
+      .set('Cookie', gameAdminCookies)
+      .send({ fullName: 'Attempted platform takeover', expectedUpdatedAt: protectedProfile.body.data.updatedAt });
+    expect(deniedPrivilegedTarget.status).toBe(403);
+    expect(deniedPrivilegedTarget.body.error.code).toBe('GAME_PRIVILEGED_PLAYER_PROFILE_PROTECTED');
+
+    const staleNote = await http()
+      .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)
+      .set('Cookie', moderatorCookies)
+      .send({ note: 'This stale note must not overwrite the current one.', expectedUpdatedAt: player.updatedAt });
+    expect(staleNote.status).toBe(409);
+    expect(staleNote.body.error.code).toBe('STALE_GAME_PLAYER_UPDATE');
+
+    const playerActivity = await http().get(`/game-admin/games/${orionId}/players/${playerId}/activity`).query({ page: 1, pageSize: 20 }).set('Cookie', moderatorCookies);
+    expect(playerActivity.status).toBe(200);
+    expect(playerActivity.body.data.items.some((item: { action: string; targetId: string }) => item.action === 'GAME_PLAYER_SUPPORT_NOTE_UPDATED' && item.targetId === player.id)).toBe(true);
+    const crossGamePlayer = await http().get(`/game-admin/games/${hoaLongId}/players/${playerId}`).set('Cookie', superAdminCookies);
+    expect(crossGamePlayer.status).toBe(404);
+    const crossGameActivity = await http().get(`/game-admin/games/${hoaLongId}/players/${playerId}/activity`).set('Cookie', superAdminCookies);
+    expect(crossGameActivity.status).toBe(404);
+    const deniedSupportNote = await http()
+      .patch(`/game-admin/games/${orionId}/players/${playerId}/support-note`)
+      .set('Cookie', contentOnlyCookies)
+      .send({ note: 'Content managers cannot write player notes.', expectedUpdatedAt: supportNote.body.data.updatedAt });
+    expect(deniedSupportNote.status).toBe(403);
+
     const stale = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/status`)
       .set('Cookie', moderatorCookies)
@@ -282,13 +366,13 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     const blankReason = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/status`)
       .set('Cookie', moderatorCookies)
-      .send({ status: 'BLOCKED', expectedUpdatedAt: player.updatedAt, reason: '   ' });
+      .send({ status: 'BLOCKED', expectedUpdatedAt: supportNote.body.data.updatedAt, reason: '   ' });
     expect(blankReason.status).toBe(400);
 
     const blocked = await http()
       .patch(`/game-admin/games/${orionId}/players/${playerId}/status`)
       .set('Cookie', moderatorCookies)
-      .send({ status: 'BLOCKED', expectedUpdatedAt: player.updatedAt, reason: 'Integration block verification.' });
+      .send({ status: 'BLOCKED', expectedUpdatedAt: supportNote.body.data.updatedAt, reason: 'Integration block verification.' });
     expect(blocked.status).toBe(200);
     expect(blocked.body.data.status).toBe('BLOCKED');
     const blockedFilter = await http().get(`/game-admin/games/${orionId}/players`).query({ status: 'BLOCKED', page: 1, pageSize: 20 }).set('Cookie', moderatorCookies);
@@ -398,6 +482,56 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
     expect((await exchangeCode(clientId, clientSecret, allowedCode, callback)).status).toBe(201);
   });
 
+  it('lets only Game Admin manage maintenance and blocks new or pending SSO while it is enabled', async () => {
+    const deniedOperations = await http().get(`/game-admin/games/${orionId}/operations`).set('Cookie', contentOnlyCookies);
+    expect(deniedOperations.status).toBe(403);
+    const deniedMaintenance = await http()
+      .patch(`/game-admin/games/${orionId}/operations/maintenance`)
+      .set('Cookie', moderatorCookies)
+      .send({ enabled: true, message: 'Unauthorized maintenance attempt.', expectedEndsAt: null, expectedUpdatedAt: new Date().toISOString(), reason: 'This role lacks the operations permission.' });
+    expect(deniedMaintenance.status).toBe(403);
+
+    const operations = await http().get(`/game-admin/games/${orionId}/operations`).set('Cookie', gameAdminCookies);
+    expect(operations.status).toBe(200);
+    expect(operations.body.data.operationalStatus).toBe('AVAILABLE');
+    const staleMaintenance = await http()
+      .patch(`/game-admin/games/${orionId}/operations/maintenance`)
+      .set('Cookie', gameAdminCookies)
+      .send({ enabled: true, message: 'Stale maintenance attempt.', expectedEndsAt: null, expectedUpdatedAt: '2000-01-01T00:00:00.000Z', reason: 'This update must be rejected as stale.' });
+    expect(staleMaintenance.status).toBe(409);
+    expect(staleMaintenance.body.error.code).toBe('STALE_GAME_OPERATION_UPDATE');
+
+    const codeBeforeMaintenance = await authorize(playerCookies, clientId, orionCallback, 'maintenance-pending-code');
+    const beforeLogins = await (prisma.gamePlayer as any).findUniqueOrThrow({ where: { userId_gameId: { userId: playerId, gameId: orionId } } });
+    const enabled = await http()
+      .patch(`/game-admin/games/${orionId}/operations/maintenance`)
+      .set('Cookie', gameAdminCookies)
+      .send({ enabled: true, message: 'Integration maintenance notice.', expectedEndsAt: new Date(Date.now() + 3_600_000).toISOString(), expectedUpdatedAt: operations.body.data.updatedAt, reason: 'Verify public and SSO maintenance safeguards.' });
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.data).toMatchObject({ operationalStatus: 'MAINTENANCE', maintenanceMessage: 'Integration maintenance notice.' });
+
+    const publicGame = await http().get(`/games/by-subdomain/${orionSubdomain}`);
+    expect(publicGame.status).toBe(200);
+    expect(publicGame.body.data).toMatchObject({ sso: null, maintenance: { message: 'Integration maintenance notice.' } });
+    const blockedAuthorize = await http().get('/game-sso/authorize').query({ client_id: clientId, redirect_uri: orionCallback, state: 'maintenance-blocked' }).set('Cookie', playerCookies).redirects(0);
+    expect(blockedAuthorize.status).toBe(503);
+    expect(blockedAuthorize.body.error.code).toBe('GAME_SSO_UNAVAILABLE');
+    const blockedExchange = await exchangeCode(clientId, clientSecret, codeBeforeMaintenance, orionCallback);
+    expect(blockedExchange.status).toBe(503);
+    expect(blockedExchange.body.error.code).toBe('GAME_SSO_UNAVAILABLE');
+    const duringLogins = await (prisma.gamePlayer as any).findUniqueOrThrow({ where: { userId_gameId: { userId: playerId, gameId: orionId } } });
+    expect(duringLogins.loginCount).toBe(beforeLogins.loginCount);
+
+    const disabled = await http()
+      .patch(`/game-admin/games/${orionId}/operations/maintenance`)
+      .set('Cookie', gameAdminCookies)
+      .send({ enabled: false, message: null, expectedEndsAt: null, expectedUpdatedAt: enabled.body.data.updatedAt, reason: 'Maintenance verification completed.' });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.data).toMatchObject({ operationalStatus: 'AVAILABLE', maintenanceMessage: null, maintenanceEndsAt: null });
+    const recoveredCode = await authorize(playerCookies, clientId, orionCallback, 'maintenance-recovered');
+    expect((await exchangeCode(clientId, clientSecret, recoveredCode, orionCallback)).status).toBe(201);
+  });
+
   it('records scoped role, SSO, CMS, and player audit entries without credential material', async () => {
     const audit = await http().get(`/game-admin/games/${orionId}/audit`).query({ page: 1, pageSize: 50 }).set('Cookie', gameAdminCookies);
     expect(audit.status).toBe(200);
@@ -408,6 +542,10 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       'GAME_SSO_SECRET_ROTATED',
       'GAME_ARTICLE_CREATED',
       'GAME_PLAYER_BLOCKED',
+      'GAME_PLAYER_PROFILE_UPDATED',
+      'GAME_PLAYER_SUPPORT_NOTE_UPDATED',
+      'GAME_MAINTENANCE_ENABLED',
+      'GAME_MAINTENANCE_DISABLED',
     ].includes(entry.action));
     expect(relevant.map((entry: { action: string }) => entry.action)).toEqual(expect.arrayContaining([
       'GAME_ADMIN_ROLES_REPLACED',
@@ -415,6 +553,10 @@ describe('Multi-game administration and player SSO (SQL Server)', () => {
       'GAME_SSO_SECRET_ROTATED',
       'GAME_ARTICLE_CREATED',
       'GAME_PLAYER_BLOCKED',
+      'GAME_PLAYER_PROFILE_UPDATED',
+      'GAME_PLAYER_SUPPORT_NOTE_UPDATED',
+      'GAME_MAINTENANCE_ENABLED',
+      'GAME_MAINTENANCE_DISABLED',
     ]));
     for (const entry of relevant) {
       expect(entry.actor).toBeTruthy();

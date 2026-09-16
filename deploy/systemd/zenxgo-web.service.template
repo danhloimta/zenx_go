@@ -1,0 +1,22 @@
+[Unit]
+Description=ZENX GO Web
+After=network-online.target zenxgo-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{SERVICE_USER}}
+WorkingDirectory={{DEPLOY_DIR}}/apps/web
+EnvironmentFile=-{{DEPLOY_DIR}}/.env
+EnvironmentFile=-{{DEPLOY_DIR}}/apps/web/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3100
+Environment=NEXT_PUBLIC_API_BASE_URL=/api/v1
+Environment=API_PROXY_ORIGIN=http://127.0.0.1:4100
+ExecStart={{NODE_BIN_DIR}}/node {{DEPLOY_DIR}}/node_modules/next/dist/bin/next start -p 3100
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

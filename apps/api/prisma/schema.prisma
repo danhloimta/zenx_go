@@ -179,6 +179,8 @@ model Game {
   longDescription   String?         @map("long_description") @db.NVarChar(Max)
   lifecycleStatus   String          @map("lifecycle_status") @db.VarChar(24)
   operationalStatus String          @default("AVAILABLE") @map("operational_status") @db.VarChar(24)
+  maintenanceMessage String?        @map("maintenance_message") @db.NVarChar(500)
+  maintenanceEndsAt DateTime?       @map("maintenance_ends_at")
   releaseYear       Int?            @map("release_year")
   themePreset       String          @map("theme_preset") @db.VarChar(40)
   templateVersion   Int             @default(1) @map("template_version")
@@ -246,6 +248,7 @@ model GamePlayer {
   blockedAt       DateTime? @map("blocked_at")
   blockedByUserId String?  @map("blocked_by_user_id") @db.UniqueIdentifier
   blockReason     String?  @map("block_reason") @db.NVarChar(500)
+  supportNote     String?  @map("support_note") @db.NVarChar(2000)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation("GamePlayerUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)

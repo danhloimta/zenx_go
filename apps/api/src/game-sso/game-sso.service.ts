@@ -11,8 +11,9 @@ export class GameSsoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async validateAuthorizeRequest(clientId: string, redirectUri: string) {
-    const client = await (this.prisma.gameSsoClient as any).findUnique({ where: { clientId }, include: { game: { select: { id: true, code: true, isPublic: true } } } });
+    const client = await (this.prisma.gameSsoClient as any).findUnique({ where: { clientId }, include: { game: { select: { id: true, code: true, isPublic: true, operationalStatus: true } } } });
     if (!client || !client.isActive || !client.game.isPublic || client.redirectUri !== redirectUri) throw new DomainError(ErrorCode.GAME_SSO_CLIENT_INVALID, 'Invalid game SSO client', 400);
+    if (['MAINTENANCE', 'UNAVAILABLE'].includes(client.game.operationalStatus)) throw new DomainError(ErrorCode.GAME_SSO_UNAVAILABLE, 'Game SSO is temporarily unavailable', 503);
     return client;
   }
 
@@ -35,8 +36,9 @@ export class GameSsoService {
     const client = await (this.prisma.gameSsoClient as any).findUnique({ where: { clientId: credentials.clientId } });
     if (!client || !client.isActive || !(await argon2.verify(client.clientSecretHash, credentials.secret).catch(() => false))) throw this.invalidCode();
     return this.prisma.$transaction(async (tx) => {
-      const stored = await (tx.gameSsoAuthorizationCode as any).findUnique({ where: { codeHash: codeHash(code) }, include: { game: { select: { id: true, code: true, isPublic: true } }, user: { select: { id: true, username: true, status: true, profile: { select: { fullName: true } } } } } });
+      const stored = await (tx.gameSsoAuthorizationCode as any).findUnique({ where: { codeHash: codeHash(code) }, include: { game: { select: { id: true, code: true, isPublic: true, operationalStatus: true } }, user: { select: { id: true, username: true, status: true, profile: { select: { fullName: true } } } } } });
       if (!stored || stored.clientId !== client.id || stored.redirectUri !== redirectUri || stored.expiresAt <= new Date() || !stored.game.isPublic || ['LOCKED', 'SUSPENDED', 'DELETED'].includes(stored.user.status)) throw this.invalidCode();
+      if (['MAINTENANCE', 'UNAVAILABLE'].includes(stored.game.operationalStatus)) throw new DomainError(ErrorCode.GAME_SSO_UNAVAILABLE, 'Game SSO is temporarily unavailable', 503);
       const existing = await (tx.gamePlayer as any).findUnique({ where: { userId_gameId: { userId: stored.userId, gameId: stored.gameId } }, select: { status: true } });
       if (existing?.status === 'BLOCKED') throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
       const consumed = await (tx.gameSsoAuthorizationCode as any).deleteMany({ where: { id: stored.id } });

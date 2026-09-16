@@ -120,8 +120,12 @@ export class GameService {
   }
 
   private publicGameSummary(game: any) {
-    const sso = game.ssoClient?.isActive
+    const unavailable = ['MAINTENANCE', 'UNAVAILABLE'].includes(game.operationalStatus);
+    const sso = game.ssoClient?.isActive && !unavailable
       ? { authorizeUrl: `/api/v1/game-sso/authorize?${new URLSearchParams({ client_id: game.ssoClient.clientId, redirect_uri: game.ssoClient.redirectUri }).toString()}` }
+      : null;
+    const maintenance = game.operationalStatus === 'MAINTENANCE'
+      ? { message: game.maintenanceMessage?.trim() || 'Game đang được bảo trì. Vui lòng quay lại sau.', expectedEndsAt: game.maintenanceEndsAt ?? null }
       : null;
     return {
       code: game.code,
@@ -155,6 +159,7 @@ export class GameService {
         .map((entry: any) => entry.platform)
         .sort((left: string, right: string) => platformRank(left) - platformRank(right)),
       sso,
+      maintenance,
     };
   }
 

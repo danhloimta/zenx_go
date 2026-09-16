@@ -199,6 +199,9 @@ export class PortalService {
       platforms: game.platforms
         .map((entry: any) => entry.platform)
         .sort((left: string, right: string) => platformRank(left) - platformRank(right)),
+      maintenance: game.operationalStatus === 'MAINTENANCE'
+        ? { message: game.maintenanceMessage?.trim() || 'Game đang được bảo trì. Vui lòng quay lại sau.', expectedEndsAt: game.maintenanceEndsAt ?? null }
+        : null,
     };
   }
 

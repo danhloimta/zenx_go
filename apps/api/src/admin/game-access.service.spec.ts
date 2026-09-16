@@ -18,4 +18,13 @@ describe('GameAccessService', () => {
     expect(access.isSuperAdmin).toBe(true);
     expect(access.ability.can('manage', 'GamePlayer')).toBe(true);
   });
+
+  it('does not give a content-only game role player support permission', async () => {
+    const prisma = {
+      userRole: { findMany: jest.fn().mockResolvedValue([]) },
+      gameRoleAssignment: { findMany: jest.fn().mockResolvedValue([{ role: { id: 'content', code: 'GAME_CONTENT_MANAGER', name: 'Content', isActive: true, scopeType: 'GAME', permissions: [{ permission: { action: 'manage', subject: 'GameContent', isActive: true, scopeType: 'GAME' } }] } }]) },
+    };
+    const access = await new GameAccessService(prisma as any).getAccess('content-user', 'game-orion');
+    expect(access.ability.can('support-note', 'GamePlayer')).toBe(false);
+  });
 });
