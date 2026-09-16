@@ -95,6 +95,7 @@ export default function SupportTicketsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <Badge variant="secondary">{ticket.category.name}</Badge>
+                        <p className="mt-1 text-xs text-slate-500">{ticket.game?.name ?? 'Hỗ trợ chung'}</p>
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">
                         {formatDate(ticket.createdAt)}
@@ -128,7 +129,7 @@ export default function SupportTicketsPage() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                    <span>{ticket.category.name}</span>
+                    <span>{ticket.game?.name ?? ticket.category.name}</span>
                     <span>{formatDate(ticket.createdAt)}</span>
                   </div>
                 </Link>

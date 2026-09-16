@@ -53,6 +53,7 @@ export const PERMISSIONS = {
   GAME_PLAYERS_VIEW: define('game.players.view', 'read', 'GamePlayer'),
   GAME_PLAYERS_MODERATE: define('game.players.moderate', 'moderate', 'GamePlayer'),
   GAME_AUDIT_VIEW: define('game.audit.view', 'read', 'GameAudit'),
+  GAME_SUPPORT_MANAGE: define('game.support.manage', 'manage', 'GameSupport'),
 } as const;
 
 const byCode = new Map(Object.values(PERMISSIONS).map((entry) => [entry.code, entry]));

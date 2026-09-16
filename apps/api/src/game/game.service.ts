@@ -124,6 +124,7 @@ export class GameService {
       ? { authorizeUrl: `/api/v1/game-sso/authorize?${new URLSearchParams({ client_id: game.ssoClient.clientId, redirect_uri: game.ssoClient.redirectUri }).toString()}` }
       : null;
     return {
+      id: game.id,
       code: game.code,
       name: game.name,
       slug: game.slug,

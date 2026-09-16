@@ -25,6 +25,7 @@ import { useAccount } from '@/hooks/use-account';
 
 const schema = z.object({
   categoryId: z.string().uuid('Vui lòng chọn danh mục hỗ trợ.'),
+  gameId: z.string().uuid().nullable(),
   subject: z.string().trim().min(3, 'Tiêu đề cần có ít nhất 3 ký tự.').max(160, 'Tiêu đề không được quá 160 ký tự.'),
   description: z.string().trim().min(10, 'Mô tả cần có ít nhất 10 ký tự.').max(4000, 'Mô tả không được quá 4.000 ký tự.'),
 });
@@ -34,10 +35,11 @@ export default function ReportIssuePage() {
   const router = useRouter();
   const account = useAccount();
   const faqQuery = useQuery({ queryKey: ['support', 'faqs'], queryFn: api.support.faqs, retry: false });
+  const gamesQuery = useQuery({ queryKey: ['games', 'support-options'], queryFn: () => api.games.list(), retry: false });
   const [createdTicket, setCreatedTicket] = useState<SupportTicket | null>(null);
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { categoryId: '', subject: '', description: '' },
+    defaultValues: { categoryId: '', gameId: null, subject: '', description: '' },
   });
   const categories = faqQuery.data?.categories ?? [];
 
@@ -58,7 +60,7 @@ export default function ReportIssuePage() {
     mutationFn: api.support.createTicket,
     onSuccess: (ticket) => {
       setCreatedTicket(ticket);
-      form.reset({ categoryId: ticket.category.id, subject: '', description: '' });
+      form.reset({ categoryId: ticket.category.id, gameId: null, subject: '', description: '' });
     },
   });
 
@@ -91,6 +93,12 @@ export default function ReportIssuePage() {
               {createTicket.isError ? <Alert className="mt-6">{getErrorMessage(createTicket.error, 'Không thể gửi yêu cầu hỗ trợ.')}</Alert> : null}
 
               <form className="mt-8 space-y-5" onSubmit={form.handleSubmit((values) => createTicket.mutate(values))}>
+                <FormField label="Game cần hỗ trợ" htmlFor="support-game">
+                  <Select id="support-game" disabled={gamesQuery.isLoading} value={form.watch('gameId') ?? ''} onChange={(event) => form.setValue('gameId', event.target.value || null)}>
+                    <option value="">ZenX GO / Tài khoản, thanh toán và hỗ trợ chung</option>
+                    {(gamesQuery.data?.items ?? []).map((game) => <option key={game.id} value={game.id}>{game.name}</option>)}
+                  </Select>
+                </FormField>
                 <FormField label="Danh mục" htmlFor="support-category" required error={form.formState.errors.categoryId?.message}>
                   <Select id="support-category" disabled={faqQuery.isLoading || !categories.length} {...form.register('categoryId')}>
                     <option value="">Chọn danh mục</option>

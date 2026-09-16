@@ -17,6 +17,7 @@
 | `FEAT-SUPPORT-005` | Support queue         | SUPPORT      | Queue, priority, claim/reassign và workflow status; `SUPER_ADMIN` cũng được phép. | `IMPLEMENTED` |
 | `FEAT-SUPPORT-006` | Ticket conversation   | User/SUPPORT | Reply hai chiều, internal note, unread state và reopen trong 7 ngày.              | `IMPLEMENTED` |
 | `FEAT-SUPPORT-007` | FAQ management        | SUPPORT      | CRUD category/FAQ, active toggle, sort order và limited Markdown.                 | `IMPLEMENTED` |
+| `FEAT-SUPPORT-008` | Game-scoped ticket    | User/Game Admin | Player chọn game công khai hoặc hỗ trợ chung; Game Admin xem và trả lời ticket của game được gán. | `IMPLEMENTED` |
 
 ## User flows
 
@@ -54,6 +55,7 @@ Chọn category
 - FAQ chỉ trả category/FAQ active theo sort order; empty result phải được hiển thị rõ.
 - Ticket yêu cầu category tồn tại/active, subject tối đa 160 ký tự và description tối đa 4,000 ký tự theo DTO.
 - Ticket mới có status `NEW`; các status xử lý tiếp theo (`IN_PROGRESS`, `RESOLVED`, `CLOSED`) là domain state trong data model.
+- Ticket có thể gắn một game công khai hoặc để trống cho hỗ trợ chung. Game Admin chỉ đọc/trả lời ticket có `gameId` đúng game được phân quyền; reply công khai chuyển ticket sang `WAITING_USER` và không yêu cầu claim.
 - Ticket detail/list luôn lọc theo `userId`; ticket của user khác trả not found.
 - API error dùng error code domain, UI chuyển sang tiếng Việt qua error-message map.
 - Ticket priority gồm `LOW`, `NORMAL`, `HIGH`, `URGENT`; ticket mới mặc định `NORMAL`.

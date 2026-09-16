@@ -169,6 +169,7 @@ export class PortalService {
 
   private publicGameSummary(game: any) {
     return {
+      id: game.id,
       code: game.code,
       name: game.name,
       slug: game.slug,

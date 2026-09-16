@@ -38,6 +38,10 @@ export class CreateSupportTicketDto {
   @IsUUID()
   categoryId!: string;
 
+  @IsOptional()
+  @IsUUID()
+  gameId?: string | null;
+
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(3)

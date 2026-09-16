@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Palette,
   History,
+  MessageSquare,
   ArrowLeft,
   Globe,
   Gamepad2,
@@ -91,6 +92,11 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
     .concat(
       can('read', 'GamePlayer')
         ? [{ href: '/admin/players', label: 'Người chơi', icon: Users }]
+        : [],
+    )
+    .concat(
+      can('manage', 'GameSupport')
+        ? [{ href: '/admin/support', label: 'Hỗ trợ người chơi', icon: MessageSquare }]
         : [],
     )
     .concat(

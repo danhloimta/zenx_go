@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.guard';
 import { GameAccessGuard, GameAdminRequest } from './game-access.guard';
 import { GamePermissionGuard } from './game-permission.guard';
 import { RequirePermission } from './permission.decorator';
 import { GameAdminService } from './game-admin.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto, GameAuditQueryDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GameAuditQueryDto, GameSupportTicketsQueryDto } from './game-admin.dto';
+import { CreateSupportMessageDto, SupportTicketMessagesQueryDto } from '../support/dto';
 
 @Controller('game-admin')
 @UseGuards(AuthGuard)
@@ -39,4 +40,24 @@ export class GameAdminController {
   @UseGuards(GameAccessGuard, GamePermissionGuard)
   @RequirePermission({ code: 'game.audit.view', action: 'read', subject: 'GameAudit' })
   audit(@Param('gameId') gameId: string, @Query() query: GameAuditQueryDto) { return this.games.audit(gameId, query); }
+
+  @Get('games/:gameId/support/tickets')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.support.manage', action: 'manage', subject: 'GameSupport' })
+  supportTickets(@Param('gameId') gameId: string, @Query() query: GameSupportTicketsQueryDto) { return this.games.listSupportTickets(gameId, query); }
+
+  @Get('games/:gameId/support/tickets/:ticketNo')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.support.manage', action: 'manage', subject: 'GameSupport' })
+  supportTicket(@Param('gameId') gameId: string, @Param('ticketNo') ticketNo: string) { return this.games.getSupportTicket(gameId, ticketNo); }
+
+  @Get('games/:gameId/support/tickets/:ticketNo/messages')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.support.manage', action: 'manage', subject: 'GameSupport' })
+  supportMessages(@Param('gameId') gameId: string, @Param('ticketNo') ticketNo: string, @Query() query: SupportTicketMessagesQueryDto) { return this.games.getSupportMessages(gameId, ticketNo, query); }
+
+  @Post('games/:gameId/support/tickets/:ticketNo/messages')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.support.manage', action: 'manage', subject: 'GameSupport' })
+  replySupportTicket(@Param('gameId') gameId: string, @Param('ticketNo') ticketNo: string, @Body() dto: CreateSupportMessageDto, @Req() request: GameAdminRequest) { return this.games.replySupportTicket(gameId, ticketNo, dto, request.user.sub); }
 }

@@ -229,6 +229,7 @@ async function seedRolesAndPermissions() {
     { code: 'game.players.view', module: 'game', action: 'read', subject: 'GamePlayer', name: 'Xem người chơi game', sortOrder: 5, scopeType: 'GAME' },
     { code: 'game.players.moderate', module: 'game', action: 'moderate', subject: 'GamePlayer', name: 'Khóa/mở người chơi game', sortOrder: 6, scopeType: 'GAME' },
     { code: 'game.audit.view', module: 'game', action: 'read', subject: 'GameAudit', name: 'Xem nhật ký game', sortOrder: 7, scopeType: 'GAME' },
+    { code: 'game.support.manage', module: 'game', action: 'manage', subject: 'GameSupport', name: 'Hỗ trợ người chơi game', sortOrder: 8, scopeType: 'GAME' },
   ];
 
   for (const perm of permissions) {
@@ -250,7 +251,7 @@ async function seedRolesAndPermissions() {
   }
 
   const gamePermissionCodes: Record<string, string[]> = {
-    GAME_ADMIN: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage', 'game.players.view', 'game.players.moderate', 'game.audit.view'],
+    GAME_ADMIN: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage', 'game.players.view', 'game.players.moderate', 'game.audit.view', 'game.support.manage'],
     GAME_CONTENT_MANAGER: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage'],
     GAME_PLAYER_MODERATOR: ['game.dashboard.view', 'game.players.view', 'game.players.moderate'],
   };

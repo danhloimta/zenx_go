@@ -51,6 +51,7 @@ const TICKET_SELECT = {
   ticketNo: true,
   userId: true,
   categoryId: true,
+  gameId: true,
   subject: true,
   description: true,
   status: true,
@@ -64,6 +65,7 @@ const TICKET_SELECT = {
   createdAt: true,
   updatedAt: true,
   category: { select: CATEGORY_SELECT },
+  game: { select: { id: true, name: true, slug: true, subdomain: true } },
   user: { select: PERSON_SELECT },
   assignee: { select: AGENT_SELECT },
 } as const;
