@@ -40,6 +40,17 @@ export class GamePlayerActivityQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 20;
 }
 
+export class GameMaintenanceUpdateDto {
+  @IsBoolean() enabled!: boolean;
+  @Transform(({ value }) => trim(value))
+  @ValidateIf((object) => object.enabled === true)
+  @IsString() @MinLength(3) @MaxLength(500) message!: string | null;
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @IsDateString() expectedEndsAt!: string | null;
+  @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
 export class GameAuditQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
   @IsOptional() @Type(() => Number) @IsInt() @IsIn([20, 50]) pageSize = 20;

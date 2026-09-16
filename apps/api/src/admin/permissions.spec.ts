@@ -32,4 +32,12 @@ describe('permission registry', () => {
       subject: 'GamePlayer',
     });
   });
+
+  it('registers maintenance operations as a Game Admin-only permission subject', () => {
+    expect(PERMISSIONS.GAME_OPERATIONS_MANAGE).toEqual({
+      code: 'game.operations.manage',
+      action: 'manage',
+      subject: 'GameOperations',
+    });
+  });
 });

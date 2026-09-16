@@ -5,7 +5,7 @@ import { GameAccessGuard, GameAdminRequest } from './game-access.guard';
 import { GamePermissionGuard } from './game-permission.guard';
 import { RequirePermission } from './permission.decorator';
 import { GameAdminService } from './game-admin.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto } from './game-admin.dto';
 
 @Controller('game-admin')
 @UseGuards(AuthGuard)
@@ -44,6 +44,16 @@ export class GameAdminController {
   @UseGuards(GameAccessGuard, GamePermissionGuard)
   @RequirePermission({ code: 'game.players.view', action: 'read', subject: 'GamePlayer' })
   playerActivity(@Param('gameId') gameId: string, @Param('userId') userId: string, @Query() query: GamePlayerActivityQueryDto) { return this.games.playerActivity(gameId, userId, query); }
+
+  @Get('games/:gameId/operations')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.operations.manage', action: 'manage', subject: 'GameOperations' })
+  operations(@Param('gameId') gameId: string) { return this.games.operations(gameId); }
+
+  @Patch('games/:gameId/operations/maintenance')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.operations.manage', action: 'manage', subject: 'GameOperations' })
+  updateMaintenance(@Param('gameId') gameId: string, @Body() dto: GameMaintenanceUpdateDto, @Req() request: GameAdminRequest) { return this.games.updateMaintenance(gameId, dto, request.user.sub); }
 
   @Get('games/:gameId/audit')
   @UseGuards(GameAccessGuard, GamePermissionGuard)
