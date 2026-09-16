@@ -27,7 +27,7 @@ import { GAME_TEMPLATE_PRESETS, GameTemplatePreset } from './game-templates';
 import { normalizeSlug } from '../../common/normalize';
 
 // Keep the compact page sizes used by the CMS dashboard/list views alongside the public API defaults.
-const PAGE_SIZES = [3, 4, 5, 10, 15, 20, 50] as const;
+const PAGE_SIZES = [1, 3, 4, 5, 10, 15, 20, 50] as const;
 const CONTENT_STATUSES = Object.values(ContentPublishStatus);
 export const GENRE_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
 export type GenreStatus = (typeof GENRE_STATUSES)[number];
