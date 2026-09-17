@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/status-badge';
+import { PageHeader } from '@/components/page-header';
 import { ZenxCoinGoldIcon } from '@/components/icons';
 import { useAccount } from '@/hooks/use-account';
 
@@ -18,21 +19,20 @@ export default function WalletPage() {
   const transactions = useWalletTransactions({ type: 'ALL', status: 'ALL' }, { enabled: Boolean(account.data) });
 
   return (
-    <div className="max-w-[1100px] mx-auto space-y-6 pb-10">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Số dư ví</h1>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Theo dõi số dư và các giao dịch gần đây trong tài khoản.
-          </p>
-        </div>
-        <Button asChild className="gap-2 font-semibold text-xs shadow-sm">
-          <Link href="/payment">
-            <Coins className="size-4" />
-            Nạp Coin
-          </Link>
-        </Button>
-      </div>
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        icon={WalletCards}
+        title="Số dư ví"
+        description="Theo dõi số dư và các giao dịch gần đây trong tài khoản."
+        actions={
+          <Button asChild className="gap-2 font-semibold text-xs shadow-sm">
+            <Link href="/payment">
+              <Coins className="size-4" />
+              Nạp Coin
+            </Link>
+          </Button>
+        }
+      />
 
       {wallet.isLoading ? (
         <Skeleton className="h-44 rounded-2xl" />

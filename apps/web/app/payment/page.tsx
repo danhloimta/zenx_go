@@ -10,12 +10,13 @@ import { ApiError } from '@zenx-go/api-client';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import {
+  Building2,
   CheckCircle2,
+  Coins,
   Lock,
   Pencil,
   QrCode,
   ShieldCheck,
-  Building2,
   Wallet,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -26,6 +27,7 @@ import { useAccount } from '@/hooks/use-account';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import {
   MoMoLogo,
   ZaloPayLogo,
@@ -153,7 +155,13 @@ export default function PaymentPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1200px] mx-auto pb-10">
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        icon={Coins}
+        title="Nạp Coin"
+        description="Chọn gói Coin và phương thức thanh toán phù hợp để nạp vào ví ZENX."
+      />
+
       {/* Top Banner: Wallet Balance */}
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:px-8">
         <div className="flex items-center justify-between">

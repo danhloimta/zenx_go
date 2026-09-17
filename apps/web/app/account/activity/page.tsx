@@ -2,13 +2,14 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { AlertCircle, ChevronLeft, ChevronRight, History, Monitor } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, History, Monitor, ShieldCheck } from 'lucide-react';
 import type { ActivityCategory, UserActivityLog } from '@zenx-go/api-client';
 import { api } from '@/lib/api';
 import { useAccount } from '@/hooks/use-account';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { getErrorMessage } from '@/lib/errors';
 
 const categories: Array<{ value: ActivityCategory; label: string }> = [{ value: 'ALL', label: 'Tất cả' }, { value: 'LOGIN', label: 'Đăng nhập' }, { value: 'SECURITY', label: 'Bảo mật' }];
@@ -21,10 +22,11 @@ export default function ActivityPage() {
   const update = (next: Partial<{ page: number; category: ActivityCategory }>) => { const value = new URLSearchParams(params); const nextPage = next.page ?? page; const nextCategory = next.category ?? category; nextPage <= 1 ? value.delete('page') : value.set('page', String(nextPage)); nextCategory === 'ALL' ? value.delete('category') : value.set('category', nextCategory); router.replace(value.size ? `${pathname}?${value}` : pathname, { scroll: false }); };
   return (
     <div className="w-full space-y-6 pb-10">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Lịch sử hoạt động</h1>
-        <p className="mt-1 text-sm text-slate-600">Các lần đăng nhập và thay đổi bảo mật trong 180 ngày gần đây.</p>
-      </div>
+      <PageHeader
+        icon={ShieldCheck}
+        title="Lịch sử hoạt động"
+        description="Các lần đăng nhập và thay đổi bảo mật trong 180 ngày gần đây."
+      />
       <div className="flex flex-wrap gap-2">
         {categories.map((item) => (
           <Button

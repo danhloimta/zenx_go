@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import ChangePasswordLoading from './loading';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -169,29 +170,22 @@ export default function ChangePasswordPage() {
   return (
     <div className="w-full space-y-6 pb-12">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7EC] text-[#00873E]">
-            <KeyRound className="size-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900">
-              {hasPassword ? 'Đổi mật khẩu tài khoản' : 'Tạo mật khẩu đăng nhập'}
-            </h1>
-            <p className="mt-0.5 text-xs sm:text-sm text-slate-500">
-              {hasPassword
-                ? 'Đổi mật khẩu định kỳ giúp bảo vệ tài khoản và số dư ví ZENX của bạn.'
-                : 'Tạo mật khẩu giúp bạn có thêm phương thức đăng nhập dự phòng trực tiếp.'}
-            </p>
-          </div>
-        </div>
-
-        <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-semibold self-start sm:self-auto">
-          <Link href="/account/security" className="gap-1.5">
-            <ArrowLeft className="size-3.5" /> Quay lại Bảo mật
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        icon={KeyRound}
+        title={hasPassword ? 'Đổi mật khẩu tài khoản' : 'Tạo mật khẩu đăng nhập'}
+        description={
+          hasPassword
+            ? 'Đổi mật khẩu định kỳ giúp bảo vệ tài khoản và số dư ví ZENX của bạn.'
+            : 'Tạo mật khẩu giúp bạn có thêm phương thức đăng nhập dự phòng trực tiếp.'
+        }
+        actions={
+          <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-semibold self-start sm:self-auto">
+            <Link href="/account/security" className="gap-1.5">
+              <ArrowLeft className="size-3.5" /> Quay lại Bảo mật
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Main Grid: Form + Security Guide */}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

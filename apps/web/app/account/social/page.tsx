@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ShieldCheck } from 'lucide-react';
+import { Link2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -11,6 +11,7 @@ import { useAccount } from '@/hooks/use-account';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import SocialLoading from './loading';
 import { GoogleIcon, FacebookIcon } from '@/components/icons';
 
@@ -56,12 +57,11 @@ function SocialContent() {
 
   return (
     <div className="w-full space-y-6 pb-10">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Liên kết tài khoản</h1>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Đăng nhập nhanh và khôi phục tài khoản dễ dàng hơn với các tài khoản mạng xã hội.
-        </p>
-      </div>
+      <PageHeader
+        icon={Link2}
+        title="Liên kết tài khoản"
+        description="Đăng nhập nhanh và khôi phục tài khoản dễ dàng hơn với các tài khoản mạng xã hội."
+      />
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm">
         <h2 className="text-base font-bold text-slate-900 mb-6">Nhà cung cấp đăng nhập</h2>

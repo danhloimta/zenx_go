@@ -23,6 +23,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/status-badge';
 import { SupportMessageText } from '@/components/support-markdown';
@@ -109,37 +110,36 @@ export default function SupportTicketDetailPage() {
   const canReply = Boolean(ticket && ticket.status !== 'CLOSED');
 
   return (
-    <div className="w-full space-y-5 pb-10">
-      <Link
-        href="/account/support"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"
-      >
-        <ArrowLeft className="size-4" /> Quay lại yêu cầu của tôi
-      </Link>
+    <div className="w-full space-y-6 pb-10">
       {ticketQuery.isLoading ? (
         <Skeleton className="h-[700px] rounded-2xl" />
       ) : ticketQuery.isError ? (
         <Alert>{getErrorMessage(ticketQuery.error, 'Không thể tải yêu cầu hỗ trợ.')}</Alert>
       ) : ticket ? (
         <>
-          <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-[#00873E]">{ticket.ticketNo}</span>
-                  <Badge variant="secondary">{ticket.category.name}</Badge>
-                  <Badge variant="secondary">{ticket.game?.name ?? 'Hỗ trợ chung'}</Badge>
-                  {ticket.unread ? <Badge variant="destructive">Mới cập nhật</Badge> : null}
-                </div>
-                <h1 className="mt-3 text-2xl font-black text-slate-900">{ticket.subject}</h1>
-                <p className="mt-2 text-xs text-slate-400">
-                  Đã gửi {formatDate(ticket.createdAt)} · Cập nhật{' '}
-                  {formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}
-                </p>
+          <PageHeader
+            icon={MessageCircle}
+            eyebrow={
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-[#00873E]">{ticket.ticketNo}</span>
+                <Badge variant="secondary">{ticket.category.name}</Badge>
+                <Badge variant="secondary">{ticket.game?.name ?? 'Hỗ trợ chung'}</Badge>
+                {ticket.unread ? <Badge variant="destructive">Mới cập nhật</Badge> : null}
               </div>
-              <StatusBadge status={ticket.status} />
-            </div>
-          </section>
+            }
+            title={ticket.subject}
+            description={`Đã gửi ${formatDate(ticket.createdAt)} · Cập nhật ${formatDate(ticket.lastActivityAt ?? ticket.updatedAt)}`}
+            actions={
+              <div className="flex items-center gap-2.5">
+                <StatusBadge status={ticket.status} />
+                <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-semibold">
+                  <Link href="/account/support" className="gap-1.5">
+                    <ArrowLeft className="size-3.5" /> Danh sách yêu cầu
+                  </Link>
+                </Button>
+              </div>
+            }
+          />
           <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
               <MessageSquare className="size-4 text-[#00873E]" /> Nội dung yêu cầu

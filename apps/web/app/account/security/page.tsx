@@ -7,6 +7,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import SecurityLoading from './loading';
 
 export default function SecurityPage() {
@@ -17,12 +18,11 @@ export default function SecurityPage() {
 
   return (
     <div className="w-full space-y-6 pb-10">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900">Bảo mật</h1>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Kiểm tra trạng thái bảo vệ và quản lý bảo mật tài khoản của bạn.
-        </p>
-      </div>
+      <PageHeader
+        icon={ShieldCheck}
+        title="Bảo mật"
+        description="Kiểm tra trạng thái bảo vệ và quản lý bảo mật tài khoản của bạn."
+      />
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm">
         <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">

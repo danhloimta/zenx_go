@@ -169,9 +169,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     return pathname === href || pathname.startsWith(`${href}/`);
   };
 
-  const pageMeta = getPageMeta(pathname);
-  const PageIcon = pageMeta.icon;
-
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
       {open ? (
@@ -279,9 +276,9 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       {/* Main Content Area */}
       <div className="lg:pl-[260px]">
         {/* Header */}
-        <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-100 bg-white/95 px-5 backdrop-blur sm:px-8">
-          {/* Left Title & Breadcrumbs */}
-          <div className="flex min-w-0 items-center gap-3.5">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-100 bg-white/95 px-5 backdrop-blur sm:px-8">
+          {/* Mobile Menu Trigger */}
+          <div className="flex items-center">
             <button
               className="inline-flex size-10 items-center justify-center rounded-xl hover:bg-slate-100 lg:hidden text-slate-700 transition-colors"
               onClick={() => setOpen(true)}
@@ -289,22 +286,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
             >
               <Menu className="size-5" />
             </button>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex size-10 items-center justify-center rounded-xl bg-[#E8F7EC] text-[#00873E] shrink-0">
-                <PageIcon className="size-5" />
-              </div>
-              <div>
-                <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  <span>{pageMeta.category}</span>
-                  <span>/</span>
-                  <span className="text-[#00873E] font-bold">{pageMeta.title}</span>
-                </div>
-                <h1 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                  {pageMeta.title}
-                </h1>
-              </div>
-            </div>
           </div>
 
           {/* Right Controls & User Pill */}
@@ -524,30 +505,4 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       </div>
     </div>
   );
-}
-
-function getPageMeta(pathname: string) {
-  if (pathname === '/account')
-    return { category: 'TỔNG QUAN', title: 'Tổng quan tài khoản', icon: Home };
-  if (pathname.startsWith('/payment'))
-    return { category: 'VÍ ZENX', title: 'Nạp Coin', icon: Coins };
-  if (pathname.startsWith('/wallet/transactions'))
-    return { category: 'VÍ ZENX', title: 'Lịch sử giao dịch', icon: Clock3 };
-  if (pathname.startsWith('/account/activity'))
-    return { category: 'TÀI KHOẢN', title: 'Lịch sử hoạt động', icon: ShieldCheck };
-  if (pathname.startsWith('/wallet'))
-    return { category: 'VÍ ZENX', title: 'Số dư ví', icon: WalletCards };
-  if (pathname.startsWith('/account/support'))
-    return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ & Yêu cầu', icon: CircleHelp };
-  if (pathname.startsWith('/support'))
-    return { category: 'HỖ TRỢ', title: 'Trung tâm hỗ trợ', icon: CircleHelp };
-  if (pathname.includes('change-password'))
-    return { category: 'TÀI KHOẢN', title: 'Đổi mật khẩu', icon: KeyRound };
-  if (pathname.includes('social'))
-    return { category: 'TÀI KHOẢN', title: 'Liên kết tài khoản', icon: Link2 };
-  if (pathname.includes('security'))
-    return { category: 'TÀI KHOẢN', title: 'Bảo mật', icon: ShieldCheck };
-  if (pathname.includes('profile'))
-    return { category: 'TÀI KHOẢN', title: 'Thông tin cá nhân', icon: UserRound };
-  return { category: 'TÀI KHOẢN', title: 'Tài khoản ZENX', icon: Home };
 }

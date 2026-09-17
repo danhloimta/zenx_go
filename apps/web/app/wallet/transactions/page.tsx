@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, ChevronDown, Copy, Download, Headphones, Minus, Plus, Search, X } from 'lucide-react';
+import { Calendar, ChevronDown, Clock3, Copy, Download, Headphones, Minus, Plus, Search, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { WalletTransactionStatus, WalletTransactionType } from '@zenx-go/api-client';
 import { api } from '@/lib/api';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/status-badge';
 import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { toast } from 'sonner';
 import { useAccount } from '@/hooks/use-account';
 
@@ -124,7 +125,12 @@ function TransactionsContent() {
   };
 
   return (
-    <div className="max-w-[1300px] mx-auto pb-10">
+    <div className="w-full space-y-6 pb-10">
+      <PageHeader
+        icon={Clock3}
+        title="Lịch sử giao dịch"
+        description="Xem chi tiết biến động số dư và sao kê các giao dịch Coin trong tài khoản."
+      />
       <div className="grid gap-6 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_390px]">
         <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

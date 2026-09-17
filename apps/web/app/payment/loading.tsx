@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PaymentLoading() {
   return (
-    <div className="space-y-6 max-w-[1200px] mx-auto pb-10">
+    <div className="w-full space-y-6 pb-10">
       {/* Top Banner: Wallet Balance Skeleton */}
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:px-8">
         <div className="flex items-center justify-between">

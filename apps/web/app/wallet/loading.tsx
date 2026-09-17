@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function WalletLoading() {
   return (
-    <div className="max-w-[1100px] mx-auto space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-1.5">

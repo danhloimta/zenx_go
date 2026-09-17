@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/status-badge';
 import { SupportMarkdown } from '@/components/support-markdown';
@@ -200,50 +201,42 @@ export default function AccountSupportPage() {
 
   return (
     <div className="w-full space-y-7 pb-12">
-      {/* Top Breadcrumb & Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-[#00873E]">
-            <Headset className="size-4" />
-            <span className="uppercase tracking-wider">HỖ TRỢ KHÁCH HÀNG 24/7</span>
-          </div>
-          <h1 className="mt-1.5 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-            Trung tâm hỗ trợ & Yêu cầu
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Gửi yêu cầu hỗ trợ trực tiếp, theo dõi tiến độ giải quyết và tra cứu câu hỏi thường gặp ngay trong tài khoản.
-          </p>
-        </div>
+      {/* Top Header & Actions */}
+      <PageHeader
+        icon={CircleHelp}
+        title="Trung tâm hỗ trợ & Yêu cầu"
+        description="Gửi yêu cầu hỗ trợ trực tiếp, theo dõi tiến độ giải quyết và tra cứu câu hỏi thường gặp ngay trong tài khoản."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || ticketsQuery.isFetching}
+              className="h-10 rounded-xl px-3.5 text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              <RefreshCw
+                className={`size-3.5 mr-1.5 ${isRefreshing || ticketsQuery.isFetching ? 'animate-spin text-[#00873E]' : ''}`}
+              />
+              <span>Làm mới</span>
+            </Button>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing || ticketsQuery.isFetching}
-            className="h-10 rounded-xl px-3.5 text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 mr-1.5 ${isRefreshing || ticketsQuery.isFetching ? 'animate-spin text-[#00873E]' : ''}`}
-            />
-            <span>Làm mới</span>
-          </Button>
-
-          <Button
-            type="button"
-            onClick={() => {
-              if (activeTab !== 'create') {
-                setIsCreateModalOpen(true);
-              }
-            }}
-            className="h-10 rounded-xl px-5 text-xs font-bold bg-[#00873E] hover:bg-[#007335] text-white shadow-xs"
-          >
-            <Plus className="size-4 mr-1.5" />
-            <span>Tạo yêu cầu mới</span>
-          </Button>
-        </div>
-      </div>
+            <Button
+              type="button"
+              onClick={() => {
+                if (activeTab !== 'create') {
+                  setIsCreateModalOpen(true);
+                }
+              }}
+              className="h-10 rounded-xl px-5 text-xs font-bold bg-[#00873E] hover:bg-[#007335] text-white shadow-xs"
+            >
+              <Plus className="size-4 mr-1.5" />
+              <span>Tạo yêu cầu mới</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* 4 Thẻ thống kê KPI */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
@@ -620,7 +613,7 @@ export default function AccountSupportPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-emerald-200 px-3 py-1 text-xs font-bold text-[#00873E]">
                 <Sparkles className="size-3.5" /> GIẢI ĐÁP THẮC MẮC NHANH
               </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900">
                 Tìm kiếm câu trả lời nhanh chóng
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -849,7 +842,7 @@ function CreateTicketSection({
           <MessageSquarePlus className="size-4" />
           <span>PHIẾU YÊU CẦU HỖ TRỢ</span>
         </div>
-        <h2 className="mt-1 text-xl sm:text-2xl font-black text-slate-900">
+        <h2 className="mt-1 text-xl font-bold text-slate-900">
           Gửi yêu cầu hỗ trợ mới
         </h2>
         <p className="mt-1 text-xs sm:text-sm text-slate-500">

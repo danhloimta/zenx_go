@@ -37,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/page-header';
 import { GoogleIcon, FacebookIcon } from '@/components/icons';
 import { toast } from 'sonner';
 import { ApiError } from '@zenx-go/api-client';
@@ -148,6 +149,12 @@ function ProfileContent({
 
   return (
     <div className="w-full space-y-6 pb-12">
+      <PageHeader
+        icon={UserRound}
+        title="Thông tin cá nhân"
+        description="Quản lý hồ sơ, định danh cá nhân và thiết lập tài khoản của bạn."
+      />
+
       {/* 1. Header Banner & Profile Card */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-r from-white via-slate-50/50 to-[#F0FAF2] p-6 sm:p-7 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -196,9 +203,9 @@ function ProfileContent({
             {/* Profile Summary Details */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                   {account.profile.fullName || account.username || 'Hồ sơ cá nhân'}
-                </h1>
+                </h2>
                 <span className="inline-flex items-center rounded-full bg-[#E8F7EC] px-2.5 py-0.5 text-xs font-bold text-[#00873E]">
                   @{account.username}
                 </span>
