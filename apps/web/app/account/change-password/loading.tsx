@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ChangePasswordLoading() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       <Skeleton className="h-9 w-28 rounded-xl" />
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm space-y-6">

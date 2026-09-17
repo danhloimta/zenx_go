@@ -35,7 +35,7 @@ export default function AccountOverviewPage() {
 
   if (account.isLoading) {
     return (
-      <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+      <div className="w-full space-y-6 pb-10">
         <Skeleton className="h-44 rounded-2xl" />
         <div className="grid gap-6 sm:grid-cols-3">
           <Skeleton className="h-40 rounded-2xl" />
@@ -48,7 +48,7 @@ export default function AccountOverviewPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       {/* 1. Welcome Hero Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-r from-white via-white to-[#F0FAF2] p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">

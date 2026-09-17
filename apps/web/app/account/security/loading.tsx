@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SecurityLoading() {
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       <div className="space-y-1.5">
         <Skeleton className="h-6 w-32 rounded-lg" />
         <Skeleton className="h-3.5 w-64 rounded" />

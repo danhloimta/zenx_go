@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SocialLoading() {
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       <div className="space-y-1.5">
         <Skeleton className="h-6 w-44 rounded-lg" />
         <Skeleton className="h-3.5 w-64 rounded" />

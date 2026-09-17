@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AccountOverviewLoading() {
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       {/* 1. Welcome Hero Banner Skeleton */}
       <div className="rounded-3xl border border-slate-100 bg-white p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">

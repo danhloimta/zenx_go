@@ -11,11 +11,12 @@ import { useAccount } from '@/hooks/use-account';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import SocialLoading from './loading';
 import { GoogleIcon, FacebookIcon } from '@/components/icons';
 
 export default function SocialPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-[480px] rounded-2xl max-w-3xl mx-auto" />}>
+    <Suspense fallback={<SocialLoading />}>
       <SocialContent />
     </Suspense>
   );
@@ -49,12 +50,12 @@ function SocialContent() {
   });
 
   if (account.isLoading)
-    return <Skeleton className="h-[480px] rounded-2xl max-w-3xl mx-auto" />;
+    return <SocialLoading />;
   if (account.isError || !account.data)
     return <Alert>Không thể tải liên kết tài khoản.</Alert>;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Liên kết tài khoản</h1>
         <p className="mt-0.5 text-xs text-slate-500">

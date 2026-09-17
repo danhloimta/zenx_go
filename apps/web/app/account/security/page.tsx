@@ -7,15 +7,16 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import SecurityLoading from './loading';
 
 export default function SecurityPage() {
   const account = useAccount();
 
-  if (account.isLoading) return <Skeleton className="h-[480px] rounded-2xl max-w-4xl mx-auto" />;
+  if (account.isLoading) return <SecurityLoading />;
   if (account.isError || !account.data) return <Alert>Không thể tải thông tin bảo mật.</Alert>;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       <div>
         <h1 className="text-xl font-bold text-slate-900">Bảo mật</h1>
         <p className="mt-0.5 text-xs text-slate-500">

@@ -19,11 +19,59 @@ export default function ActivityPage() {
   const page = Math.max(1, Number(params.get('page')) || 1);
   const query = useQuery({ queryKey: ['account', 'activity-logs', page, category], queryFn: () => api.account.activityLogs({ page, pageSize: 20, category }), enabled: Boolean(account.data), retry: false });
   const update = (next: Partial<{ page: number; category: ActivityCategory }>) => { const value = new URLSearchParams(params); const nextPage = next.page ?? page; const nextCategory = next.category ?? category; nextPage <= 1 ? value.delete('page') : value.set('page', String(nextPage)); nextCategory === 'ALL' ? value.delete('category') : value.set('category', nextCategory); router.replace(value.size ? `${pathname}?${value}` : pathname, { scroll: false }); };
-  return <main className="mx-auto max-w-6xl p-4 sm:p-6"><div className="mb-6"><h1 className="text-2xl font-bold text-slate-900">Lịch sử hoạt động</h1><p className="mt-1 text-sm text-slate-600">Các lần đăng nhập và thay đổi bảo mật trong 180 ngày gần đây.</p></div>
-    <div className="mb-4 flex flex-wrap gap-2">{categories.map((item) => <Button key={item.value} size="sm" variant={category === item.value ? 'default' : 'outline'} onClick={() => update({ category: item.value, page: 1 })}>{item.label}</Button>)}</div>
-    {query.isLoading ? <Skeleton className="h-80 rounded-xl" /> : query.isError ? <Alert><AlertCircle className="size-4" />{getErrorMessage(query.error, 'Không thể tải lịch sử hoạt động.')}</Alert> : <ActivityTable items={query.data?.items ?? []} />}
-    {query.data && (query.data.totalPages ?? 1) > 1 && <div className="mt-4 flex items-center justify-end gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => update({ page: page - 1 })}><ChevronLeft className="size-4" />Trước</Button><span className="text-sm text-slate-600">Trang {page}/{query.data.totalPages ?? 1}</span><Button size="sm" variant="outline" disabled={page >= (query.data.totalPages ?? 1)} onClick={() => update({ page: page + 1 })}>Sau<ChevronRight className="size-4" /></Button></div>}
-  </main>;
+  return (
+    <div className="w-full space-y-6 pb-10">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Lịch sử hoạt động</h1>
+        <p className="mt-1 text-sm text-slate-600">Các lần đăng nhập và thay đổi bảo mật trong 180 ngày gần đây.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {categories.map((item) => (
+          <Button
+            key={item.value}
+            size="sm"
+            variant={category === item.value ? 'default' : 'outline'}
+            onClick={() => update({ category: item.value, page: 1 })}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </div>
+      {query.isLoading ? (
+        <Skeleton className="h-80 rounded-xl" />
+      ) : query.isError ? (
+        <Alert>
+          <AlertCircle className="size-4" />
+          {getErrorMessage(query.error, 'Không thể tải lịch sử hoạt động.')}
+        </Alert>
+      ) : (
+        <ActivityTable items={query.data?.items ?? []} />
+      )}
+      {query.data && (query.data.totalPages ?? 1) > 1 && (
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page <= 1}
+            onClick={() => update({ page: page - 1 })}
+          >
+            <ChevronLeft className="size-4" />Trước
+          </Button>
+          <span className="text-sm text-slate-600">
+            Trang {page}/{query.data.totalPages ?? 1}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= (query.data.totalPages ?? 1)}
+            onClick={() => update({ page: page + 1 })}
+          >
+            Sau<ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function activityLabel(item: UserActivityLog) {

@@ -56,7 +56,7 @@ export default function ProfilePage() {
 
   if (account.isLoading)
     return (
-      <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+      <div className="w-full space-y-6 pb-10">
         <Skeleton className="h-32 rounded-3xl" />
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <Skeleton className="h-[560px] rounded-2xl" />
@@ -67,7 +67,7 @@ export default function ProfilePage() {
 
   if (account.isError || !account.data)
     return (
-      <div className="max-w-[1200px] mx-auto py-10">
+      <div className="w-full py-10">
         <Alert>
           Không thể tải tài khoản. Vui lòng{' '}
           <a className="font-semibold underline" href="/auth/login">
@@ -147,7 +147,7 @@ function ProfileContent({
   const isFormDirty = form.formState.isDirty;
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* 1. Header Banner & Profile Card */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-r from-white via-slate-50/50 to-[#F0FAF2] p-6 sm:p-7 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">

@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import ChangePasswordLoading from './loading';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -158,7 +159,7 @@ export default function ChangePasswordPage() {
   });
 
   if (account.isLoading) {
-    return <Skeleton className="mx-auto h-[480px] max-w-4xl rounded-3xl" />;
+    return <ChangePasswordLoading />;
   }
 
   if (account.isError || !account.data) {
@@ -166,7 +167,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">

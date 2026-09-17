@@ -109,7 +109,7 @@ export default function SupportTicketDetailPage() {
   const canReply = Boolean(ticket && ticket.status !== 'CLOSED');
 
   return (
-    <div className="mx-auto max-w-[960px] space-y-5 pb-10">
+    <div className="w-full space-y-5 pb-10">
       <Link
         href="/account/support"
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00873E]"

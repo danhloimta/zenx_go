@@ -199,7 +199,7 @@ export default function AccountSupportPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1240px] space-y-7 pb-12">
+    <div className="w-full space-y-7 pb-12">
       {/* Top Breadcrumb & Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -836,12 +836,12 @@ function CreateTicketSection({
     });
   };
 
-  return (
+  const content = (
     <div
       className={
         isModal
           ? 'space-y-5'
-          : 'rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm space-y-6 max-w-3xl'
+          : 'rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm space-y-6'
       }
     >
       <div>
@@ -947,6 +947,60 @@ function CreateTicketSection({
           </Button>
         </div>
       </form>
+    </div>
+  );
+
+  if (isModal) {
+    return content;
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full">
+      <div className="lg:col-span-2">{content}</div>
+
+      <div className="space-y-4 lg:col-span-1">
+        {/* SLA & Time Card */}
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#00873E]">
+            <Clock className="size-4" />
+            <span>CAM KẾT PHẢN HỒI (SLA)</span>
+          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Đội ngũ CSKH tiếp nhận và phản hồi phiếu trong vòng <strong>15 - 30 phút</strong> (8h00 - 22h00 hàng ngày).
+          </p>
+          <div className="space-y-1.5 pt-1 text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-3.5 text-[#00873E] shrink-0" />
+              <span>Gửi thông báo cập nhật qua email</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-3.5 text-[#00873E] shrink-0" />
+              <span>Theo dõi trực tiếp trạng thái phiếu</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Security Alert Card */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 space-y-3 shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+            <ShieldCheck className="size-4 text-emerald-600" />
+            <span>LƯU Ý BẢO MẬT</span>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Nhân viên ZenX GO <strong>không bao giờ</strong> hỏi mật khẩu, mã OTP hoặc yêu cầu chuyển tiền vào tài khoản cá nhân.
+          </p>
+          <div className="pt-2 border-t border-slate-100 flex flex-col gap-2 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <Mail className="size-3.5 text-slate-400" />
+              <span>Email: hotro@zenx.vn</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="size-3.5 text-slate-400" />
+              <span>Hotline: 1900 6868 (8:00 - 22:00)</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

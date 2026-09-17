@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfileLoading() {
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6 pb-10">
+    <div className="w-full space-y-6 pb-10">
       {/* Top Banner Skeleton */}
       <Skeleton className="h-32 w-full rounded-3xl" />
 
