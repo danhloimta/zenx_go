@@ -26,7 +26,7 @@ function renderIcon(icon: PageHeaderProps['icon']) {
   if (React.isValidElement(icon)) return icon;
   if (typeof icon === 'function' || typeof icon === 'object') {
     const IconComp = icon as React.ComponentType<{ className?: string }>;
-    return <IconComp className="size-5 sm:size-6 text-[#00873E]" />;
+    return <IconComp className="size-3.5 sm:size-4 text-[#00873E]" />;
   }
   return icon;
 }
@@ -42,39 +42,38 @@ export function PageHeader({
   children,
 }: PageHeaderProps) {
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3.5 min-w-0 flex-1">
-          {icon && (
-            <div className="flex size-11 sm:size-12 shrink-0 items-center justify-center rounded-2xl bg-[#E8F7EC] text-[#00873E] shadow-2xs">
-              {renderIcon(icon)}
-            </div>
-          )}
+    <div className={cn('flex flex-col gap-2.5', className)}>
+      {eyebrow && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#00873E]">
+          {eyebrow}
+        </div>
+      )}
 
-          <div className="min-w-0 flex-1">
-            {eyebrow && (
-              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#00873E]">
-                {eyebrow}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {icon && (
+              <div className="flex size-7 sm:size-7.5 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-[#00873E] border border-emerald-200/70 shadow-2xs">
+                {renderIcon(icon)}
               </div>
             )}
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-xl sm:text-xl font-semibold tracking-tight text-slate-900 leading-tight">
-                {title}
-              </h1>
-              {badge && <div className="shrink-0">{badge}</div>}
-            </div>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 leading-tight">
+              {title}
+            </h1>
 
-            {description && (
-              <p className="mt-0.5 text-xs sm:text-sm text-slate-500 leading-relaxed max-w-3xl">
-                {description}
-              </p>
-            )}
+            {badge && <div className="shrink-0">{badge}</div>}
           </div>
+
+          {description && (
+            <p className="mt-0.5 text-xs text-slate-500 leading-relaxed max-w-3xl">
+              {description}
+            </p>
+          )}
         </div>
 
         {actions && (
-          <div className="flex shrink-0 items-center gap-2.5 sm:self-center">
+          <div className="flex shrink-0 items-center gap-2 sm:self-center">
             {actions}
           </div>
         )}

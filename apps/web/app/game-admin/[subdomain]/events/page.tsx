@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ContentPublishStatus } from '@zenx-go/api-client';
@@ -11,8 +11,6 @@ import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Edit3,
   ExternalLink,
@@ -30,10 +28,12 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { gameContentWorkspace } from '@/components/admin-content/content-workspace-adapter';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 // Cấu hình nhãn trạng thái công bố bài viết/sự kiện
 const PUBLISH_STATUS_CONFIG: Record<
@@ -111,12 +111,14 @@ function getEventDurationText(startsAt: string, endsAt?: string | null): string 
 
 export default function GameEventsPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const router = useRouter();
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [status, setStatus] = useState<'' | ContentPublishStatus>('');
   const [timeFilter, setTimeFilter] = useState<'' | EventTimeStatus>('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // 1. Lấy thông tin game theo subdomain
@@ -145,11 +147,11 @@ export default function GameEventsPage() {
 
   // 2. Query danh sách sự kiện chính
   const eventsQuery = useQuery({
-    queryKey: ['game-admin', 'events', gameId, page, debounced, status],
+    queryKey: ['game-admin', 'events', gameId, page, pageSize, debounced, status],
     queryFn: () =>
       workspace!.events({
         page,
-        pageSize: 10,
+        pageSize,
         search: debounced || undefined,
         status: status || undefined,
       }),
@@ -257,6 +259,131 @@ export default function GameEventsPage() {
 
   const hasActiveFilters = Boolean(search || status || timeFilter);
 
+  type EventItem = NonNullable<typeof eventsQuery.data>['items'][number];
+
+  const columns = useMemo<ColumnDef<EventItem>[]>(() => [
+    {
+      id: 'event',
+      header: 'Sự kiện',
+      cell: (event) => (
+        <div className="flex items-center gap-3.5">
+          <div className="relative w-16 h-11 sm:w-20 sm:h-13 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100">
+            {event.coverImageUrl ? (
+              <img
+                src={event.coverImageUrl}
+                alt={event.title}
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center bg-slate-100 text-slate-400">
+                <CalendarDays className="size-5" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 max-w-md">
+            <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug truncate">
+              {event.title}
+            </h3>
+            {event.excerpt && (
+              <p className="text-slate-500 text-xs line-clamp-1 mt-0.5 leading-relaxed">
+                {event.excerpt}
+              </p>
+            )}
+            <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+              /events/{event.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'time',
+      header: 'Thời gian tổ chức',
+      cell: (event) => {
+        const startDateFormatted = formatDate(event.startsAt);
+        const endDateFormatted = event.endsAt ? formatDate(event.endsAt) : 'Vô thời hạn';
+        const durationText = getEventDurationText(event.startsAt, event.endsAt);
+
+        return (
+          <div className="space-y-1 whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 text-slate-700 font-medium text-xs">
+              <Calendar className="size-3.5 text-slate-400 shrink-0" />
+              <span>{startDateFormatted}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+              <span className="text-slate-400">đến</span>
+              <span>{endDateFormatted}</span>
+            </div>
+            <div className="pt-0.5">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                <Clock className="size-3 text-slate-400 shrink-0" />
+                <span>{durationText}</span>
+              </span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      cell: (event) => {
+        const timeStatus = getEventTimeStatus(event.startsAt, event.endsAt);
+        const timeBadge = getTimeStatusBadge(timeStatus);
+        const pubConfig = PUBLISH_STATUS_CONFIG[event.status as ContentPublishStatus] || {
+          label: event.status,
+          badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+          dotClass: 'bg-slate-400',
+        };
+        const TimeIcon = timeBadge.icon;
+
+        return (
+          <div className="flex flex-col gap-1.5 items-start whitespace-nowrap shrink-0">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${pubConfig.badgeClass}`}
+            >
+              <span className={`size-1.5 rounded-full shrink-0 ${pubConfig.dotClass}`} />
+              <span>{pubConfig.label}</span>
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${timeBadge.badgeClass}`}
+            >
+              <TimeIcon className="size-3 shrink-0" />
+              <span>{timeBadge.label}</span>
+            </span>
+          </div>
+        );
+      },
+    },
+  ], []);
+
+  const actions = useMemo<(event: EventItem) => TableAction<EventItem>[]>(
+    () => (event: EventItem) => {
+      const list: TableAction<EventItem>[] = [];
+
+      if (event.status === 'PUBLISHED') {
+        list.push({
+          key: 'view-web',
+          label: 'Xem trang sự kiện',
+          icon: Eye,
+          onClick: (e) => {
+            window.open(`/events/${e.slug}`, '_blank', 'noopener,noreferrer');
+          },
+        });
+      }
+
+      list.push({
+        key: 'edit',
+        label: 'Chỉnh sửa sự kiện',
+        icon: Edit3,
+        onClick: (e) => router.push(`${base}/${e.id}`),
+      });
+
+      return list;
+    },
+    [base, router],
+  );
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full relative">
       {/* Top Progress Line khi API đang fetch */}
@@ -267,63 +394,59 @@ export default function GameEventsPage() {
       )}
 
       {/* 1. Phần Đầu Trang - Rõ Ràng & Thân Thiện */}
-      <div className="flex flex-col gap-3.5 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-800">
-              {game?.code ?? 'GAME'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
-              Quản lý sự kiện · {game?.name ?? 'Trò chơi'}
-            </h1>
+      <PageHeader
+        icon={CalendarDays}
+        title={`Quản lý sự kiện · ${game?.name ?? 'Trò chơi'}`}
+        badge={
+          <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+            {game?.code ?? 'GAME'}
+          </span>
+        }
+        description="Lên lịch, tổ chức các giải đấu, chuỗi sự kiện ingame và ưu đãi đặc biệt dành cho cộng đồng game thủ."
+        actions={
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isManualRefreshing || eventsQuery.isFetching}
+              className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <RefreshCw
+                className={`size-3.5 ${
+                  isManualRefreshing || eventsQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
+                }`}
+              />
+              <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <Link href="/events" target="_blank">
+                <Globe className="size-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Xem trang Sự kiện</span>
+                <ExternalLink className="size-3 text-slate-400" />
+              </Link>
+            </Button>
+
+            <Button
+              asChild
+              size="sm"
+              className="h-8 px-3.5 gap-1.5 rounded-xl bg-[#00873E] text-xs font-bold text-white shadow-2xs hover:bg-[#007033]"
+            >
+              <Link href={`${base}/new`}>
+                <Plus className="size-3.5" />
+                <span>Tạo sự kiện mới</span>
+              </Link>
+            </Button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Lên lịch, tổ chức các giải đấu, chuỗi sự kiện ingame và ưu đãi đặc biệt dành cho cộng đồng game thủ.
-          </p>
-        </div>
-
-        {/* Nút hành động đầu trang */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isManualRefreshing || eventsQuery.isFetching}
-            className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 ${
-                isManualRefreshing || eventsQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
-              }`}
-            />
-            <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-          </Button>
-
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <Link href="/events" target="_blank">
-              <Globe className="size-3.5 text-emerald-600" />
-              <span>Xem trang Sự kiện</span>
-              <ExternalLink className="size-3 text-slate-400" />
-            </Link>
-          </Button>
-
-          <Button
-            asChild
-            size="sm"
-            className="h-9 px-3.5 gap-1.5 rounded-lg bg-[#00873E] text-xs font-bold text-white shadow-2xs hover:bg-[#007033]"
-          >
-            <Link href={`${base}/new`}>
-              <Plus className="size-3.5" />
-              <span>Tạo sự kiện mới</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
+        }
+        className="border-b border-slate-100 pb-3"
+      />
 
       {/* 2. Bốn Thẻ Thống Kê Nhanh (Click Lọc Tức Thì) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -569,261 +692,36 @@ export default function GameEventsPage() {
             )}
           </div>
         </div>
-
-        {/* Bảng dữ liệu sự kiện */}
-        {eventsQuery.isLoading && !eventsQuery.data ? (
-          <div className="p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 py-2 border-b border-slate-100 last:border-0">
-                <Skeleton className="h-14 w-22 rounded-lg shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-2/3" />
-                </div>
-                <Skeleton className="h-4 w-32 shrink-0" />
-                <Skeleton className="h-6 w-24 rounded-full shrink-0" />
-                <Skeleton className="h-8 w-20 rounded-lg shrink-0" />
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          /* Trạng thái trống */
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            {hasActiveFilters ? (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                  <SearchX className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Không tìm thấy sự kiện nào
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Không có sự kiện nào khớp với từ khóa tìm kiếm hoặc khoảng thời gian bạn vừa chọn.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetAllFilters}
-                  className="mt-4 h-8 text-xs font-semibold"
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <CalendarDays className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Chưa có sự kiện nào được tạo
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Hãy lên lịch và tạo sự kiện đầu tiên để thu hút và khuấy động cộng đồng người chơi nhé!
-                </p>
-                <Button
-                  asChild
-                  size="sm"
-                  className="mt-4 h-8 bg-[#00873E] text-xs font-bold text-white hover:bg-[#007033]"
-                >
-                  <Link href={`${base}/new`}>
-                    <Plus className="mr-1.5 size-3.5" />
-                    Tạo sự kiện mới ngay
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Sự kiện</th>
-                  <th className="py-3 px-4 w-64">Thời gian tổ chức</th>
-                  <th className="py-3 px-4 w-44">Trạng thái</th>
-                  <th className="py-3 px-4 w-36 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {items.map((event) => {
-                  const timeStatus = getEventTimeStatus(event.startsAt, event.endsAt);
-                  const timeBadge = getTimeStatusBadge(timeStatus);
-                  const pubConfig =
-                    PUBLISH_STATUS_CONFIG[event.status as ContentPublishStatus] || {
-                      label: event.status,
-                      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-                      dotClass: 'bg-slate-400',
-                    };
-                  const durationText = getEventDurationText(event.startsAt, event.endsAt);
-                  const startDateFormatted = formatDate(event.startsAt);
-                  const endDateFormatted = event.endsAt
-                    ? formatDate(event.endsAt)
-                    : 'Vô thời hạn';
-                  const TimeIcon = timeBadge.icon;
-
-                  return (
-                    <tr
-                      key={event.id}
-                      className="group hover:bg-slate-50/70 transition-colors"
-                    >
-                      {/* Cột 1: Thông tin sự kiện */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center gap-3.5">
-                          {/* Ảnh bìa thumbnail */}
-                          <div className="relative w-20 h-13 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100">
-                            {event.coverImageUrl ? (
-                              <img
-                                src={event.coverImageUrl}
-                                alt={event.title}
-                                className="size-full object-cover transition duration-200 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex size-full items-center justify-center bg-slate-100 text-slate-400">
-                                <CalendarDays className="size-5" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Tiêu đề + Trích dẫn + Slug */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-bold text-slate-900 text-sm leading-snug truncate hover:text-[#00873E] transition-colors">
-                              <Link href={`${base}/${event.id}`}>{event.title}</Link>
-                            </h3>
-                            {event.excerpt && (
-                              <p className="text-slate-500 text-xs line-clamp-1 mt-0.5 leading-relaxed">
-                                {event.excerpt}
-                              </p>
-                            )}
-                            <p className="text-[11px] font-mono text-slate-400 mt-1 truncate">
-                              /events/{event.slug}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Cột 2: Thời gian tổ chức */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-slate-700 font-medium text-xs">
-                            <Calendar className="size-3.5 text-slate-400 shrink-0" />
-                            <span>{startDateFormatted}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-                            <span className="text-slate-400">đến</span>
-                            <span>{endDateFormatted}</span>
-                          </div>
-                          <div className="pt-0.5">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                              <Clock className="size-3 text-slate-400" />
-                              {durationText}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Cột 3: Trạng thái */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex flex-col gap-1.5 items-start">
-                          {/* Trạng thái hiển thị */}
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${pubConfig.badgeClass}`}
-                          >
-                            <span className={`size-1.5 rounded-full ${pubConfig.dotClass}`} />
-                            {pubConfig.label}
-                          </span>
-                          {/* Tiến độ thời gian */}
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${timeBadge.badgeClass}`}
-                          >
-                            <TimeIcon className="size-3" />
-                            {timeBadge.label}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Cột 4: Thao tác */}
-                      <td className="py-3.5 px-4 align-middle text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {event.status === 'PUBLISHED' && (
-                            <Button
-                              asChild
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2.5 text-xs text-slate-600 hover:text-[#00873E] hover:bg-emerald-50"
-                              title="Xem trang sự kiện trên web"
-                            >
-                              <Link
-                                href={`/events/${event.slug}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Eye className="size-3.5 mr-1 text-slate-500" />
-                                <span>Xem</span>
-                              </Link>
-                            </Button>
-                          )}
-                          <Button
-                            asChild
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-2.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs"
-                          >
-                            <Link href={`${base}/${event.id}`}>
-                              <Edit3 className="size-3.5 mr-1 text-slate-500" />
-                              <span>Sửa</span>
-                            </Link>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Phân trang (Pagination) Tích hợp ở đáy bảng */}
-        {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 bg-slate-50/50 text-xs text-slate-500">
-            <div>
-              Hiển thị sự kiện{' '}
-              <strong className="text-slate-800">
-                {(page - 1) * 10 + 1} - {Math.min(page * 10, totalItems)}
-              </strong>{' '}
-              trên tổng số <strong className="text-slate-800">{totalItems}</strong> sự kiện
-            </div>
-
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <ChevronLeft className="size-3 mr-0.5" />
-                <span>Trang trước</span>
-              </Button>
-
-              <span className="px-2.5 py-1 font-semibold text-slate-700 bg-white border border-slate-200 rounded-md">
-                {page} / {Math.max(1, totalPages)}
-              </span>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <span>Trang sau</span>
-                <ChevronRight className="size-3 ml-0.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Bảng dữ liệu sự kiện */}
+      <CommonTable
+        data={items}
+        columns={columns}
+        actions={actions}
+        isLoading={eventsQuery.isLoading && !eventsQuery.data}
+        showIndexColumn={true}
+        onRowClick={(event) => router.push(`${base}/${event.id}`)}
+        pagination={{
+          page,
+          pageSize,
+          totalItems,
+          onPageChange: (newPage) => setPage(newPage),
+          onPageSizeChange: (newPageSize) => {
+            setPageSize(newPageSize);
+            setPage(1);
+          },
+        }}
+        emptyIcon={hasActiveFilters ? SearchX : CalendarDays}
+        emptyTitle={
+          hasActiveFilters ? 'Không tìm thấy sự kiện nào' : 'Chưa có sự kiện nào được tạo'
+        }
+        emptyDescription={
+          hasActiveFilters
+            ? 'Không có sự kiện nào khớp với từ khóa tìm kiếm hoặc khoảng thời gian bạn vừa chọn.'
+            : 'Hãy lên lịch và tạo sự kiện đầu tiên để thu hút và khuấy động cộng đồng người chơi nhé!'
+        }
+      />
     </div>
   );
 }

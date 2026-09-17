@@ -12,6 +12,7 @@ import {
   Megaphone,
   Plus,
   Sparkles,
+  Layers,
 } from 'lucide-react';
 import {
   useAdminContentDashboard,
@@ -21,6 +22,7 @@ import {
 } from '@/hooks/use-content';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { cn, formatDate } from '@/lib/utils';
 import type { ContentPublishStatus } from '@zenx-go/api-client';
 
@@ -158,47 +160,44 @@ export default function AdminContentDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              Quản trị Nội dung & Game
-            </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
-              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Trực tuyến
-            </span>
+      <PageHeader
+        title="Quản trị Nội dung & Game"
+        icon={Layers}
+        description="Điều phối kho game, bài viết tin tức, sự kiện và banner thông báo portal."
+        badge={
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Trực tuyến
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              asChild
+              size="sm"
+              className="bg-[#00873E] text-white hover:bg-[#007234] shadow-xs gap-1.5 font-bold h-8 text-xs"
+            >
+              <Link href="/admin/content/articles/new">
+                <Plus className="size-3.5" />
+                Tạo bài viết
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="gap-1.5 font-semibold text-slate-700 h-8 text-xs">
+              <Link href="/admin/content/events/new">
+                <Plus className="size-3.5" />
+                Thêm sự kiện
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm" className="gap-1 text-xs text-slate-500 h-8">
+              <Link href="/" target="_blank" rel="noopener noreferrer">
+                <span>Xem Portal</span>
+                <ExternalLink className="size-3.5" />
+              </Link>
+            </Button>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Điều phối kho game, bài viết tin tức, sự kiện và banner thông báo portal.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            asChild
-            size="sm"
-            className="bg-[#00873E] text-white hover:bg-[#007234] shadow-xs gap-1.5 font-bold h-8 text-xs"
-          >
-            <Link href="/admin/content/articles/new">
-              <Plus className="size-3.5" />
-              Tạo bài viết
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" className="gap-1.5 font-semibold text-slate-700 h-8 text-xs">
-            <Link href="/admin/content/events/new">
-              <Plus className="size-3.5" />
-              Thêm sự kiện
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="gap-1 text-xs text-slate-500 h-8">
-            <Link href="/" target="_blank" rel="noopener noreferrer">
-              <span>Xem Portal</span>
-              <ExternalLink className="size-3.5" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* 4 Primary KPI Summary Cards */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

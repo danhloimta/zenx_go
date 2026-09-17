@@ -254,8 +254,6 @@ export function EventEditor({ eventId, workspace }: { eventId?: string; workspac
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">Sự kiện</span>
-                <span className="text-slate-300">/</span>
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
                     form.status === 'PUBLISHED'

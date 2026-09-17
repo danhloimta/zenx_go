@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Settings } from 'lucide-react';
 import { ApiError, type AdminAuthSettings } from '@zenx-go/api-client';
+import { PageHeader } from '@/components/page-header';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -139,7 +141,14 @@ export default function AdminAuthSettingsPage() {
   const controlsDisabled = pending || isConflictReloading;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="w-full space-y-6">
+      <PageHeader
+        title="Cài đặt hệ thống"
+        icon={Settings}
+        description="Quản lý cấu hình đăng nhập, xác thực và các chính sách bảo mật của hệ thống."
+      />
+
+      <div className="max-w-3xl">
       {notice ? (
         <Alert
           className={
@@ -217,6 +226,7 @@ export default function AdminAuthSettingsPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -52,6 +52,7 @@ import {
 } from '@/components/admin-content/game-presentation-editor';
 import { toast } from 'sonner';
 import { useAdminAbility } from '@/lib/admin-ability';
+import { gameAdminUrl } from '@/lib/domain';
 
 const lifecycleOptions: Array<{ value: GameLifecycleStatus; label: string }> = [
   { value: 'LIVE', label: 'Đang vận hành (Live)' },
@@ -319,8 +320,6 @@ export default function AdminContentGameDetailPage() {
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500">Catalog Game</span>
-                <span className="text-slate-300">/</span>
                 <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
                   {game.code}
                 </span>
@@ -357,6 +356,15 @@ export default function AdminContentGameDetailPage() {
 
           {/* Right: Actions */}
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
+            {game.subdomain && (
+              <Button asChild size="sm" className="h-9 gap-1.5 bg-[#00873E] text-xs font-bold text-white hover:bg-[#007234] shadow-xs">
+                <a href={gameAdminUrl(game.subdomain)} target="_blank" rel="noopener noreferrer">
+                  <Gamepad2 className="size-3.5" />
+                  <span>Vào Quản trị Game</span>
+                  <ExternalLink className="size-3 text-white/80" />
+                </a>
+              </Button>
+            )}
             {canManage ? <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 text-xs"><Link href={`/admin/content/games/${encodeURIComponent(gameId)}/access`}><ShieldCheck className="size-3.5" /><span>Admin & SSO</span></Link></Button> : null}
             <Button asChild variant="outline" size="sm" className="h-9 gap-1.5 text-xs">
               <Link href={`/preview/games/${encodeURIComponent(game.id)}`} target="_blank">

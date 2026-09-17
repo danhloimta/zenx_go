@@ -21,11 +21,13 @@ import {
   UserRound,
   WalletCards,
   X,
+  Loader2,
 } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand-logo';
 import { PageFooter } from '@/components/page-footer';
 import { LogoutButton } from '@/components/logout-button';
+import { GameSwitcher } from '@/components/game-switcher';
 import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
 import { useSupportUnreadCount } from '@/hooks/use-support';
@@ -33,6 +35,7 @@ import { cn, formatAmount, mediaUrl } from '@/lib/utils';
 import { portalUrl } from '@/lib/domain';
 import { ApiError } from '@zenx-go/api-client';
 import { toast } from 'sonner';
+import { useNavigationLoading, CommonLoadingBadge } from '@/components/global-progress-bar';
 
 const groups = [
   { title: null, items: [{ href: '/account', label: 'Tổng quan', icon: Home }] },
@@ -75,6 +78,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const onboardingNoticeShown = useRef(false);
 
   const account = useAccount();
+  const { isNavigating, navigatingHref } = useNavigationLoading();
   const wallet = useWallet({ enabled: Boolean(account.data) });
   const user = account.data;
   const isAdmin = Boolean(user?.roles && user.roles.length > 0);
@@ -210,6 +214,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                 {group.items.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
+
                   return (
                     <Link
                       key={item.href}
@@ -290,6 +295,8 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
           {/* Right Controls & User Pill */}
           <div className="flex items-center gap-3">
+            <CommonLoadingBadge />
+
             {/* Quick Wallet Coin Balance Pill */}
             <Link
               href="/payment"
@@ -436,18 +443,21 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                   {/* Dropdown Links */}
                   <div className="space-y-0.5">
                     {isAdmin && (
-                      <Link
-                        href="/admin"
-                        className="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold text-amber-900 bg-amber-50/80 hover:bg-amber-100 transition-colors border border-amber-200/80 mb-1"
-                      >
-                        <span className="flex items-center gap-2">
-                          <ShieldAlert className="size-4 text-amber-600 shrink-0" />
-                          Trang quản trị (Admin)
-                        </span>
-                        <span className="rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-900 uppercase">
-                          {user?.roles?.includes('SUPER_ADMIN') ? 'Super Admin' : 'Staff'}
-                        </span>
-                      </Link>
+                      <>
+                        <Link
+                          href="/admin"
+                          className="flex items-center justify-between rounded-lg px-3 py-2 text-xs font-bold text-amber-900 bg-amber-50/80 hover:bg-amber-100 transition-colors border border-amber-200/80 mb-1"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ShieldAlert className="size-4 text-amber-600 shrink-0" />
+                            Trang quản trị (Admin)
+                          </span>
+                          <span className="rounded-full bg-amber-200/80 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-900 uppercase">
+                            {user?.roles?.includes('SUPER_ADMIN') ? 'Super Admin' : 'Staff'}
+                          </span>
+                        </Link>
+                        <GameSwitcher variant="menu" />
+                      </>
                     )}
                     <Link
                       href="/account/profile"
@@ -500,7 +510,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         </header>
 
         {/* Main View Area */}
-        <main className="min-h-[calc(100vh-140px)] px-4 py-6 sm:px-8 lg:px-9">{children}</main>
+        <main key={pathname} className="min-h-[calc(100vh-140px)] px-4 py-6 sm:px-8 lg:px-9 page-transition-enter">{children}</main>
         <PageFooter app />
       </div>
     </div>

@@ -5,10 +5,12 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GamePlayer, GamePlayerActivityEntry } from '@zenx-go/api-client';
+import { Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/page-header';
 import { GamePlayerProfileEditor } from '@/components/game-player-profile-editor';
 
 const ACTIVITY_LABEL: Record<GamePlayerActivityEntry['action'], string> = {
@@ -126,16 +128,20 @@ export default function GamePlayerDetailPage() {
   };
 
   if (context.isLoading || player.isLoading) return <p className="text-sm text-slate-500">Đang tải player…</p>;
-  if (context.isError || player.isError || !context.data || !player.data) return <div className="space-y-3"><p className="text-sm text-red-600">Bạn không có quyền xem player này hoặc player không thuộc game hiện tại.</p><Button asChild variant="outline"><Link href="/admin/players">Quay lại danh sách player</Link></Button></div>;
+  if (context.isError || player.isError || !context.data || !player.data) return <div className="space-y-3"><p className="text-sm text-red-600">Bạn không có quyền xem player này hoặc player không thuộc game hiện tại.</p><Button asChild variant="outline"><Link href={`/game-admin/${subdomain}/players`}>Quay lại danh sách player</Link></Button></div>;
 
   const current = player.data;
   const noteChanged = note !== (current.supportNote ?? '');
   const noteTooLong = note.length > 2_000;
   return <div className="mx-auto max-w-4xl space-y-6">
-    <header className="flex flex-wrap items-start justify-between gap-3">
-      <div><Link href="/admin/players" className="text-sm font-semibold text-emerald-700 hover:underline">← Người chơi</Link><h1 className="mt-2 text-3xl font-black">{current.user.profile?.fullName ?? current.user.username}</h1><p className="mt-1 text-sm text-slate-500">@{current.user.username}</p></div>
-      <span className={current.status === 'BLOCKED' ? 'rounded-full bg-red-50 px-3 py-1 text-sm font-bold text-red-700' : 'rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700'}>{statusLabel(current.status)}</span>
-    </header>
+    <PageHeader
+      icon={Users}
+      eyebrow={<Link href={`/game-admin/${subdomain}/players`} className="inline-flex items-center gap-1 font-semibold text-[#00873E] hover:underline">← Quay lại danh sách người chơi</Link>}
+      title={current.user.profile?.fullName ?? current.user.username}
+      badge={<span className={current.status === 'BLOCKED' ? 'rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-bold text-red-700' : 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-[#00873E]'}>{statusLabel(current.status)}</span>}
+      description={`@${current.user.username}`}
+      className="border-b border-slate-100 pb-3"
+    />
 
     <section className="grid gap-4 md:grid-cols-3">
       <InfoCard label="Lần SSO đầu tiên" value={formatDate(current.firstLoginAt)} />

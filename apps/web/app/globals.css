@@ -141,3 +141,18 @@ input[type='date']::-webkit-calendar-picker-indicator:hover {
 .font-black {
   font-weight: 700;
 }
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-transition-enter {
+  animation: pageEnter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}

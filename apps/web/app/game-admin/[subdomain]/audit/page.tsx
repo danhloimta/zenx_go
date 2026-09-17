@@ -1,12 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { GameAuditEntry } from '@zenx-go/api-client';
 import {
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Copy,
   Check,
@@ -27,9 +26,11 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 // Cấu hình nhãn hành động thuần Việt & icon
 const AUDIT_ACTION_CONFIG: Record<
@@ -129,6 +130,7 @@ export default function GameAuditPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<20 | 50>(20);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<GameAuditEntry | null>(null);
 
@@ -166,6 +168,7 @@ export default function GameAuditPage() {
       'audit',
       gameId,
       page,
+      pageSize,
       debouncedActor,
       actionFilter,
       fromDate,
@@ -174,7 +177,7 @@ export default function GameAuditPage() {
     queryFn: () =>
       api.gameAdmin.audit(gameId!, {
         page,
-        pageSize: 20,
+        pageSize,
         action: actionFilter || undefined,
         actorUserId: debouncedActor || undefined,
         from: fromDate || undefined,
@@ -262,6 +265,115 @@ export default function GameAuditPage() {
 
   const hasActiveFilters = Boolean(searchActor || actionFilter || fromDate || toDate);
 
+  const columns = useMemo<ColumnDef<GameAuditEntry>[]>(() => [
+    {
+      id: 'action',
+      header: 'Hành động & Lý do',
+      cell: (entry) => {
+        const actionCfg = getActionConfig(entry.action);
+        const ActionIcon = actionCfg.icon;
+
+        return (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold whitespace-nowrap shrink-0 ${actionCfg.badgeClass}`}
+              >
+                <ActionIcon className="size-3 shrink-0" />
+                <span>{actionCfg.label}</span>
+              </span>
+              <span className="font-mono text-[10px] text-slate-400">
+                {entry.action}
+              </span>
+            </div>
+
+            {entry.reason ? (
+              <p className="text-xs text-slate-600 font-medium line-clamp-1 italic">
+                “{entry.reason}”
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic">
+                Không kèm ghi chú lý do
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'actor',
+      header: 'Người thực hiện',
+      cell: (entry) => {
+        const actorName = entry.actor?.displayName || entry.actor?.username || 'Hệ thống';
+        const initials = getAvatarInitials(entry.actor?.displayName, entry.actor?.username);
+
+        return (
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center border border-slate-200 shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900 text-xs truncate">
+                {actorName}
+              </p>
+              {entry.actor?.username && (
+                <p className="font-mono text-[11px] text-slate-400 truncate">
+                  @{entry.actor.username}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'target',
+      header: 'Đối tượng tác động',
+      cell: (entry) => {
+        const actionCfg = getActionConfig(entry.action);
+        return (
+          <div className="space-y-0.5">
+            <p className="font-semibold text-slate-800 text-xs">
+              {actionCfg.targetLabel || entry.targetType}
+            </p>
+            {entry.targetId && (
+              <p className="font-mono text-[11px] text-slate-400 truncate">
+                ID: {entry.targetId.slice(0, 8)}…
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'time',
+      header: 'Thời gian',
+      cell: (entry) => {
+        const relativeTime = formatRelativeTime(entry.createdAt);
+        const exactTime = formatDate(entry.createdAt);
+
+        return (
+          <div className="space-y-0.5 whitespace-nowrap shrink-0">
+            <p className="text-slate-800 font-medium text-xs flex items-center gap-1">
+              <Clock className="size-3 text-slate-400 shrink-0" />
+              <span>{relativeTime}</span>
+            </p>
+            <p className="text-[11px] text-slate-400">{exactTime}</p>
+          </div>
+        );
+      },
+    },
+  ], []);
+
+  const actions = useMemo<(entry: GameAuditEntry) => TableAction<GameAuditEntry>[]>(() => (entry: GameAuditEntry) => [
+    {
+      key: 'view-detail',
+      label: 'Xem chi tiết',
+      icon: Eye,
+      onClick: (e) => setSelectedEntry(e),
+    },
+  ], []);
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full relative">
       {/* Top Progress Line khi API đang fetch */}
@@ -272,39 +384,35 @@ export default function GameAuditPage() {
       )}
 
       {/* 1. Phần Đầu Trang */}
-      <div className="flex flex-col gap-3.5 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-800">
-              {game?.code ?? 'GAME'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
-              Nhật ký hoạt động · {game?.name ?? 'Trò chơi'}
-            </h1>
+      <PageHeader
+        icon={History}
+        title={`Nhật ký hoạt động · ${game?.name ?? 'Trò chơi'}`}
+        badge={
+          <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+            {game?.code ?? 'GAME'}
+          </span>
+        }
+        description="Lưu vết toàn bộ các thay đổi vận hành, phân quyền quản trị, bảo mật và điều phối người chơi trong trò chơi."
+        actions={
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isManualRefreshing || auditQuery.isFetching}
+              className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <RefreshCw
+                className={`size-3.5 ${
+                  isManualRefreshing || auditQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
+                }`}
+              />
+              <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
+            </Button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Lưu vết toàn bộ các thay đổi vận hành, phân quyền quản trị, bảo mật và điều phối người chơi trong trò chơi.
-          </p>
-        </div>
-
-        {/* Nút hành động đầu trang */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isManualRefreshing || auditQuery.isFetching}
-            className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 ${
-                isManualRefreshing || auditQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
-              }`}
-            />
-            <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-          </Button>
-        </div>
-      </div>
+        }
+        className="border-b border-slate-100 pb-3"
+      />
 
       {/* 2. Bốn Thẻ Thống Kê Nhanh (Click Lọc Tức Thì) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -538,221 +646,39 @@ export default function GameAuditPage() {
             )}
           </div>
         </div>
-
-        {/* Bảng dữ liệu nhật ký */}
-        {auditQuery.isLoading && !auditQuery.data ? (
-          <div className="p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 py-2 border-b border-slate-100 last:border-0"
-              >
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-                <Skeleton className="h-4 w-28 shrink-0" />
-                <Skeleton className="h-4 w-28 shrink-0" />
-                <Skeleton className="h-4 w-32 shrink-0" />
-                <Skeleton className="h-8 w-20 rounded-lg shrink-0" />
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          /* Trạng thái trống */
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            {hasActiveFilters ? (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                  <SearchX className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Không tìm thấy hoạt động nào
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Không có bản ghi nhật ký nào khớp với bộ lọc hành động hoặc người thực hiện bạn vừa chọn.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetAllFilters}
-                  className="mt-4 h-8 text-xs font-semibold"
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <History className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Chưa có nhật ký hoạt động nào
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Mọi thao tác thay đổi phân quyền, cập nhật giao diện hoặc điều phối người chơi sẽ được tự động ghi nhận lại tại đây.
-                </p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Hành động & Lý do</th>
-                  <th className="py-3 px-4 w-52">Người thực hiện</th>
-                  <th className="py-3 px-4 w-48">Đối tượng tác động</th>
-                  <th className="py-3 px-4 w-44">Thời gian</th>
-                  <th className="py-3 px-4 w-28 text-right">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {items.map((entry) => {
-                  const actionCfg = getActionConfig(entry.action);
-                  const ActionIcon = actionCfg.icon;
-                  const relativeTime = formatRelativeTime(entry.createdAt);
-                  const exactTime = formatDate(entry.createdAt);
-                  const actorName = entry.actor?.displayName || entry.actor?.username || 'Hệ thống';
-                  const initials = getAvatarInitials(entry.actor?.displayName, entry.actor?.username);
-
-                  return (
-                    <tr
-                      key={entry.id}
-                      className="group hover:bg-slate-50/70 transition-colors"
-                    >
-                      {/* Cột 1: Hành động & Lý do */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${actionCfg.badgeClass}`}
-                            >
-                              <ActionIcon className="size-3" />
-                              <span>{actionCfg.label}</span>
-                            </span>
-                            <span className="font-mono text-[10px] text-slate-400">
-                              {entry.action}
-                            </span>
-                          </div>
-
-                          {entry.reason ? (
-                            <p className="text-xs text-slate-600 font-medium line-clamp-1 italic">
-                              “{entry.reason}”
-                            </p>
-                          ) : (
-                            <p className="text-[11px] text-slate-400 italic">
-                              Không kèm ghi chú lý do
-                            </p>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Cột 2: Người thực hiện */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center gap-2.5">
-                          <div className="size-8 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center border border-slate-200 shrink-0">
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 text-xs truncate">
-                              {actorName}
-                            </p>
-                            {entry.actor?.username && (
-                              <p className="font-mono text-[11px] text-slate-400 truncate">
-                                @{entry.actor.username}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Cột 3: Đối tượng tác động */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="font-semibold text-slate-800 text-xs">
-                            {actionCfg.targetLabel || entry.targetType}
-                          </p>
-                          {entry.targetId && (
-                            <p className="font-mono text-[11px] text-slate-400 truncate">
-                              ID: {entry.targetId.slice(0, 8)}…
-                            </p>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Cột 4: Thời gian */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="text-slate-800 font-medium text-xs flex items-center gap-1">
-                            <Clock className="size-3 text-slate-400" />
-                            <span>{relativeTime}</span>
-                          </p>
-                          <p className="text-[11px] text-slate-400">{exactTime}</p>
-                        </div>
-                      </td>
-
-                      {/* Cột 5: Chi tiết */}
-                      <td className="py-3.5 px-4 align-middle text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setSelectedEntry(entry)}
-                          className="h-8 px-2.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs gap-1"
-                        >
-                          <Eye className="size-3.5 text-slate-500" />
-                          <span>Xem</span>
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Phân trang (Pagination) Tích hợp ở đáy bảng */}
-        {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 bg-slate-50/50 text-xs text-slate-500">
-            <div>
-              Hiển thị hoạt động{' '}
-              <strong className="text-slate-800">
-                {(page - 1) * 10 + 1} - {Math.min(page * 10, totalItems)}
-              </strong>{' '}
-              trên tổng số <strong className="text-slate-800">{totalItems}</strong> lượt ghi
-            </div>
-
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <ChevronLeft className="size-3 mr-0.5" />
-                <span>Trang trước</span>
-              </Button>
-
-              <span className="px-2.5 py-1 font-semibold text-slate-700 bg-white border border-slate-200 rounded-md">
-                {page} / {totalPages}
-              </span>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <span>Trang sau</span>
-                <ChevronRight className="size-3 ml-0.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Bảng dữ liệu nhật ký */}
+      <CommonTable<GameAuditEntry>
+        data={items}
+        columns={columns}
+        actions={actions}
+        isLoading={auditQuery.isLoading && !auditQuery.data}
+        showIndexColumn={true}
+        onRowClick={(entry) => setSelectedEntry(entry)}
+        pagination={{
+          page,
+          pageSize,
+          totalItems,
+          onPageChange: (newPage) => setPage(newPage),
+          onPageSizeChange: (newPageSize) => {
+            if (newPageSize === 20 || newPageSize === 50) {
+              setPageSize(newPageSize);
+              setPage(1);
+            }
+          },
+          pageSizeOptions: [20, 50],
+        }}
+        emptyIcon={hasActiveFilters ? SearchX : History}
+        emptyTitle={
+          hasActiveFilters ? 'Không tìm thấy hoạt động nào' : 'Chưa có nhật ký hoạt động nào'
+        }
+        emptyDescription={
+          hasActiveFilters
+            ? 'Không có nhật ký nào khớp với bộ lọc bạn vừa chọn.'
+            : 'Mọi thao tác thay đổi phân quyền, cập nhật giao diện hoặc điều phối người chơi sẽ được tự động ghi nhận lại tại đây.'
+        }
+      />
 
       {/* 4. Drawer Chi Tiết Hoạt Động (Slide-Over Panel) */}
       {selectedEntry && (
@@ -783,7 +709,9 @@ function AuditDetailDrawer({
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex justify-end bg-slate-950/45 backdrop-blur-xs animate-in fade-in duration-200"
       role="dialog"
@@ -974,6 +902,7 @@ function AuditDetailDrawer({
           </Button>
         </div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }

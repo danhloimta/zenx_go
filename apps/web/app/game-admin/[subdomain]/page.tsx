@@ -14,6 +14,7 @@ import {
   Gamepad2,
   Globe,
   History,
+  LayoutDashboard,
   Loader2,
   Palette,
   RefreshCw,
@@ -26,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatDate } from '@/lib/utils';
@@ -176,98 +178,80 @@ export default function GameAdminDashboardPage() {
       )}
 
       {/* 1. Phần Đầu Trang - Rõ Ràng & Thân Thiện */}
-      <div className="flex flex-col gap-3 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white shadow-2xs ring-1 ring-emerald-500/30 overflow-hidden">
-            {game.logoUrl ? (
-              <img src={game.logoUrl} alt={game.name} className="size-full object-cover" />
+      <PageHeader
+        icon={LayoutDashboard}
+        title={`Tổng quan · ${game.name}`}
+        badge={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-emerald-100/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+              {game.code}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${opStatus.className}`}
+            >
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              {opStatus.label}
+            </span>
+            {game.isPublic ? (
+              <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                Công khai
+              </span>
             ) : (
-              <Gamepad2 className="size-5" />
+              <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                Nội bộ
+              </span>
             )}
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span className="rounded bg-emerald-100/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
-                {game.code}
-              </span>
-              <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900">
-                Tổng quan {game.name}
-              </h1>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold ${opStatus.className}`}
-              >
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {opStatus.label}
-              </span>
-              {game.isPublic ? (
-                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700">
-                  Hiển thị công khai
-                </span>
-              ) : (
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                  Chỉ xem nội bộ
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Địa chỉ web game: <strong className="text-slate-700 font-mono">{game.subdomain}.lvh.me</strong> · {currentDateFormatted}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Huy hiệu thông báo trạng thái cập nhật ngầm */}
-          {isAnyFetching && !isRefreshing && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 rounded-full border border-emerald-200/80">
-              <Loader2 className="size-3 animate-spin text-[#00873E]" />
-              <span>Đang cập nhật…</span>
-            </div>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-7.5 px-2.5 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3 ${
-                isRefreshing || dashboard.isFetching ? 'animate-spin text-[#00873E]' : ''
-              }`}
-            />
-            <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
-          </Button>
-
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="h-7.5 px-2.5 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <a
-              href={`http://${game.subdomain}.lvh.me:3001`}
-              target="_blank"
-              rel="noopener noreferrer"
+        }
+        description={`Địa chỉ web game: ${game.subdomain}.lvh.me · ${currentDateFormatted}`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="h-8 px-2.5 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
             >
-              <Globe className="size-3 text-emerald-600" />
-              <span>Xem trang web game</span>
-              <ExternalLink className="size-2.5 text-slate-400" />
-            </a>
-          </Button>
+              <RefreshCw
+                className={`size-3.5 ${
+                  isRefreshing || dashboard.isFetching ? 'animate-spin text-[#00873E]' : ''
+                }`}
+              />
+              <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
+            </Button>
 
-          <Button
-            asChild
-            size="sm"
-            className="h-7.5 px-2.5 gap-1.5 rounded-lg bg-[#00873E] text-xs font-semibold text-white shadow-2xs hover:bg-[#007033]"
-          >
-            <Link href="/admin/presentation">
-              <Palette className="size-3" />
-              <span>Đổi giao diện</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <a
+                href={`http://${game.subdomain}.lvh.me:3001`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Globe className="size-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">Xem web game</span>
+                <ExternalLink className="size-3 text-slate-400" />
+              </a>
+            </Button>
+
+            <Button
+              asChild
+              size="sm"
+              className="h-8 px-3 gap-1.5 rounded-xl bg-[#00873E] text-xs font-semibold text-white shadow-2xs hover:bg-[#007033]"
+            >
+              <Link href="/admin/presentation">
+                <Palette className="size-3.5" />
+                <span>Đổi giao diện</span>
+              </Link>
+            </Button>
+          </div>
+        }
+        className="border-b border-slate-100 pb-3"
+      />
 
       {/* 2. Bốn Khối Số Liệu Chính - Dễ Hiểu, Không Thuật Ngữ Khó */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -19,7 +19,8 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { getPublicBaseDomain, portalUrl } from '@/lib/domain';
+import { getPublicBaseDomain, portalUrl, gameUrl } from '@/lib/domain';
+import { GameSwitcher } from '@/components/game-switcher';
 import { ApiError } from '@zenx-go/api-client';
 
 export function GameAdminShell({ children }: { children: React.ReactNode }) {
@@ -164,8 +165,14 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
 
         {/* Bottom Sidebar Actions */}
         <div className="border-t border-slate-100 pt-4 space-y-2">
+          {context.data.isSuperAdmin && (
+            <div className="pb-1 border-b border-slate-100">
+              <GameSwitcher variant="menu" />
+            </div>
+          )}
+
           <a
-            href={`http://${game.subdomain}.lvh.me:3001`}
+            href={gameUrl(game.subdomain)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#00873E] transition"
@@ -183,14 +190,14 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition"
             >
               <ArrowLeft className="size-3.5" />
-              <span>Về trang quản lý chung</span>
+              <span>Về trang quản trị ZENX</span>
             </a>
           )}
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="ml-64 flex-1 min-w-0 p-5 sm:p-6 w-full">{children}</main>
+      <main key={pathname} className="ml-64 flex-1 min-w-0 p-5 sm:p-6 w-full page-transition-enter">{children}</main>
     </div>
   );
 }

@@ -12,9 +12,11 @@ import {
   RefreshCw,
   RotateCcw,
   TrendingUp,
+  Landmark,
 } from 'lucide-react';
 import { useAdminFinanceDashboard } from '@/hooks/use-finance';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatAmount, formatDate } from '@/lib/utils';
 
@@ -105,34 +107,33 @@ export default function AdminFinanceDashboardPage() {
   return (
     <div className="space-y-6 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Tổng quan tài chính</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Thống kê doanh thu, tình trạng đơn nạp tiền và dòng tiền Coin.
-          </p>
-        </div>
+      <PageHeader
+        title="Tổng quan tài chính"
+        icon={Landmark}
+        description="Thống kê doanh thu, tình trạng đơn nạp tiền và dòng tiền Coin."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void query.refetch()}
+              disabled={query.isFetching}
+              className="text-xs h-8 px-3 rounded-xl"
+            >
+              <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            className="text-xs h-8 px-3 rounded-xl"
-          >
-            <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
-            Làm mới
-          </Button>
-
-          <Button asChild size="sm" className="text-xs h-8 px-3 rounded-xl font-semibold shadow-xs">
-            <Link href="/admin/finance/payments">
-              <CreditCard className="size-3.5 mr-1.5" />
-              Đơn nạp tiền
-            </Link>
-          </Button>
-        </div>
-      </div>
+            <Button asChild size="sm" className="text-xs h-8 px-3 rounded-xl font-semibold shadow-xs">
+              <Link href="/admin/finance/payments">
+                <CreditCard className="size-3.5 mr-1.5" />
+                Đơn nạp tiền
+              </Link>
+            </Button>
+          </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* 4 Key Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

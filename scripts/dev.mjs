@@ -71,7 +71,21 @@ const configuredCookieDomain = process.env.COOKIE_DOMAIN || fileEnv.COOKIE_DOMAI
 const publicWebOrigin = process.env.PUBLIC_WEB_ORIGIN ?? fileEnv.PUBLIC_WEB_ORIGIN ?? `http://${configuredBaseDomain}:${webPort}`;
 const publicOriginUrl = new URL(publicWebOrigin);
 const publicOriginPort = publicOriginUrl.port ? `:${publicOriginUrl.port}` : '';
-const defaultAllowedOrigins = [publicWebOrigin, ...['lucdia', 'hoalong', 'thitranmay', 'orion'].map((subdomain) => `${publicOriginUrl.protocol}//${subdomain}.${configuredBaseDomain}${publicOriginPort}`)].join(',');
+const fileAllowedOrigins = (fileEnv.ALLOWED_WEB_ORIGINS ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const mergedAllowedOrigins = process.env.ALLOWED_WEB_ORIGINS ?? Array.from(new Set([
+  ...fileAllowedOrigins,
+  publicWebOrigin,
+  `http://localhost:${webPort}`,
+  `http://127.0.0.1:${webPort}`,
+  `http://localhost:3000`,
+  `http://localhost:3001`,
+  ...['lucdia', 'hoalong', 'thitranmay', 'orion'].map(
+    (subdomain) => `${publicOriginUrl.protocol}//${subdomain}.${configuredBaseDomain}${publicOriginPort}`,
+  ),
+])).join(',');
 
 if (apiPort !== requestedApiPort || webPort !== requestedWebPort) console.log(`[dev] Port conflict detected; using API ${apiPort} and web ${webPort}.`);
 else console.log(`[dev] Using API ${apiPort} and web ${webPort}.`);
@@ -87,7 +101,7 @@ const child = spawn(turboCommand, ['dev'], {
     WEB_ORIGIN: publicWebOrigin,
     PUBLIC_BASE_DOMAIN: configuredBaseDomain,
     PUBLIC_WEB_ORIGIN: publicWebOrigin,
-    ALLOWED_WEB_ORIGINS: process.env.ALLOWED_WEB_ORIGINS ?? defaultAllowedOrigins,
+    ALLOWED_WEB_ORIGINS: mergedAllowedOrigins,
     ...(configuredCookieDomain ? { COOKIE_DOMAIN: configuredCookieDomain } : {}),
     NEXT_PUBLIC_API_BASE_URL: apiBaseUrl,
     ...(apiProxyOrigin ? { API_PROXY_ORIGIN: apiProxyOrigin } : {}),

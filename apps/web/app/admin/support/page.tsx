@@ -13,9 +13,11 @@ import {
   RefreshCw,
   Ticket as TicketIcon,
   UserCheck,
+  LifeBuoy,
 } from 'lucide-react';
 import { useSupportAdminDashboard, useSupportAdminTickets } from '@/hooks/use-support';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { UserAvatar } from '@/components/user-avatar';
@@ -86,49 +88,46 @@ export default function SupportAdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              Trung tâm Hỗ trợ Khách hàng
-            </h1>
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
-              {totalTickets} tickets
-            </span>
+      <PageHeader
+        title="Trung tâm Hỗ trợ Khách hàng"
+        icon={LifeBuoy}
+        description="Tiếp nhận, phân luồng yêu cầu, trả lời ticket và quản lý cơ sở tri thức FAQ cho toàn bộ người chơi."
+        badge={
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+            {totalTickets} tickets
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void dashboard.refetch();
+                void tickets.refetch();
+              }}
+              disabled={dashboard.isFetching || tickets.isFetching}
+              className="h-8 text-xs gap-1.5"
+            >
+              <RefreshCw
+                className={`size-3.5 ${dashboard.isFetching || tickets.isFetching ? 'animate-spin' : ''}`}
+              />
+              Làm mới
+            </Button>
+            <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+              <Link href="/admin/support/faqs">
+                <HelpCircle className="size-3.5 text-slate-500" /> Quản lý FAQ
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="h-8 text-xs gap-1.5 bg-[#00873E] text-white hover:bg-[#007033]">
+              <Link href="/admin/support/tickets">
+                <ClipboardList className="size-3.5" /> Hàng đợi xử lý
+              </Link>
+            </Button>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Tiếp nhận, phân luồng yêu cầu, trả lời ticket và quản lý cơ sở tri thức FAQ cho toàn bộ người chơi.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              void dashboard.refetch();
-              void tickets.refetch();
-            }}
-            disabled={dashboard.isFetching || tickets.isFetching}
-            className="h-8 text-xs gap-1.5"
-          >
-            <RefreshCw
-              className={`size-3.5 ${dashboard.isFetching || tickets.isFetching ? 'animate-spin' : ''}`}
-            />
-            Làm mới
-          </Button>
-          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-            <Link href="/admin/support/faqs">
-              <HelpCircle className="size-3.5 text-slate-500" /> Quản lý FAQ
-            </Link>
-          </Button>
-          <Button asChild size="sm" className="h-8 text-xs gap-1.5 bg-[#00873E] text-white hover:bg-[#007033]">
-            <Link href="/admin/support/tickets">
-              <ClipboardList className="size-3.5" /> Hàng đợi xử lý
-            </Link>
-          </Button>
-        </div>
-      </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* 4 Core Actionable Metrics Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

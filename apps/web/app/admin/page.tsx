@@ -22,7 +22,9 @@ import {
   Activity,
   Layers,
   Sparkles,
+  LayoutDashboard,
 } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 import { useAdminDashboard, useAdminMe } from '@/hooks/use-admin';
 import { useSupportAdminDashboard } from '@/hooks/use-support';
 import { useAdminContentDashboard } from '@/hooks/use-content';
@@ -211,68 +213,69 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6 sm:space-y-7 pb-10">
       {/* 1. Executive Command Header */}
-      <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-              Tổng quan Vận hành ZENX GO
-            </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-[#00873E]">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Telemetry
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
+      <PageHeader
+        title="Tổng quan Vận hành ZENX GO"
+        icon={LayoutDashboard}
+        description={
+          <>
             Xin chào <strong className="text-slate-800">{admin.data?.profile?.fullName || admin.data?.username}</strong> · Hôm nay là {currentDateFormatted}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-8.5 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 ${
-                isRefreshing || dashboard.isFetching || financeDashboard.isFetching
-                  ? 'animate-spin text-[#00873E]'
-                  : ''
-              }`}
-            />
-            <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
-          </Button>
-
-          {canViewPayments && (
+          </>
+        }
+        badge={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-[#00873E]">
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Telemetry
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              asChild
               variant="outline"
               size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
               className="h-8.5 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
             >
-              <Link href="/admin/finance/payments">
-                <Receipt className="size-3.5 text-emerald-600" />
-                <span>Đơn nạp tiền</span>
-              </Link>
+              <RefreshCw
+                className={`size-3.5 ${
+                  isRefreshing || dashboard.isFetching || financeDashboard.isFetching
+                    ? 'animate-spin text-[#00873E]'
+                    : ''
+                }`}
+              />
+              <span>{isRefreshing ? 'Đang cập nhật…' : 'Làm mới'}</span>
             </Button>
-          )}
 
-          {canViewUsers && (
-            <Button
-              asChild
-              size="sm"
-              className="h-8.5 gap-1.5 rounded-xl bg-[#00873E] text-xs font-semibold text-white shadow-xs hover:bg-[#007033]"
-            >
-              <Link href="/admin/users">
-                <Users className="size-3.5" />
-                <span>Quản lý người dùng</span>
-              </Link>
-            </Button>
-          )}
-        </div>
-      </div>
+            {canViewPayments && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8.5 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+              >
+                <Link href="/admin/finance/payments">
+                  <Receipt className="size-3.5 text-emerald-600" />
+                  <span>Đơn nạp tiền</span>
+                </Link>
+              </Button>
+            )}
+
+            {canViewUsers && (
+              <Button
+                asChild
+                size="sm"
+                className="h-8.5 gap-1.5 rounded-xl bg-[#00873E] text-xs font-semibold text-white shadow-xs hover:bg-[#007033]"
+              >
+                <Link href="/admin/users">
+                  <Users className="size-3.5" />
+                  <span>Quản lý người dùng</span>
+                </Link>
+              </Button>
+            )}
+          </div>
+        }
+        className="border-b border-slate-100 pb-4"
+      />
 
       {/* 2. Operational Action Center (Việc Cần Xử Lý Ngay) */}
       {hasActionItems && (

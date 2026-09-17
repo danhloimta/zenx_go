@@ -38,6 +38,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useIsFetching, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAbilityProvider } from '@/lib/admin-ability';
+import { GameSwitcher } from '@/components/game-switcher';
+import { useNavigationLoading, CommonLoadingBadge } from '@/components/global-progress-bar';
 
 interface NavItem {
   href: string;
@@ -101,6 +103,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
     .filter((section) => section.items.length > 0);
 
   const isFetching = useIsFetching();
+  const { isNavigating, navigatingHref } = useNavigationLoading();
 
   const allItems = navSections.flatMap((s) => s.items);
 
@@ -168,7 +171,12 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
     );
   }
 
-  const currentItem = allItems.find((item) =>
+  const currentSection = navSections.find((sec) =>
+    sec.items.some((item) =>
+      item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/'),
+    ),
+  );
+  const currentItem = currentSection?.items.find((item) =>
     item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/'),
   );
 
@@ -177,12 +185,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   return (
     <AdminAbilityProvider rules={admin.data.abilityRules}>
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
-      {/* Top Loading Progress Bar */}
-      {isFetching > 0 ? (
-        <div className="fixed top-0 left-0 right-0 z-[9999] h-[2.5px] bg-slate-100 overflow-hidden pointer-events-none">
-          <div className="h-full w-full bg-gradient-to-r from-[#00873E] via-emerald-400 to-[#00873E] animate-pulse" />
-        </div>
-      ) : null}
+
 
       {open ? (
         <button
@@ -240,15 +243,15 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      'group flex items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-150',
+                      'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition duration-150',
                       active
-                        ? 'bg-[#E8F7EC] font-bold text-[#00873E] shadow-2xs'
+                        ? 'bg-emerald-50 text-[#00873E] shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
                     )}
                   >
                     <Icon
                       className={cn(
-                        'size-4.5 shrink-0 transition-colors',
+                        'size-4 shrink-0 transition-colors',
                         active ? 'text-[#00873E]' : 'text-slate-400 group-hover:text-slate-700',
                       )}
                     />
@@ -294,34 +297,41 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
       </aside>
 
       <div className="lg:pl-[268px]">
-        <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-slate-200/80 bg-white/95 px-5 backdrop-blur-md sm:px-8">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-md sm:px-6">
           <div className="flex items-center gap-3">
             <button
-              className="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 lg:hidden"
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 lg:hidden shadow-2xs transition"
               onClick={() => setOpen(true)}
               aria-label="Mở menu điều hướng"
             >
-              <Menu className="size-5" />
+              <Menu className="size-4" />
             </button>
-            <div>
-              <div className="hidden items-center gap-1.5 text-xs text-slate-400 sm:flex">
-                <span>Quản trị ZENX</span>
-                <ChevronRight className="size-3" />
-                <span className="font-semibold text-slate-600">{currentItem?.label ?? 'Admin'}</span>
-              </div>
-              <h1 className="text-lg font-black tracking-tight text-slate-900 sm:mt-0.5">
-                {currentItem?.label ?? 'Admin Dashboard'}
-              </h1>
-            </div>
+
+            {/* Breadcrumb Navigation on Top Bar (Linear / Stripe style) */}
+            <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-xs">
+              <Link href="/admin" className="font-medium text-slate-400 hover:text-slate-700 transition">
+                Quản trị ZENX
+              </Link>
+              {currentSection && (
+                <>
+                  <ChevronRight className="size-3 text-slate-300 shrink-0" />
+                  <span className="font-medium text-slate-400">{currentSection.title}</span>
+                </>
+              )}
+              {currentItem && (
+                <>
+                  <ChevronRight className="size-3 text-slate-300 shrink-0" />
+                  <span className="font-semibold text-slate-800">{currentItem.label}</span>
+                </>
+              )}
+            </nav>
           </div>
 
           <div className="flex items-center gap-3">
-            {isFetching > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 animate-pulse">
-                <Loader2 className="size-3 animate-spin text-[#00873E]" />
-                <span className="hidden sm:inline">Đang tải…</span>
-              </span>
-            ) : null}
+            <CommonLoadingBadge />
+
+            {/* Game Switcher: Quick jump into each game's admin portal */}
+            <GameSwitcher />
 
             <Link
               href="/"
@@ -340,7 +350,7 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
           </div>
         </header>
 
-        <main className="w-full min-w-0 p-5 sm:p-8">{children}</main>
+        <main key={pathname} className="w-full min-w-0 p-4 sm:px-6 sm:py-5 page-transition-enter">{children}</main>
       </div>
     </div>
     </AdminAbilityProvider>

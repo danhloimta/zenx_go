@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GamePlayer } from '@zenx-go/api-client';
 import {
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
   Clock,
+  Eye,
   Lock,
   LogIn,
   Loader2,
@@ -22,12 +22,16 @@ import {
   Users,
   UserX,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 function formatRelativeTime(dateStr: string): string {
   const time = new Date(dateStr).getTime();
@@ -56,11 +60,13 @@ function getAvatarInitials(name?: string | null, username?: string | null): stri
 
 export default function GamePlayersPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const router = useRouter();
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [status, setStatus] = useState<'ACTIVE' | 'BLOCKED' | undefined>(undefined);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Trạng thái modal thay đổi khóa/mở khóa
@@ -101,11 +107,11 @@ export default function GamePlayersPage() {
 
   // 3. Query danh sách người chơi chính
   const playersQuery = useQuery({
-    queryKey: ['game-admin', 'players', gameId, page, debounced, status],
+    queryKey: ['game-admin', 'players', gameId, page, pageSize, debounced, status],
     queryFn: () =>
       api.gameAdmin.players(gameId!, {
         page,
-        pageSize: 10,
+        pageSize,
         search: debounced || undefined,
         status,
       }),
@@ -222,6 +228,135 @@ export default function GamePlayersPage() {
 
   const hasActiveFilters = Boolean(search || status !== undefined);
 
+  const columns = useMemo<ColumnDef<GamePlayer>[]>(() => [
+    {
+      id: 'player',
+      header: 'Người chơi',
+      cell: (player) => {
+        const displayName = player.user.profile?.fullName || player.user.username || 'Người chơi';
+        const initials = getAvatarInitials(
+          player.user.profile?.fullName,
+          player.user.username,
+        );
+        const firstLoginExact = formatDate(player.firstLoginAt);
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className="size-9 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-800 font-bold text-xs shadow-2xs">
+              {player.user.profile?.avatarUrl ? (
+                <img
+                  src={player.user.profile.avatarUrl}
+                  alt={displayName}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-slate-900 text-xs truncate">
+                  {displayName}
+                </span>
+                {player.user.username && (
+                  <span className="font-mono text-slate-400 text-[11px] truncate">
+                    @{player.user.username}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-slate-400 whitespace-nowrap">
+                <span className="font-mono">ID: {player.userId.slice(0, 8)}…</span>
+                <span>•</span>
+                <span>Tham gia: {firstLoginExact}</span>
+              </div>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'lastLoginAt',
+      header: 'Đăng nhập gần nhất',
+      cell: (player) => {
+        const lastLoginRelative = formatRelativeTime(player.lastLoginAt);
+        const lastLoginExact = formatDate(player.lastLoginAt);
+        return (
+          <div className="space-y-0.5 whitespace-nowrap">
+            <p className="text-slate-800 font-medium text-xs flex items-center gap-1">
+              <Clock className="size-3 text-slate-400 shrink-0" />
+              <span>{lastLoginRelative}</span>
+            </p>
+            <p className="text-[11px] text-slate-400">{lastLoginExact}</p>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'loginCount',
+      header: 'Lượt vào game',
+      className: 'text-center',
+      headerClassName: 'text-center',
+      cell: (player) => (
+        <span className="inline-flex items-center gap-1 font-mono font-bold text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/80 whitespace-nowrap shrink-0">
+          <LogIn className="size-3 text-slate-400 shrink-0" />
+          <span>{player.loginCount}</span>
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      cell: (player) => {
+        const isBlocked = player.status === 'BLOCKED';
+        return isBlocked ? (
+          <div className="space-y-0.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 whitespace-nowrap shrink-0">
+              <span className="size-1.5 rounded-full bg-rose-500 shrink-0" />
+              <Lock className="size-3 shrink-0" />
+              <span>Đã khóa</span>
+            </span>
+            {player.blockReason && (
+              <p className="text-[11px] text-rose-600 line-clamp-1 italic max-w-[200px]">
+                {player.blockReason}
+              </p>
+            )}
+          </div>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 whitespace-nowrap shrink-0">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <UserCheck className="size-3 shrink-0" />
+            <span>Hoạt động</span>
+          </span>
+        );
+      },
+    },
+  ], []);
+
+  const actions = useMemo<(player: GamePlayer) => TableAction<GamePlayer>[]>(() => (player: GamePlayer) => {
+    const isBlocked = player.status === 'BLOCKED';
+    return [
+      {
+        key: 'view',
+        label: 'Xem chi tiết',
+        icon: Eye,
+        onClick: (p) => router.push(`/admin/players/${encodeURIComponent(p.userId)}`),
+      },
+      {
+        key: 'toggle-block',
+        label: isBlocked ? 'Mở khóa tài khoản' : 'Khóa tài khoản',
+        icon: isBlocked ? Unlock : Lock,
+        variant: isBlocked ? 'default' : 'danger',
+        onClick: (p) => {
+          setPendingAction({
+            player: p,
+            nextStatus: isBlocked ? 'ACTIVE' : 'BLOCKED',
+          });
+          setReason('');
+        },
+      },
+    ];
+  }, [router]);
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full relative">
       {/* Top Progress Line khi API đang fetch */}
@@ -232,39 +367,35 @@ export default function GamePlayersPage() {
       )}
 
       {/* 1. Phần Đầu Trang */}
-      <div className="flex flex-col gap-3.5 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-800">
-              {game?.code ?? 'GAME'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
-              Quản lý người chơi · {game?.name ?? 'Trò chơi'}
-            </h1>
+      <PageHeader
+        icon={Users}
+        title={`Quản lý người chơi · ${game?.name ?? 'Trò chơi'}`}
+        badge={
+          <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+            {game?.code ?? 'GAME'}
+          </span>
+        }
+        description="Theo dõi danh sách tài khoản, số lượt đăng nhập SSO, thời gian hoạt động và quản lý trạng thái tài khoản người chơi."
+        actions={
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isManualRefreshing || playersQuery.isFetching}
+              className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <RefreshCw
+                className={`size-3.5 ${
+                  isManualRefreshing || playersQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
+                }`}
+              />
+              <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
+            </Button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Theo dõi danh sách tài khoản, số lượt đăng nhập SSO, thời gian hoạt động và quản lý trạng thái tài khoản người chơi.
-          </p>
-        </div>
-
-        {/* Nút hành động đầu trang */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isManualRefreshing || playersQuery.isFetching}
-            className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 ${
-                isManualRefreshing || playersQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
-              }`}
-            />
-            <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-          </Button>
-        </div>
-      </div>
+        }
+        className="border-b border-slate-100 pb-3"
+      />
 
       {/* 2. Bốn Thẻ Thống Kê Nhanh (Click Lọc Tức Thì) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -479,384 +610,170 @@ export default function GamePlayersPage() {
             )}
           </div>
         </div>
-
-        {/* Bảng dữ liệu người chơi */}
-        {playersQuery.isLoading && !playersQuery.data ? (
-          <div className="p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 py-2 border-b border-slate-100 last:border-0"
-              >
-                <Skeleton className="size-10 rounded-full shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-                <Skeleton className="h-4 w-32 shrink-0" />
-                <Skeleton className="h-6 w-20 rounded-full shrink-0" />
-                <Skeleton className="h-8 w-20 rounded-lg shrink-0" />
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          /* Trạng thái trống */
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            {hasActiveFilters ? (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                  <SearchX className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Không tìm thấy người chơi nào
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Không có người chơi nào khớp với từ khóa tìm kiếm hoặc bộ lọc trạng thái bạn vừa chọn.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetAllFilters}
-                  className="mt-4 h-8 text-xs font-semibold"
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <Users className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Chưa có người chơi tham gia
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Tài khoản người chơi sẽ được tự động ghi nhận tại bảng này ngay khi game thủ đăng nhập (SSO) vào trò chơi lần đầu tiên.
-                </p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Người chơi</th>
-                  <th className="py-3 px-4 w-52">Đăng nhập gần nhất</th>
-                  <th className="py-3 px-4 w-32 text-center">Lượt vào game</th>
-                  <th className="py-3 px-4 w-36">Trạng thái</th>
-                  <th className="py-3 px-4 w-36 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {items.map((player) => {
-                  const isBlocked = player.status === 'BLOCKED';
-                  const displayName =
-                    player.user.profile?.fullName || player.user.username || 'Người chơi';
-                  const initials = getAvatarInitials(
-                    player.user.profile?.fullName,
-                    player.user.username,
-                  );
-                  const lastLoginRelative = formatRelativeTime(player.lastLoginAt);
-                  const lastLoginExact = formatDate(player.lastLoginAt);
-                  const firstLoginExact = formatDate(player.firstLoginAt);
-
-                  return (
-                    <tr
-                      key={player.id}
-                      className="group hover:bg-slate-50/70 transition-colors"
-                    >
-                      {/* Cột 1: Thông tin người chơi */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center gap-3">
-                          {/* Avatar hoặc Initials */}
-                          <div className="size-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-800 font-bold text-xs shadow-2xs">
-                            {player.user.profile?.avatarUrl ? (
-                              <img
-                                src={player.user.profile.avatarUrl}
-                                alt={displayName}
-                                className="size-full object-cover"
-                              />
-                            ) : (
-                              <span>{initials}</span>
-                            )}
-                          </div>
-
-                          {/* Tên & Username & ID */}
-                          <Link href={`/admin/players/${encodeURIComponent(player.userId)}`} className="min-w-0 flex-1 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-bold text-slate-900 text-sm leading-snug truncate">
-                                {displayName}
-                              </p>
-                              {player.user.username && (
-                                <span className="font-mono text-slate-400 text-xs truncate">
-                                  @{player.user.username}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 pt-0.5 text-[11px] text-slate-400">
-                              <span className="font-mono">ID: {player.userId.slice(0, 8)}…</span>
-                              <span>•</span>
-                              <span>Tham gia: {firstLoginExact}</span>
-                            </div>
-                          </Link>
-                        </div>
-                      </td>
-
-                      {/* Cột 2: Đăng nhập gần nhất */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="text-slate-800 font-medium text-xs flex items-center gap-1">
-                            <Clock className="size-3 text-slate-400" />
-                            <span>{lastLoginRelative}</span>
-                          </p>
-                          <p className="text-[11px] text-slate-400">{lastLoginExact}</p>
-                        </div>
-                      </td>
-
-                      {/* Cột 3: Lượt vào game qua SSO */}
-                      <td className="py-3.5 px-4 align-middle text-center">
-                        <span className="inline-flex items-center gap-1 font-mono font-bold text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200/80">
-                          <LogIn className="size-3 text-slate-400" />
-                          <span>{player.loginCount}</span>
-                        </span>
-                      </td>
-
-                      {/* Cột 4: Trạng thái */}
-                      <td className="py-3.5 px-4 align-middle">
-                        {isBlocked ? (
-                          <div className="space-y-0.5">
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700">
-                              <span className="size-1.5 rounded-full bg-rose-500" />
-                              <Lock className="size-3" />
-                              <span>Đã khóa</span>
-                            </span>
-                            {player.blockReason && (
-                              <p className="text-[11px] text-rose-600 line-clamp-1 italic">
-                                {player.blockReason}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <UserCheck className="size-3" />
-                            <span>Hoạt động</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Cột 5: Thao tác */}
-                      <td className="py-3.5 px-4 align-middle text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setPendingAction({
-                              player,
-                              nextStatus: isBlocked ? 'ACTIVE' : 'BLOCKED',
-                            });
-                            setReason('');
-                          }}
-                          className={`h-8 px-2.5 text-xs font-semibold rounded-lg shadow-2xs transition-all ${
-                            isBlocked
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300'
-                              : 'border-slate-200 bg-white text-slate-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200'
-                          }`}
-                        >
-                          {isBlocked ? (
-                            <>
-                              <Unlock className="size-3.5 mr-1" />
-                              <span>Mở khóa</span>
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="size-3.5 mr-1 text-slate-400" />
-                              <span>Khóa</span>
-                            </>
-                          )}
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Phân trang (Pagination) Tích hợp ở đáy bảng */}
-        {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 bg-slate-50/50 text-xs text-slate-500">
-            <div>
-              Hiển thị người chơi{' '}
-              <strong className="text-slate-800">
-                {(page - 1) * 10 + 1} - {Math.min(page * 10, totalItems)}
-              </strong>{' '}
-              trên tổng số <strong className="text-slate-800">{totalItems}</strong> tài khoản
-            </div>
-
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <ChevronLeft className="size-3 mr-0.5" />
-                <span>Trang trước</span>
-              </Button>
-
-              <span className="px-2.5 py-1 font-semibold text-slate-700 bg-white border border-slate-200 rounded-md">
-                {page} / {Math.max(1, totalPages)}
-              </span>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <span>Trang sau</span>
-                <ChevronRight className="size-3 ml-0.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
 
+      {/* Bảng dữ liệu người chơi */}
+      <CommonTable<GamePlayer>
+        data={items}
+        columns={columns}
+        actions={actions}
+        isLoading={playersQuery.isLoading && !playersQuery.data}
+        showIndexColumn={true}
+        onRowClick={(player) => router.push(`/admin/players/${encodeURIComponent(player.userId)}`)}
+        pagination={{
+          page,
+          pageSize,
+          totalItems,
+          onPageChange: (newPage) => setPage(newPage),
+          onPageSizeChange: (newPageSize) => {
+            setPageSize(newPageSize);
+            setPage(1);
+          },
+        }}
+        emptyIcon={hasActiveFilters ? SearchX : Users}
+        emptyTitle={
+          hasActiveFilters ? 'Không tìm thấy người chơi nào' : 'Chưa có người chơi tham gia'
+        }
+        emptyDescription={
+          hasActiveFilters
+            ? 'Không có người chơi nào khớp với từ khóa tìm kiếm hoặc bộ lọc trạng thái bạn vừa chọn.'
+            : 'Tài khoản người chơi sẽ được tự động ghi nhận tại bảng này ngay khi game thủ đăng nhập (SSO) vào trò chơi lần đầu tiên.'
+        }
+      />
+
       {/* 4. Modal Khóa / Mở Khóa Tài Khoản Người Chơi */}
-      {pendingAction && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-xs p-4 animate-in fade-in duration-150"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
-            {/* Header Modal */}
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex size-10 items-center justify-center rounded-xl ${
-                  pendingAction.nextStatus === 'BLOCKED'
-                    ? 'bg-rose-50 text-rose-600'
-                    : 'bg-emerald-50 text-emerald-600'
-                }`}
-              >
-                {pendingAction.nextStatus === 'BLOCKED' ? (
-                  <Lock className="size-5" />
-                ) : (
-                  <Unlock className="size-5" />
-                )}
+      {pendingAction &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 backdrop-blur-xs p-4 animate-in fade-in duration-150 overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="w-full max-w-md my-auto max-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
+              {/* Header Modal */}
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex size-10 items-center justify-center rounded-xl ${
+                    pendingAction.nextStatus === 'BLOCKED'
+                      ? 'bg-rose-50 text-rose-600'
+                      : 'bg-emerald-50 text-emerald-600'
+                  }`}
+                >
+                  {pendingAction.nextStatus === 'BLOCKED' ? (
+                    <Lock className="size-5" />
+                  ) : (
+                    <Unlock className="size-5" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {pendingAction.nextStatus === 'BLOCKED'
+                      ? 'Khóa tài khoản người chơi'
+                      : 'Mở khóa tài khoản người chơi'}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {pendingAction.nextStatus === 'BLOCKED'
+                      ? 'Người chơi sẽ bị chặn đăng nhập SSO vào trò chơi này.'
+                      : 'Cho phép người chơi đăng nhập lại vào trò chơi bình thường.'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">
-                  {pendingAction.nextStatus === 'BLOCKED'
-                    ? 'Khóa tài khoản người chơi'
-                    : 'Mở khóa tài khoản người chơi'}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  {pendingAction.nextStatus === 'BLOCKED'
-                    ? 'Người chơi sẽ bị chặn đăng nhập SSO vào trò chơi này.'
-                    : 'Cho phép người chơi đăng nhập lại vào trò chơi bình thường.'}
-                </p>
+
+              {/* Thông tin tóm tắt người chơi */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 flex items-center gap-3">
+                <div className="size-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
+                  {getAvatarInitials(
+                    pendingAction.player.user.profile?.fullName,
+                    pendingAction.player.user.username,
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-900 text-xs truncate">
+                    {pendingAction.player.user.profile?.fullName ||
+                      pendingAction.player.user.username ||
+                      'Người chơi'}
+                  </p>
+                  <p className="text-[11px] font-mono text-slate-400 truncate">
+                    @{pendingAction.player.user.username} · ID:{' '}
+                    {pendingAction.player.userId.slice(0, 8)}…
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Thông tin tóm tắt người chơi */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 flex items-center gap-3">
-              <div className="size-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
-                {getAvatarInitials(
-                  pendingAction.player.user.profile?.fullName,
-                  pendingAction.player.user.username,
-                )}
+              {/* Ô nhập lý do */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="moderation-reason"
+                  className="text-xs font-semibold text-slate-700 flex items-center justify-between"
+                >
+                  <span>Lý do thay đổi trạng thái (bắt buộc)</span>
+                  <span className="text-[11px] text-slate-400 font-normal">Tối thiểu 3 ký tự</span>
+                </label>
+                <textarea
+                  id="moderation-reason"
+                  rows={3}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder={
+                    pendingAction.nextStatus === 'BLOCKED'
+                      ? 'Ví dụ: Vi phạm quy định nạp game, yêu cầu tạm ngưng từ hỗ trợ viên, phát hiện hành vi gian lận…'
+                      : 'Ví dụ: Người chơi đã khiếu nại thành công, hết thời hạn tạm khóa tài khoản…'
+                  }
+                  className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#00873E] focus:ring-2 focus:ring-[#00873E]/10 resize-none"
+                />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-slate-900 text-xs truncate">
-                  {pendingAction.player.user.profile?.fullName ||
-                    pendingAction.player.user.username ||
-                    'Người chơi'}
-                </p>
-                <p className="text-[11px] font-mono text-slate-400 truncate">
-                  @{pendingAction.player.user.username} · ID:{' '}
-                  {pendingAction.player.userId.slice(0, 8)}…
-                </p>
-              </div>
-            </div>
 
-            {/* Ô nhập lý do */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="moderation-reason"
-                className="text-xs font-semibold text-slate-700 flex items-center justify-between"
-              >
-                <span>Lý do thay đổi trạng thái (bắt buộc)</span>
-                <span className="text-[11px] text-slate-400 font-normal">Tối thiểu 3 ký tự</span>
-              </label>
-              <textarea
-                id="moderation-reason"
-                rows={3}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={
-                  pendingAction.nextStatus === 'BLOCKED'
-                    ? 'Ví dụ: Vi phạm quy định nạp game, yêu cầu tạm ngưng từ hỗ trợ viên, phát hiện hành vi gian lận…'
-                    : 'Ví dụ: Người chơi đã khiếu nại thành công, hết thời hạn tạm khóa tài khoản…'
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#00873E] focus:ring-2 focus:ring-[#00873E]/10 resize-none"
-              />
-            </div>
-
-            {/* Thông báo lưu ý */}
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50/80 p-2.5 text-[11px] text-amber-800 border border-amber-200/60">
-              <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
-              <span>
-                Thay đổi trạng thái sẽ có hiệu lực ngay ở lần đăng nhập (SSO) tiếp theo của người chơi.
-              </span>
-            </div>
-
-            {/* Nút hành động */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setPendingAction(null);
-                  setReason('');
-                }}
-                className="h-9 px-3 text-xs"
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={reason.trim().length < 3 || updateMutation.isPending}
-                onClick={() =>
-                  updateMutation.mutate({
-                    userId: pendingAction.player.userId,
-                    nextStatus: pendingAction.nextStatus,
-                    expectedUpdatedAt: pendingAction.player.updatedAt,
-                    reason: reason.trim(),
-                  })
-                }
-                className={`h-9 px-4 text-xs font-bold gap-1.5 text-white ${
-                  pendingAction.nextStatus === 'BLOCKED'
-                    ? 'bg-rose-600 hover:bg-rose-700'
-                    : 'bg-[#00873E] hover:bg-[#007033]'
-                }`}
-              >
-                {updateMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+              {/* Thông báo lưu ý */}
+              <div className="flex items-start gap-2 rounded-lg bg-amber-50/80 p-2.5 text-[11px] text-amber-800 border border-amber-200/60">
+                <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
                 <span>
-                  {pendingAction.nextStatus === 'BLOCKED' ? 'Xác nhận khóa' : 'Xác nhận mở khóa'}
+                  Thay đổi trạng thái sẽ có hiệu lực ngay ở lần đăng nhập (SSO) tiếp theo của người chơi.
                 </span>
-              </Button>
+              </div>
+
+              {/* Nút hành động */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPendingAction(null);
+                    setReason('');
+                  }}
+                  className="h-9 px-3 text-xs"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={reason.trim().length < 3 || updateMutation.isPending}
+                  onClick={() =>
+                    updateMutation.mutate({
+                      userId: pendingAction.player.userId,
+                      nextStatus: pendingAction.nextStatus,
+                      expectedUpdatedAt: pendingAction.player.updatedAt,
+                      reason: reason.trim(),
+                    })
+                  }
+                  className={`h-9 px-4 text-xs font-bold gap-1.5 text-white ${
+                    pendingAction.nextStatus === 'BLOCKED'
+                      ? 'bg-rose-600 hover:bg-rose-700'
+                      : 'bg-[#00873E] hover:bg-[#007033]'
+                  }`}
+                >
+                  {updateMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                  <span>
+                    {pendingAction.nextStatus === 'BLOCKED' ? 'Xác nhận khóa' : 'Xác nhận mở khóa'}
+                  </span>
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

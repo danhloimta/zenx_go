@@ -18,7 +18,7 @@ import { isAtLeastAge } from '../common/age';
 export type AuthTokens = { accessToken: string; refreshToken: string; user: unknown };
 export type LoginTokens = AuthTokens & { redirectTo: string };
 
-const REFRESH_RECOVERY_WINDOW_MS = 2_000;
+const REFRESH_RECOVERY_WINDOW_MS = 10_000;
 
 @Injectable()
 export class AuthService {

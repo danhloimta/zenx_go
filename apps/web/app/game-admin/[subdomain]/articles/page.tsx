@@ -1,14 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ContentPublishStatus, GameArticleCategory } from '@zenx-go/api-client';
 import {
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Edit3,
   ExternalLink,
@@ -28,13 +26,17 @@ import {
   Tag,
   Trash2,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { gameContentWorkspace } from '@/components/admin-content/content-workspace-adapter';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 // Cấu hình nhãn chuyên mục thuần Việt & màu sắc
 const CATEGORY_CONFIG: Record<
@@ -82,6 +84,7 @@ const STATUS_CONFIG: Record<
 
 export default function GameArticlesPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
+  const router = useRouter();
   const client = useQueryClient();
 
   const [search, setSearch] = useState('');
@@ -90,6 +93,7 @@ export default function GameArticlesPage() {
   const [status, setStatus] = useState<'' | ContentPublishStatus>('');
   const [trash, setTrash] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
 
@@ -124,6 +128,7 @@ export default function GameArticlesPage() {
       'articles',
       gameId,
       page,
+      pageSize,
       debounced,
       category,
       status,
@@ -132,7 +137,7 @@ export default function GameArticlesPage() {
     queryFn: () =>
       workspace!.articles({
         page,
-        pageSize: 10,
+        pageSize,
         search: debounced || undefined,
         category: category || undefined,
         status: status || undefined,
@@ -269,72 +274,229 @@ export default function GameArticlesPage() {
 
   const hasActiveFilters = Boolean(search || category || status || trash);
 
+  type ArticleItem = NonNullable<typeof articlesQuery.data>['items'][number];
+
+  const columns = useMemo<ColumnDef<ArticleItem>[]>(() => [
+    {
+      id: 'article',
+      header: 'Bài viết',
+      cell: (article) => (
+        <div className="flex items-center gap-3.5">
+          <div className="relative size-12 sm:size-14 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100">
+            {article.coverImageUrl ? (
+              <img
+                src={article.coverImageUrl}
+                alt={article.title}
+                className="size-full object-cover"
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center bg-slate-100 text-slate-400">
+                <FileText className="size-5" />
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0 max-w-md">
+            <h3 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug truncate">
+              {article.title}
+            </h3>
+            {article.excerpt && (
+              <p className="text-slate-500 text-xs line-clamp-1 mt-0.5 leading-relaxed">
+                {article.excerpt}
+              </p>
+            )}
+            <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+              /tin-tuc/{article.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'category',
+      header: 'Chuyên mục',
+      cell: (article) => {
+        const catConfig = CATEGORY_CONFIG[article.category as GameArticleCategory] || {
+          label: article.category,
+          badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+          icon: Tag,
+        };
+        const CatIcon = catConfig.icon;
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold whitespace-nowrap shrink-0 ${catConfig.badgeClass}`}
+          >
+            <CatIcon className="size-3 shrink-0" />
+            <span>{catConfig.label}</span>
+          </span>
+        );
+      },
+    },
+    {
+      id: 'time',
+      header: 'Thời gian',
+      cell: (article) => {
+        const formattedDate = formatDate(
+          article.publishedAt || article.updatedAt || article.createdAt,
+        );
+        return (
+          <div className="space-y-0.5 whitespace-nowrap shrink-0">
+            <p className="text-slate-700 font-medium text-xs">{formattedDate}</p>
+            {article.readTimeMinutes ? (
+              <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                <Clock className="size-3 shrink-0" />
+                <span>{article.readTimeMinutes} phút đọc</span>
+              </div>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      cell: (article) => {
+        const statConfig = STATUS_CONFIG[article.status as ContentPublishStatus] || {
+          label: article.status,
+          badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+          dotClass: 'bg-slate-400',
+        };
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold whitespace-nowrap shrink-0 ${statConfig.badgeClass}`}
+          >
+            <span className={`size-1.5 rounded-full shrink-0 ${statConfig.dotClass}`} />
+            <span>{statConfig.label}</span>
+          </span>
+        );
+      },
+    },
+  ], []);
+
+  const actions = useMemo<(article: ArticleItem) => TableAction<ArticleItem>[]>(
+    () => (article: ArticleItem) => {
+      if (trash) {
+        return [
+          {
+            key: 'restore',
+            label: 'Khôi phục bài viết',
+            icon: RotateCcw,
+            disabled: restoreMutation.isPending && mutatingId === article.id,
+            onClick: (a) => {
+              setMutatingId(a.id);
+              restoreMutation.mutate(a.id);
+            },
+          },
+        ];
+      }
+
+      const list: TableAction<ArticleItem>[] = [];
+
+      if (article.status === 'PUBLISHED' && game?.subdomain) {
+        list.push({
+          key: 'view-web',
+          label: 'Xem trên web game',
+          icon: Eye,
+          onClick: () => {
+            window.open(
+              `http://${game.subdomain}.lvh.me:3001/tin-tuc/${article.slug}`,
+              '_blank',
+              'noopener,noreferrer',
+            );
+          },
+        });
+      }
+
+      list.push({
+        key: 'edit',
+        label: 'Chỉnh sửa bài viết',
+        icon: Edit3,
+        onClick: (a) => router.push(`${base}/${a.id}`),
+      });
+
+      list.push({
+        key: 'delete',
+        label: 'Chuyển vào thùng rác',
+        icon: Trash2,
+        variant: 'danger',
+        disabled: removeMutation.isPending && mutatingId === article.id,
+        onClick: (a) => {
+          if (
+            window.confirm(`Bạn có chắc chắn muốn chuyển bài viết “${a.title}” vào thùng rác?`)
+          ) {
+            setMutatingId(a.id);
+            removeMutation.mutate(a.id);
+          }
+        },
+      });
+
+      return list;
+    },
+    [trash, game?.subdomain, restoreMutation, removeMutation, mutatingId, base, router],
+  );
+
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full">
       {/* 1. Phần Đầu Trang - Rõ Ràng & Thân Thiện */}
-      <div className="flex flex-col gap-3.5 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-800">
-              {game?.code ?? 'GAME'}
-            </span>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
-              Quản lý bài viết · {game?.name ?? 'Trò chơi'}
-            </h1>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Soạn thảo, cập nhật tin tức, sự kiện và thông báo gửi đến cộng đồng người chơi trên trang web game.
-          </p>
-        </div>
-
-        {/* Nút hành động đầu trang */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isManualRefreshing || articlesQuery.isFetching}
-            className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw
-              className={`size-3.5 ${
-                isManualRefreshing || articlesQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
-              }`}
-            />
-            <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
-          </Button>
-
-          {game?.subdomain && (
+      <PageHeader
+        icon={FileText}
+        title={`Quản lý bài viết · ${game?.name ?? 'Trò chơi'}`}
+        badge={
+          <span className="rounded bg-emerald-100/90 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
+            {game?.code ?? 'GAME'}
+          </span>
+        }
+        description="Soạn thảo, cập nhật tin tức, sự kiện và thông báo gửi đến cộng đồng người chơi trên trang web game."
+        actions={
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Button
-              asChild
               variant="outline"
               size="sm"
-              className="h-9 px-3 gap-1.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+              onClick={handleRefresh}
+              disabled={isManualRefreshing || articlesQuery.isFetching}
+              className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
             >
-              <a
-                href={`http://${game.subdomain}.lvh.me:3001/tin-tuc`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Globe className="size-3.5 text-emerald-600" />
-                <span>Xem mục Tin tức trên web</span>
-                <ExternalLink className="size-3 text-slate-400" />
-              </a>
+              <RefreshCw
+                className={`size-3.5 ${
+                  isManualRefreshing || articlesQuery.isFetching ? 'animate-spin text-[#00873E]' : ''
+                }`}
+              />
+              <span>{isManualRefreshing ? 'Đang tải…' : 'Làm mới'}</span>
             </Button>
-          )}
 
-          <Button
-            asChild
-            size="sm"
-            className="h-9 px-3.5 gap-1.5 rounded-lg bg-[#00873E] text-xs font-bold text-white shadow-2xs hover:bg-[#007033]"
-          >
-            <Link href={`${base}/new`}>
-              <Plus className="size-3.5" />
-              <span>Viết bài mới</span>
-            </Link>
-          </Button>
-        </div>
-      </div>
+            {game?.subdomain && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 gap-1.5 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+              >
+                <a
+                  href={`http://${game.subdomain}.lvh.me:3001/tin-tuc`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Globe className="size-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">Xem mục Tin tức</span>
+                  <ExternalLink className="size-3 text-slate-400" />
+                </a>
+              </Button>
+            )}
+
+            <Button
+              asChild
+              size="sm"
+              className="h-8 px-3.5 gap-1.5 rounded-xl bg-[#00873E] text-xs font-bold text-white shadow-2xs hover:bg-[#007033]"
+            >
+              <Link href={`${base}/new`}>
+                <Plus className="size-3.5" />
+                <span>Viết bài mới</span>
+              </Link>
+            </Button>
+          </div>
+        }
+        className="border-b border-slate-100 pb-3"
+      />
 
       {/* 2. Bốn Thẻ Thống Kê Nhanh (Click để lọc tức thì) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -584,335 +746,42 @@ export default function GameArticlesPage() {
             )}
           </div>
         </div>
-
-        {/* Bảng dữ liệu bài viết */}
-        {articlesQuery.isLoading && !articlesQuery.data ? (
-          <div className="p-4 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 py-2 border-b border-slate-100 last:border-0">
-                <Skeleton className="size-12 rounded-lg shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-2/5" />
-                  <Skeleton className="h-3 w-4/5" />
-                </div>
-                <Skeleton className="h-6 w-24 rounded-full shrink-0" />
-                <Skeleton className="h-4 w-28 shrink-0" />
-                <Skeleton className="h-6 w-20 rounded-full shrink-0" />
-                <Skeleton className="h-8 w-20 rounded-lg shrink-0" />
-              </div>
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          /* Trạng thái trống */
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            {trash ? (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                  <Trash2 className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Thùng rác hiện đang trống
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Không có bài viết nào bị xóa tạm. Khi bạn xóa một bài viết, bài viết đó sẽ được lưu tại đây để khôi phục khi cần.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setTrash(false);
-                    setPage(1);
-                  }}
-                  className="mt-4 h-8 text-xs font-semibold"
-                >
-                  Quay lại danh sách bài viết
-                </Button>
-              </>
-            ) : hasActiveFilters ? (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
-                  <SearchX className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Không tìm thấy bài viết nào
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Không có bài viết nào khớp với từ khóa tìm kiếm hoặc bộ lọc bạn vừa chọn.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetAllFilters}
-                  className="mt-4 h-8 text-xs font-semibold"
-                >
-                  Xóa tất cả bộ lọc
-                </Button>
-              </>
-            ) : (
-              <>
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-                  <FilePlus className="size-6" />
-                </div>
-                <h3 className="mt-3.5 text-sm font-bold text-slate-900">
-                  Chưa có bài viết nào được tạo
-                </h3>
-                <p className="mt-1 text-xs text-slate-500 max-w-sm">
-                  Hãy bắt đầu tạo bài viết tin tức, thông báo hoặc sự kiện đầu tiên để cộng đồng người chơi theo dõi.
-                </p>
-                <Button
-                  asChild
-                  size="sm"
-                  className="mt-4 h-8 bg-[#00873E] text-xs font-bold text-white hover:bg-[#007033]"
-                >
-                  <Link href={`${base}/new`}>
-                    <Plus className="mr-1.5 size-3.5" />
-                    Viết bài mới ngay
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Bài viết</th>
-                  <th className="py-3 px-4 w-40">Chuyên mục</th>
-                  <th className="py-3 px-4 w-44">Thời gian</th>
-                  <th className="py-3 px-4 w-36">Trạng thái</th>
-                  <th className="py-3 px-4 w-40 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {items.map((article) => {
-                  const catConfig =
-                    CATEGORY_CONFIG[article.category as GameArticleCategory] || {
-                      label: article.category,
-                      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-                      icon: Tag,
-                    };
-
-                  const statConfig =
-                    STATUS_CONFIG[article.status as ContentPublishStatus] || {
-                      label: article.status,
-                      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
-                      dotClass: 'bg-slate-400',
-                    };
-
-                  const formattedDate = formatDate(
-                    article.publishedAt || article.updatedAt || article.createdAt,
-                  );
-
-                  const CatIcon = catConfig.icon;
-
-                  return (
-                    <tr
-                      key={article.id}
-                      className="group hover:bg-slate-50/70 transition-colors"
-                    >
-                      {/* Cột 1: Thông tin bài viết */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="flex items-center gap-3.5">
-                          {/* Ảnh bìa đại diện */}
-                          <div className="relative size-12 sm:size-14 shrink-0 overflow-hidden rounded-lg border border-slate-200/80 bg-slate-100">
-                            {article.coverImageUrl ? (
-                              <img
-                                src={article.coverImageUrl}
-                                alt={article.title}
-                                className="size-full object-cover transition duration-200 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex size-full items-center justify-center bg-slate-100 text-slate-400">
-                                <FileText className="size-5" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Tiêu đề + Trích dẫn + Slug */}
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-bold text-slate-900 text-sm leading-snug truncate hover:text-[#00873E] transition-colors">
-                              <Link href={`${base}/${article.id}`}>{article.title}</Link>
-                            </h3>
-                            {article.excerpt && (
-                              <p className="text-slate-500 text-xs line-clamp-1 mt-0.5 leading-relaxed">
-                                {article.excerpt}
-                              </p>
-                            )}
-                            <p className="text-[11px] font-mono text-slate-400 mt-1 truncate">
-                              /tin-tuc/{article.slug}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Cột 2: Chuyên mục */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold ${catConfig.badgeClass}`}
-                        >
-                          <CatIcon className="size-3" />
-                          <span>{catConfig.label}</span>
-                        </span>
-                      </td>
-
-                      {/* Cột 3: Thời gian cập nhật */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <div className="space-y-0.5">
-                          <p className="text-slate-700 font-medium text-xs">{formattedDate}</p>
-                          {article.readTimeMinutes ? (
-                            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                              <Clock className="size-3" />
-                              <span>{article.readTimeMinutes} phút đọc</span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-
-                      {/* Cột 4: Trạng thái */}
-                      <td className="py-3.5 px-4 align-middle">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${statConfig.badgeClass}`}
-                        >
-                          <span className={`size-1.5 rounded-full ${statConfig.dotClass}`} />
-                          <span>{statConfig.label}</span>
-                        </span>
-                      </td>
-
-                      {/* Cột 5: Thao tác */}
-                      <td className="py-3.5 px-4 align-middle text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Xem trước trên trang web */}
-                          {article.status === 'PUBLISHED' && !trash && game?.subdomain && (
-                            <Button
-                              asChild
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-xs text-slate-600 hover:text-[#00873E] hover:bg-emerald-50"
-                              title="Xem bài viết trên web game"
-                            >
-                              <a
-                                href={`http://${game.subdomain}.lvh.me:3001/tin-tuc/${article.slug}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Eye className="size-3.5 mr-1 text-slate-500" />
-                                <span>Xem</span>
-                              </a>
-                            </Button>
-                          )}
-
-                          {/* Sửa bài viết */}
-                          {!trash && (
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2.5 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-2xs"
-                            >
-                              <Link href={`${base}/${article.id}`}>
-                                <Edit3 className="size-3.5 mr-1 text-slate-500" />
-                                <span>Sửa</span>
-                              </Link>
-                            </Button>
-                          )}
-
-                          {/* Khôi phục bài (khi ở thùng rác) */}
-                          {trash ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={restoreMutation.isPending && mutatingId === article.id}
-                              onClick={() => {
-                                setMutatingId(article.id);
-                                restoreMutation.mutate(article.id);
-                              }}
-                              className="h-8 px-2.5 rounded-lg border-emerald-200 bg-emerald-50 text-xs font-bold text-emerald-700 hover:bg-emerald-100"
-                            >
-                              {restoreMutation.isPending && mutatingId === article.id ? (
-                                <Loader2 className="size-3.5 mr-1 animate-spin text-emerald-700" />
-                              ) : (
-                                <RotateCcw className="size-3.5 mr-1" />
-                              )}
-                              <span>Khôi phục</span>
-                            </Button>
-                          ) : (
-                            /* Xóa vào thùng rác */
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={removeMutation.isPending && mutatingId === article.id}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Bạn có chắc chắn muốn chuyển bài viết “${article.title}” vào thùng rác?`,
-                                  )
-                                ) {
-                                  setMutatingId(article.id);
-                                  removeMutation.mutate(article.id);
-                                }
-                              }}
-                              className="h-8 px-2 rounded-lg text-xs text-slate-400 hover:text-red-600 hover:bg-red-50"
-                              title="Chuyển vào thùng rác"
-                            >
-                              {removeMutation.isPending && mutatingId === article.id ? (
-                                <Loader2 className="size-3.5 animate-spin text-red-600" />
-                              ) : (
-                                <Trash2 className="size-3.5" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Phân trang (Pagination) Tích hợp ở đáy bảng */}
-        {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 bg-slate-50/50 text-xs text-slate-500">
-            <div>
-              Hiển thị bài viết{' '}
-              <strong className="text-slate-800">
-                {(page - 1) * 10 + 1} - {Math.min(page * 10, totalItems)}
-              </strong>{' '}
-              trên tổng số <strong className="text-slate-800">{totalItems}</strong> bài viết
-            </div>
-
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <ChevronLeft className="size-3 mr-0.5" />
-                <span>Trang trước</span>
-              </Button>
-
-              <span className="px-2.5 py-1 font-semibold text-slate-700 bg-white border border-slate-200 rounded-md">
-                {page} / {Math.max(1, totalPages)}
-              </span>
-
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-7.5 px-2.5 text-xs font-medium rounded-md border-slate-200 bg-white"
-              >
-                <span>Trang sau</span>
-                <ChevronRight className="size-3 ml-0.5" />
-              </Button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Bảng dữ liệu bài viết */}
+      <CommonTable<ArticleItem>
+        data={items}
+        columns={columns}
+        actions={actions}
+        isLoading={articlesQuery.isLoading && !articlesQuery.data}
+        showIndexColumn={true}
+        onRowClick={(article) => router.push(`${base}/${article.id}`)}
+        pagination={{
+          page,
+          pageSize,
+          totalItems,
+          onPageChange: (newPage) => setPage(newPage),
+          onPageSizeChange: (newPageSize) => {
+            setPageSize(newPageSize);
+            setPage(1);
+          },
+        }}
+        emptyIcon={trash ? Trash2 : hasActiveFilters ? SearchX : FilePlus}
+        emptyTitle={
+          trash
+            ? 'Thùng rác hiện đang trống'
+            : hasActiveFilters
+              ? 'Không tìm thấy bài viết nào'
+              : 'Chưa có bài viết nào được tạo'
+        }
+        emptyDescription={
+          trash
+            ? 'Không có bài viết nào bị xóa tạm. Khi bạn xóa một bài viết, bài viết đó sẽ được lưu tại đây để khôi phục khi cần.'
+            : hasActiveFilters
+              ? 'Không có bài viết nào khớp với từ khóa tìm kiếm hoặc bộ lọc bạn vừa chọn.'
+              : 'Hãy bắt đầu tạo bài viết tin tức, thông báo hoặc sự kiện đầu tiên để cộng đồng người chơi theo dõi.'
+        }
+      />
     </div>
   );
 }

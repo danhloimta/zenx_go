@@ -15,17 +15,19 @@ import {
   WalletCards,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { WalletTransactionStatus, WalletTransactionType } from '@zenx-go/api-client';
+import { useMemo, useState } from 'react';
+import type { AdminFinanceTransaction, WalletTransactionStatus, WalletTransactionType } from '@zenx-go/api-client';
 import { useAdminFinanceTransactions } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatAmount, formatDate, transactionTypeLabels } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   SUCCESS: { label: 'Thành công', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -51,6 +53,7 @@ export default function AdminFinanceTransactionsPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [exporting, setExporting] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -58,7 +61,7 @@ export default function AdminFinanceTransactionsPage() {
 
   const queryState = useAdminFinanceTransactions({
     page,
-    pageSize: 20,
+    pageSize,
     search: search.trim() || undefined,
     type: typeParam,
     status: status || undefined,
@@ -85,6 +88,183 @@ export default function AdminFinanceTransactionsPage() {
     setCopiedKey(key);
     toast.success('Đã sao chép');
     setTimeout(() => setCopiedKey(null), 1500);
+  };
+
+  const columns = useMemo<ColumnDef<AdminFinanceTransaction>[]>(
+    () => [
+      {
+        id: 'transactionNo',
+        header: 'Giao dịch',
+        minWidth: 200,
+        cell: (item) => (
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono font-bold text-slate-900 whitespace-nowrap">
+                {item.transactionNo}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => copy(item.transactionNo, item.transactionNo, e)}
+                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition-opacity p-0.5 cursor-pointer"
+                title="Sao chép mã giao dịch"
+              >
+                {copiedKey === item.transactionNo ? (
+                  <Check className="size-3 text-emerald-600" />
+                ) : (
+                  <Copy className="size-3" />
+                )}
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400 whitespace-nowrap">
+              {transactionTypeLabels[item.type] ?? item.type}
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: 'customer',
+        header: 'Khách hàng',
+        minWidth: 180,
+        cell: (item) => {
+          const userName =
+            item.user?.profile?.fullName ||
+            item.user?.username ||
+            item.user?.email ||
+            item.userId;
+          return (
+            <div>
+              <p className="font-semibold text-slate-900 truncate max-w-[180px]">
+                {userName}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate max-w-[180px] font-mono">
+                {item.user?.phone || item.user?.email || '—'}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'amount',
+        header: 'Biến động',
+        minWidth: 150,
+        cell: (item) => {
+          const isDebit = item.type === 'DEBIT';
+          return (
+            <div className="flex items-center gap-1 font-bold whitespace-nowrap">
+              {isDebit ? (
+                <span className="inline-flex items-center text-rose-600">
+                  <ArrowDownLeft className="size-3.5 mr-0.5 shrink-0" />
+                  −{formatAmount(item.amount)}
+                </span>
+              ) : (
+                <span className="inline-flex items-center text-emerald-600">
+                  <ArrowUpRight className="size-3.5 mr-0.5 shrink-0" />
+                  +{formatAmount(item.amount)}
+                </span>
+              )}
+              <span className="text-[11px] font-medium text-slate-400">Coin</span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'balanceAfter',
+        header: 'Số dư sau',
+        minWidth: 130,
+        cell: (item) => (
+          <div className="whitespace-nowrap">
+            <span className="font-semibold text-slate-800">
+              {item.balanceAfter !== undefined ? formatAmount(item.balanceAfter) : '—'}
+            </span>
+            <span className="text-[11px] text-slate-400 ml-1">Coin</span>
+          </div>
+        ),
+      },
+      {
+        id: 'reference',
+        header: 'Nguồn / Hoạt động',
+        minWidth: 180,
+        cell: (item) => {
+          const paymentRef = item.payment?.paymentNo || (item.referenceType === 'PAYMENT' ? item.referenceId : null);
+          return paymentRef ? (
+            <Link
+              href={`/admin/finance/payments/${encodeURIComponent(paymentRef)}`}
+              className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-[#00873E] hover:underline whitespace-nowrap"
+              title="Xem đơn nạp tiền"
+            >
+              <span>Đơn nạp {paymentRef}</span>
+              <ArrowRight className="size-3 shrink-0" />
+            </Link>
+          ) : item.description ? (
+            <p className="text-slate-700 truncate max-w-[200px]" title={item.description}>
+              {item.description}
+            </p>
+          ) : item.referenceType ? (
+            <p className="text-[11px] text-slate-500 font-mono truncate max-w-[180px]">
+              {item.referenceType}
+            </p>
+          ) : (
+            <span className="text-slate-400">—</span>
+          );
+        },
+      },
+      {
+        id: 'status',
+        header: 'Trạng thái',
+        minWidth: 130,
+        cell: (item) => {
+          const statusInfo = statusBadge[item.status] ?? {
+            label: item.status,
+            className: 'bg-slate-100 text-slate-600 border-slate-200',
+          };
+          return (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap shrink-0 ${statusInfo.className}`}
+            >
+              <span className="size-1.5 rounded-full bg-current shrink-0" />
+              {statusInfo.label}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'createdAt',
+        header: 'Thời gian',
+        minWidth: 140,
+        cell: (item) => (
+          <span className="text-slate-500 whitespace-nowrap text-xs">
+            {formatDate(item.createdAt)}
+          </span>
+        ),
+      },
+    ],
+    [copiedKey],
+  );
+
+  const actions = (item: AdminFinanceTransaction): TableAction<AdminFinanceTransaction>[] => {
+    const paymentRef = item.payment?.paymentNo || (item.referenceType === 'PAYMENT' ? item.referenceId : null);
+    const list: TableAction<AdminFinanceTransaction>[] = [
+      {
+        key: 'copy',
+        label: 'Sao chép mã GD',
+        icon: Copy,
+        onClick: () => {
+          navigator.clipboard.writeText(item.transactionNo);
+          toast.success(`Đã sao chép mã ${item.transactionNo}`);
+        },
+      },
+    ];
+
+    if (paymentRef) {
+      list.push({
+        key: 'view-payment',
+        label: 'Xem đơn nạp tiền',
+        icon: CreditCard,
+        href: `/admin/finance/payments/${encodeURIComponent(paymentRef)}`,
+      });
+    }
+
+    return list;
   };
 
   const download = async () => {
@@ -114,63 +294,71 @@ export default function AdminFinanceTransactionsPage() {
   return (
     <div className="space-y-4 w-full">
       {/* Header with Sub-Nav Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div className="inline-flex p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/50 shadow-2xs">
+      <PageHeader
+        title="Biến động số dư ví"
+        icon={WalletCards}
+        description="Tra cứu lịch sử cộng, trừ số dư ví ZENX Coin và đối soát giao dịch toàn hệ thống."
+        badge={
+          query.data?.total !== undefined ? (
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+              {query.data.total} giao dịch
+            </span>
+          ) : null
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            {hasFilters ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+              >
+                <X className="size-3.5 mr-1" />
+                Xóa bộ lọc
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void query.refetch()}
+              disabled={query.isFetching}
+              className="text-xs h-8 px-3 rounded-xl"
+            >
+              <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void download()}
+              disabled={exporting || (query.data?.total ?? 0) === 0}
+              className="text-xs h-8 px-3 rounded-xl gap-1.5 border-slate-200"
+            >
+              <Download className="size-3.5" />
+              <span>{exporting ? 'Đang xuất…' : 'Xuất CSV'}</span>
+            </Button>
+          </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      >
+        <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200/50 shadow-2xs self-start">
           <Link
             href="/admin/finance/payments"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-xl transition-all"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-white/60 rounded-lg transition-all"
           >
-            <CreditCard className="size-4 text-slate-400" />
+            <CreditCard className="size-3.5 text-slate-400" />
             <span>Đơn nạp tiền</span>
           </Link>
           <Link
             href="/admin/finance/transactions"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-black bg-white text-slate-900 rounded-xl shadow-xs border border-slate-200/40 transition-all"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-bold bg-white text-slate-900 rounded-lg shadow-xs border border-slate-200/40 transition-all"
           >
-            <Coins className="size-4 text-[#00873E]" />
+            <Coins className="size-3.5 text-[#00873E]" />
             <span>Biến động số dư</span>
-            {query.data?.total !== undefined ? (
-              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 tabular-nums">
-                {query.data.total}
-              </span>
-            ) : null}
           </Link>
         </div>
-
-        <div className="flex items-center gap-2">
-          {hasFilters ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearAllFilters}
-              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
-            >
-              <X className="size-3.5 mr-1" />
-              Xóa bộ lọc
-            </Button>
-          ) : null}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            className="text-xs h-8 px-3 rounded-xl"
-          >
-            <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
-            Làm mới
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void download()}
-            disabled={exporting}
-            className="text-xs h-8 px-3 rounded-xl border-slate-200"
-          >
-            <Download className="size-3.5 mr-1.5 text-slate-500" />
-            {exporting ? 'Đang xuất…' : 'Xuất CSV'}
-          </Button>
-        </div>
-      </div>
+      </PageHeader>
 
       {/* Quick Type Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100/80 text-xs">
@@ -290,187 +478,45 @@ export default function AdminFinanceTransactionsPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 font-semibold text-slate-500">
-                  <th className="py-2.5 px-4">Giao dịch</th>
-                  <th className="py-2.5 px-4">Khách hàng</th>
-                  <th className="py-2.5 px-4">Biến động</th>
-                  <th className="py-2.5 px-4">Số dư sau</th>
-                  <th className="py-2.5 px-4">Nguồn / Hoạt động</th>
-                  <th className="py-2.5 px-4">Trạng thái</th>
-                  <th className="py-2.5 px-4">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {query.data.items.map((item) => {
-                  const userName =
-                    item.user?.profile?.fullName ||
-                    item.user?.username ||
-                    item.user?.email ||
-                    item.userId;
-                  const statusInfo = statusBadge[item.status] ?? {
-                    label: item.status,
-                    className: 'bg-slate-100 text-slate-600 border-slate-200',
-                  };
-                  const isDebit = item.type === 'DEBIT';
-                  const paymentRef = item.payment?.paymentNo || (item.referenceType === 'PAYMENT' ? item.referenceId : null);
-
-                  return (
-                    <tr
-                      key={item.transactionNo}
-                      className="hover:bg-slate-50/60 transition-colors group"
-                    >
-                      {/* Transaction No & Type */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-slate-900">
-                            {item.transactionNo}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => copy(item.transactionNo, item.transactionNo, e)}
-                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-700 transition-opacity p-0.5"
-                            title="Sao chép mã giao dịch"
-                          >
-                            {copiedKey === item.transactionNo ? (
-                              <Check className="size-3 text-emerald-600" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-slate-400">
-                          {transactionTypeLabels[item.type] ?? item.type}
-                        </p>
-                      </td>
-
-                      {/* Customer */}
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-slate-900 truncate max-w-[180px]">
-                          {userName}
-                        </p>
-                        <p className="text-[11px] text-slate-400 truncate max-w-[180px] font-mono">
-                          {item.user?.phone || item.user?.email || '—'}
-                        </p>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1 font-bold">
-                          {isDebit ? (
-                            <span className="inline-flex items-center text-rose-600">
-                              <ArrowDownLeft className="size-3.5 mr-0.5" />
-                              −{formatAmount(item.amount)}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center text-emerald-600">
-                              <ArrowUpRight className="size-3.5 mr-0.5" />
-                              +{formatAmount(item.amount)}
-                            </span>
-                          )}
-                          <span className="text-[11px] font-medium text-slate-400">Coin</span>
-                        </div>
-                      </td>
-
-                      {/* Balance After */}
-                      <td className="py-3 px-4">
-                        <span className="font-semibold text-slate-800">
-                          {item.balanceAfter !== undefined ? formatAmount(item.balanceAfter) : '—'}
-                        </span>
-                        <span className="text-[11px] text-slate-400 ml-1">Coin</span>
-                      </td>
-
-                      {/* Reference / Source */}
-                      <td className="py-3 px-4">
-                        {paymentRef ? (
-                          <Link
-                            href={`/admin/finance/payments/${encodeURIComponent(paymentRef)}`}
-                            className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-[#00873E] hover:underline"
-                            title="Xem đơn nạp tiền"
-                          >
-                            <span>Đơn nạp {paymentRef}</span>
-                            <ArrowRight className="size-3" />
-                          </Link>
-                        ) : item.description ? (
-                          <p className="text-slate-700 truncate max-w-[200px]" title={item.description}>
-                            {item.description}
-                          </p>
-                        ) : item.referenceType ? (
-                          <p className="text-[11px] text-slate-500 font-mono truncate max-w-[180px]">
-                            {item.referenceType}
-                          </p>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${statusInfo.className}`}
-                        >
-                          <span className="size-1.5 rounded-full bg-current" />
-                          {statusInfo.label}
-                        </span>
-                      </td>
-
-                      {/* Time */}
-                      <td className="py-3 px-4 text-slate-500">{formatDate(item.createdAt)}</td>
-                    </tr>
-                  );
-                })}
-
-                {!query.data.items.length ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      <WalletCards className="mx-auto size-8 text-slate-300 mb-2" />
-                      <p className="font-semibold text-slate-600">Không tìm thấy giao dịch ví nào</p>
-                      {hasFilters ? (
-                        <button
-                          type="button"
-                          onClick={clearAllFilters}
-                          className="mt-2 text-xs font-semibold text-[#00873E] hover:underline"
-                        >
-                          Xóa bộ lọc để xem tất cả
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Footer */}
-          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
-            <span>
-              Trang {query.data.page} / {Math.max(1, query.data.totalPages)} ({query.data.total} giao dịch)
-            </span>
-            <div className="flex items-center gap-1.5">
+        <CommonTable<AdminFinanceTransaction>
+          showIndexColumn
+          data={query.data?.items ?? []}
+          columns={columns}
+          actions={actions}
+          actionHeaderTitle="Thao tác"
+          isLoading={query.isLoading}
+          isFetching={query.isFetching}
+          emptyTitle="Không tìm thấy giao dịch ví nào"
+          emptyDescription={
+            hasFilters
+              ? 'Không có giao dịch nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm.'
+              : 'Chưa có giao dịch biến động số dư nào trên hệ thống.'
+          }
+          emptyIcon={WalletCards}
+          emptyAction={
+            hasFilters ? (
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="h-7 px-2.5 text-xs rounded-lg"
+                onClick={clearAllFilters}
+                className="mt-3 text-xs gap-1.5 border-slate-200 font-semibold"
               >
-                Trước
+                <X className="size-3" /> Xóa bộ lọc
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= query.data.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-7 px-2.5 text-xs rounded-lg"
-              >
-                Sau
-              </Button>
-            </div>
-          </div>
-        </div>
+            ) : undefined
+          }
+          pagination={{
+            page,
+            pageSize,
+            totalItems: query.data?.total ?? 0,
+            onPageChange: (newPage) => setPage(newPage),
+            onPageSizeChange: (newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            },
+            pageSizeOptions: [10, 20, 50],
+          }}
+        />
       )}
     </div>
   );

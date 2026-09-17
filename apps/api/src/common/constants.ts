@@ -1,6 +1,8 @@
 export const ACCESS_COOKIE = 'zenx_access';
 export const REFRESH_COOKIE = 'zenx_refresh';
-export const ACCESS_TTL_SECONDS = 15 * 60;
+export const ACCESS_TTL_SECONDS = Number(
+  process.env.ACCESS_TTL_SECONDS ?? (process.env.NODE_ENV === 'production' ? 15 * 60 : 7 * 24 * 60 * 60),
+);
 export const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const OTP_TTL_SECONDS = 5 * 60;
 export const OTP_RESEND_SECONDS = 60;

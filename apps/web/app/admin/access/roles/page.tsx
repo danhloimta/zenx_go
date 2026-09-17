@@ -16,13 +16,18 @@ import {
   Shield,
   KeyRound,
   X,
+  Copy,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 import { useAdminAbility } from '@/lib/admin-ability';
+import { PageHeader } from '@/components/page-header';
+import type { RoleDetail } from '@zenx-go/api-client';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 import { CreateRoleModal } from './create-role-modal';
 
 type RoleFilterType = 'ALL' | 'SYSTEM' | 'CUSTOM';
@@ -71,6 +76,150 @@ export default function RolesPage() {
     });
   }, [roles, filterType, search]);
 
+  const columns = useMemo<ColumnDef<RoleDetail>[]>(
+    () => [
+      {
+        id: 'role',
+        header: 'Vai trò & Mã định danh',
+        minWidth: 280,
+        cell: (role) => (
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex size-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs border ${role.isSystem
+                  ? 'bg-emerald-50/80 border-emerald-200/60 text-[#00873E]'
+                  : 'bg-purple-50/80 border-purple-200/60 text-purple-600'
+                }`}
+            >
+              {role.isSystem ? <Lock className="size-4" /> : <ShieldCheck className="size-4" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/admin/access/roles/${role.id}`}
+                  className="font-bold text-slate-900 hover:text-[#00873E] transition-colors whitespace-nowrap"
+                >
+                  {role.name}
+                </Link>
+                {role.isSystem ? (
+                  <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200/60 whitespace-nowrap">
+                    Hệ thống
+                  </span>
+                ) : (
+                  <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200/60 whitespace-nowrap">
+                    Tùy chỉnh
+                  </span>
+                )}
+              </div>
+              <span className="font-mono text-[11px] text-slate-400 block mt-0.5 whitespace-nowrap">
+                {role.code}
+              </span>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'description',
+        header: 'Mô tả',
+        minWidth: 240,
+        cell: (role) => (
+          <span className="text-slate-500 text-xs line-clamp-2">
+            {role.description || <span className="text-slate-300">—</span>}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Trạng thái',
+        minWidth: 160,
+        cell: (role) => (
+          <div className="flex items-center">
+            {role.isActive ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 whitespace-nowrap">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Đang hoạt động
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200/60 whitespace-nowrap">
+                <span className="size-1.5 rounded-full bg-slate-400" />
+                Vô hiệu hóa
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: 'userCount',
+        header: 'Người dùng',
+        minWidth: 110,
+        align: 'center',
+        cell: (role) => (
+          <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-slate-700 bg-slate-100/90 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap border border-slate-200/50">
+            <Users className="size-3.5 text-slate-400" />
+            {role.userCount ?? 0}
+          </span>
+        ),
+      },
+      {
+        id: 'permissions',
+        header: 'Quyền hạn',
+        minWidth: 130,
+        align: 'center',
+        cell: (role) => {
+          const isSuperAdmin = role.code === 'SUPER_ADMIN';
+          return isSuperAdmin ? (
+            <span className="inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/70 whitespace-nowrap">
+              <KeyRound className="size-3.5 text-amber-600" />
+              Toàn quyền
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-slate-700 bg-slate-100/90 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap border border-slate-200/50">
+              <ShieldCheck className="size-3.5 text-slate-400" />
+              {role.permissions?.length ?? 0} quyền
+            </span>
+          );
+        },
+      },
+      {
+        id: 'updatedAt',
+        header: 'Cập nhật',
+        minWidth: 140,
+        cell: (role) => (
+          <span className="whitespace-nowrap text-slate-400 text-xs">
+            {formatDate(role.updatedAt)}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const actions = (role: RoleDetail): TableAction<RoleDetail>[] => [
+    {
+      key: 'configure',
+      label: 'Cấu hình quyền hạn',
+      icon: Settings,
+      href: `/admin/access/roles/${role.id}`,
+    },
+    {
+      key: 'copy-code',
+      label: 'Sao chép mã vai trò',
+      icon: Copy,
+      onClick: () => {
+        navigator.clipboard.writeText(role.code);
+        toast.success(`Đã sao chép mã ${role.code}`);
+      },
+    },
+    {
+      key: 'copy-id',
+      label: 'Sao chép Role ID',
+      icon: Copy,
+      onClick: () => {
+        navigator.clipboard.writeText(role.id);
+        toast.success('Đã sao chép ID vai trò');
+      },
+    },
+  ];
+
   if (!canView) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center p-8 text-center">
@@ -90,31 +239,23 @@ export default function RolesPage() {
   return (
     <div className="w-full space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span>Quản trị truy cập</span>
-            <span>/</span>
-            <span className="text-[#00873E]">Vai trò & Phân quyền</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-            Vai trò & Phân quyền (RBAC)
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500 max-w-2xl">
-            Quản lý các vai trò vận hành trên hệ thống. Quyền hạn chi tiết được cấu hình theo từng vai trò.
-          </p>
-        </div>
-
-        {canCreate ? (
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center gap-2 bg-[#00873E] hover:bg-[#007033] text-white font-semibold rounded-xl shadow-xs"
-          >
-            <Plus className="size-4" />
-            <span>Tạo vai trò mới</span>
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Vai trò & Phân quyền"
+        icon={ShieldCheck}
+        eyebrow="Quản trị truy cập"
+        description="Quản lý các vai trò vận hành trên hệ thống. Quyền hạn chi tiết được cấu hình theo từng vai trò."
+        actions={
+          canCreate ? (
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="inline-flex items-center gap-2 bg-[#00873E] hover:bg-[#007033] text-white font-semibold rounded-xl shadow-xs"
+            >
+              <Plus className="size-4" />
+              <span>Tạo vai trò mới</span>
+            </Button>
+          ) : null
+        }
+      />
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
@@ -171,257 +312,102 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {/* Main Table Section */}
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-        {/* Table Filters Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-slate-50/50">
-          {/* Search Box */}
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm tên, mã vai trò..."
-              className="pl-9 pr-8 h-9.5 rounded-xl text-xs bg-white"
-            />
-            {search ? (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="size-3.5" />
-              </button>
-            ) : null}
+      {/* Search & Filter Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Search Box */}
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kiếm tên, mã vai trò..."
+            className="pl-9 pr-8 h-9.5 rounded-xl text-xs bg-white border-slate-200"
+          />
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : null}
+        </div>
+
+        {/* Type Filter Buttons */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 rounded-xl text-xs">
+          <button
+            type="button"
+            onClick={() => setFilterType('ALL')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${filterType === 'ALL'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            Tất cả ({roles.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType('SYSTEM')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${filterType === 'SYSTEM'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            Hệ thống ({systemRolesCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterType('CUSTOM')}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${filterType === 'CUSTOM'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            Tùy chỉnh ({customRolesCount})
+          </button>
+        </div>
+      </div>
+
+      {/* Common Table with Sticky Actions and Horizontal Scroll */}
+      <CommonTable<RoleDetail>
+        showIndexColumn
+        data={filteredRoles}
+        columns={columns}
+        actions={actions}
+        actionHeaderTitle="Thao tác"
+        isLoading={rolesQuery.isLoading}
+        isFetching={rolesQuery.isFetching}
+        emptyTitle="Không tìm thấy vai trò nào"
+        emptyDescription={
+          search
+            ? `Không có kết quả khớp với "${search}"`
+            : 'Chưa có vai trò nào trong danh mục này'
+        }
+        emptyIcon={Shield}
+        emptyAction={
+          search ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSearch('')}
+              className="mt-3 text-xs gap-1.5 border-slate-200 font-semibold text-slate-700"
+            >
+              <X className="size-3" /> Xóa tìm kiếm
+            </Button>
+          ) : undefined
+        }
+        footerExtra={
+          <div className="px-4 py-3 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/40 rounded-b-2xl">
+            <span>
+              Bấm vào &quot;Cấu hình quyền hạn&quot; để thiết lập chi tiết quyền hạn hoặc chỉnh sửa vai trò.
+            </span>
+            <span className="font-semibold text-slate-500">
+              Hiển thị {filteredRoles.length} / {roles.length} vai trò
+            </span>
           </div>
-
-          {/* Type Filter Buttons */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 rounded-xl text-xs">
-            <button
-              type="button"
-              onClick={() => setFilterType('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                filterType === 'ALL'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Tất cả ({roles.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('SYSTEM')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                filterType === 'SYSTEM'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Hệ thống ({systemRolesCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('CUSTOM')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
-                filterType === 'CUSTOM'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Tùy chỉnh ({customRolesCount})
-            </button>
-          </div>
-        </div>
-
-        {/* Roles Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
-              <tr>
-                <th className="py-3.5 px-4 sm:px-6">Vai trò & Mã định danh</th>
-                <th className="py-3.5 px-4 hidden md:table-cell">Mô tả</th>
-                <th className="py-3.5 px-4">Trạng thái</th>
-                <th className="py-3.5 px-4 text-center">Người dùng</th>
-                <th className="py-3.5 px-4 text-center">Quyền hạn</th>
-                <th className="py-3.5 px-4 hidden lg:table-cell">Cập nhật</th>
-                <th className="py-3.5 px-4 sm:px-6 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rolesQuery.isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="p-4 sm:px-6">
-                      <Skeleton className="h-4 w-40 mb-1.5" />
-                      <Skeleton className="h-3 w-24" />
-                    </td>
-                    <td className="p-4 hidden md:table-cell">
-                      <Skeleton className="h-3 w-48" />
-                    </td>
-                    <td className="p-4">
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </td>
-                    <td className="p-4 text-center">
-                      <Skeleton className="h-4 w-12 mx-auto" />
-                    </td>
-                    <td className="p-4 text-center">
-                      <Skeleton className="h-4 w-16 mx-auto" />
-                    </td>
-                    <td className="p-4 hidden lg:table-cell">
-                      <Skeleton className="h-3 w-28" />
-                    </td>
-                    <td className="p-4 sm:px-6 text-right">
-                      <Skeleton className="h-8 w-24 ml-auto rounded-lg" />
-                    </td>
-                  </tr>
-                ))
-              ) : filteredRoles.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Shield className="size-8 text-slate-300 stroke-1" />
-                      <p className="font-semibold text-slate-600 text-sm">Không tìm thấy vai trò nào</p>
-                      <p className="text-xs text-slate-400">
-                        {search ? `Không có kết quả khớp với "${search}"` : 'Chưa có vai trò nào trong danh mục này'}
-                      </p>
-                      {search ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSearch('')}
-                          className="mt-2 text-xs text-[#00873E]"
-                        >
-                          Xóa tìm kiếm
-                        </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredRoles.map((role) => {
-                  const isSuperAdmin = role.code === 'SUPER_ADMIN';
-                  return (
-                    <tr
-                      key={role.id}
-                      className="hover:bg-slate-50/75 transition-colors group"
-                    >
-                      {/* Name & Code */}
-                      <td className="py-4 px-4 sm:px-6">
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`flex size-9 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${
-                              role.isSystem
-                                ? 'bg-emerald-50 text-[#00873E]'
-                                : 'bg-purple-50 text-purple-600'
-                            }`}
-                          >
-                            {role.isSystem ? (
-                              <Lock className="size-4" />
-                            ) : (
-                              <ShieldCheck className="size-4" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Link
-                                href={`/admin/access/roles/${role.id}`}
-                                className="font-bold text-slate-900 hover:text-[#00873E] transition-colors"
-                              >
-                                {role.name}
-                              </Link>
-                              {role.isSystem ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
-                                  Hệ thống
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-600">
-                                  Tùy chỉnh
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-mono text-[11px] text-slate-400 block mt-0.5">
-                              {role.code}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Description */}
-                      <td className="py-4 px-4 hidden md:table-cell text-slate-500 max-w-xs truncate">
-                        {role.description || <span className="text-slate-300">—</span>}
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        {role.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-                            <CheckCircle2 className="size-3 text-emerald-600" />
-                            Đang hoạt động
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">
-                            <XCircle className="size-3 text-slate-400" />
-                            Vô hiệu hóa
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Users Count */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-xs">
-                          <Users className="size-3.5 text-slate-400" />
-                          {role.userCount}
-                        </span>
-                      </td>
-
-                      {/* Permissions Count */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
-                        {isSuperAdmin ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
-                            <KeyRound className="size-3 text-amber-600" />
-                            Toàn quyền
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg text-xs">
-                            <ShieldCheck className="size-3.5 text-slate-400" />
-                            {role.permissions?.length ?? 0} quyền
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Updated Date */}
-                      <td className="py-4 px-4 hidden lg:table-cell whitespace-nowrap text-slate-400 text-[11px]">
-                        {formatDate(role.updatedAt)}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
-                        <Link
-                          href={`/admin/access/roles/${role.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold text-xs text-slate-700 bg-slate-100 hover:bg-[#E8F7EC] hover:text-[#00873E] transition-all"
-                        >
-                          <Settings className="size-3.5" />
-                          <span>Cấu hình quyền</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Table Footer */}
-        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>
-            Bấm vào &quot;Cấu hình quyền&quot; để thiết lập chi tiết quyền hạn hoặc chỉnh sửa vai trò.
-          </span>
-          <span className="font-semibold text-slate-500">
-            Hiển thị {filteredRoles.length} / {roles.length} vai trò
-          </span>
-        </div>
-      </section>
+        }
+      />
 
       {/* Modal Tạo vai trò mới */}
       <CreateRoleModal

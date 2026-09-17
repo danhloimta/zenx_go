@@ -16,6 +16,7 @@ import { useAdminContentAnnouncements } from '@/hooks/use-content';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,55 +89,52 @@ export default function AdminContentAnnouncementsPage() {
   return (
     <div className="space-y-4 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              Ribbon Thông báo Portal
-            </h1>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-              {allItems.length} thông báo
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Quản lý các thanh thông báo bảo trì, ưu đãi hoặc sự kiện nổi bật ghim trên trang.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {(search || filterStatus) && (
+      <PageHeader
+        title="Thông báo Portal"
+        icon={Megaphone}
+        description="Quản lý các thanh thông báo bảo trì, ưu đãi hoặc sự kiện nổi bật ghim trên trang."
+        badge={
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+            {allItems.length} thông báo
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            {(search || filterStatus) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearch('');
+                  setFilterStatus('');
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+              >
+                <X className="size-3.5 mr-1" />
+                Xóa bộ lọc
+              </Button>
+            )}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => {
-                setSearch('');
-                setFilterStatus('');
-              }}
-              className="text-xs text-slate-500 hover:text-slate-800 h-8 px-2.5"
+              onClick={() => void query.refetch()}
+              disabled={query.isFetching}
+              className="text-xs h-8 px-3 rounded-xl"
             >
-              <X className="size-3.5 mr-1" />
-              Xóa bộ lọc
+              <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            className="text-xs h-8 px-3 rounded-xl"
-          >
-            <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
-            Làm mới
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setEditing(null)}
-            className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs"
-          >
-            <Plus className="size-4 mr-1.5" /> Tạo thông báo mới
-          </Button>
-        </div>
-      </div>
+            <Button
+              size="sm"
+              onClick={() => setEditing(null)}
+              className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs"
+            >
+              <Plus className="size-4 mr-1.5" /> Tạo thông báo mới
+            </Button>
+          </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* Quick Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -400,22 +400,19 @@ export default function RoleDetailPage() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      {/* Top Breadcrumb & Navigation */}
+    <div className="w-full space-y-5">
+      {/* Back to roles list */}
+      <div>
+        <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 -ml-2">
+          <Link href="/admin/access/roles">
+            <ArrowLeft className="size-3.5" />
+            <span>Quay lại danh sách vai trò</span>
+          </Link>
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <Link
-              href="/admin/access/roles"
-              className="hover:text-slate-600 transition-colors flex items-center gap-1"
-            >
-              <ArrowLeft className="size-3.5" />
-              <span>Quản lý vai trò</span>
-            </Link>
-            <span>/</span>
-            <span className="text-[#00873E] font-medium">{role.name}</span>
-          </div>
-
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               {role.name}

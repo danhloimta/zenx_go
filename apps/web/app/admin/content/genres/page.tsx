@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Edit3, Plus, RefreshCw, Save, Search, Trash2, X } from 'lucide-react';
+import { Edit3, Plus, RefreshCw, Save, Search, Trash2, X, Tags } from 'lucide-react';
 import type { AdminContentGenre } from '@zenx-go/api-client';
+import { PageHeader } from '@/components/page-header';
 import {
   useAdminContentGenreMutations,
   useAdminContentGenres,
@@ -13,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { codefy, formatDate, slugify } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
+import { CommonTable } from '@/components/ui/common-table';
 
 type Form = {
   code: string;
@@ -151,40 +153,40 @@ export default function AdminContentGenresPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
+      <PageHeader
+        title="Thể loại game"
+        icon={Tags}
+        description="Quản lý các danh mục và thể loại phân loại tựa game trên portal."
+        badge={
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+            {allGenres.length} thể loại
+          </span>
+        }
+        actions={
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">
-              Thể loại game
-            </h1>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-              {allGenres.length} thể loại
-            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void query.refetch()}
+              disabled={query.isFetching}
+              className="h-8 text-xs gap-1.5 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
+            >
+              <RefreshCw className={`size-3.5 ${query.isFetching ? 'animate-spin text-[#00873E]' : ''}`} />
+              <span>Làm mới</span>
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={openCreate}
+              className="h-8 text-xs gap-1.5 font-semibold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs"
+            >
+              <Plus className="size-3.5" />
+              <span>Thêm thể loại</span>
+            </Button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            className="h-8 text-xs gap-1.5 border-slate-200 bg-white font-semibold text-slate-700 shadow-2xs hover:bg-slate-50"
-          >
-            <RefreshCw className={`size-3.5 ${query.isFetching ? 'animate-spin text-[#00873E]' : ''}`} />
-            <span>Làm mới</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={openCreate}
-            className="h-8 text-xs gap-1.5 font-semibold bg-[#00873E] text-white hover:bg-[#007033] shadow-xs"
-          >
-            <Plus className="size-3.5" />
-            <span>Thêm thể loại</span>
-          </Button>
-        </div>
-      </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* Quick Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
@@ -252,110 +254,102 @@ export default function AdminContentGenresPage() {
         ) : null}
       </div>
 
-      {/* Table Container */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
-        {query.isLoading ? (
-          <div className="p-6 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between gap-4 py-2">
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-6 w-20 rounded-full" />
-                <Skeleton className="h-6 w-16" />
+      {/* Common Table with Fixed Right Action Dropdown & Horizontal Scroll */}
+      <CommonTable<AdminContentGenre>
+        data={items}
+        isLoading={query.isLoading}
+        isFetching={query.isFetching}
+        emptyTitle="Chưa có thể loại nào"
+        emptyDescription={
+          hasActiveFilters
+            ? 'Không tìm thấy thể loại nào phù hợp với bộ lọc hiện tại.'
+            : 'Chưa có thể loại game nào được tạo trên hệ thống.'
+        }
+        emptyIcon={Tags}
+        columns={[
+          {
+            id: 'name',
+            header: 'Thể loại',
+            minWidth: 180,
+            cell: (item) => (
+              <div>
+                <p className="font-bold text-slate-900 text-xs">{item.name}</p>
+                <p className="mt-0.5 text-[11px] font-mono text-slate-400">{item.code}</p>
               </div>
-            ))}
-          </div>
-        ) : query.isError ? (
-          <div className="p-6 text-center text-sm text-red-600">
-            {getErrorMessage(query.error, 'Không thể tải danh sách thể loại.')}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-2.5">Thể loại</th>
-                  <th className="px-4 py-2.5">Slug</th>
-                  <th className="px-4 py-2.5">Số game</th>
-                  <th className="px-4 py-2.5">Thứ tự</th>
-                  <th className="whitespace-nowrap px-4 py-2.5">Trạng thái</th>
-                  <th className="px-4 py-2.5">Cập nhật</th>
-                  <th className="px-4 py-2.5 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {items.map((item) => {
-                  const canDelete = !item.isActive && item.usageCount === 0;
-                  return (
-                    <tr key={item.id} className="group transition duration-150 hover:bg-slate-50/80">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-slate-900 text-xs">{item.name}</p>
-                        <p className="mt-0.5 text-[11px] font-mono text-slate-400">{item.code}</p>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-600">{item.slug}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-700">{item.usageCount} game</td>
-                      <td className="px-4 py-3 text-xs text-slate-600">{item.sortOrder}</td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                            item.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          <span
-                            className={`size-1.5 rounded-full ${
-                              item.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
-                            }`}
-                          />
-                          {item.isActive ? 'Đang dùng' : 'Ngừng dùng'}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                        {formatDate(item.updatedAt)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEdit(item)}
-                            className="h-7 gap-1 px-2 text-xs font-semibold border-slate-200 bg-white hover:border-[#00873E]/40 hover:bg-[#E8F7EC] hover:text-[#00873E]"
-                            aria-label={`Sửa ${item.name}`}
-                          >
-                            <Edit3 className="size-3" />
-                            <span>Sửa</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!canDelete || mutations.remove.isPending}
-                            title={canDelete ? 'Xóa thể loại' : 'Chỉ xóa thể loại ngừng dùng chưa gắn game nào'}
-                            className="h-7 px-2 text-xs font-semibold border-slate-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 disabled:opacity-35"
-                            onClick={() => remove(item)}
-                            aria-label={`Xóa ${item.name}`}
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!items.length ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-sm text-slate-500">
-                      {hasActiveFilters
-                        ? 'Không tìm thấy thể loại nào phù hợp với bộ lọc hiện tại.'
-                        : 'Chưa có thể loại nào được tạo.'}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+            ),
+          },
+          {
+            id: 'slug',
+            header: 'Slug',
+            minWidth: 140,
+            cell: (item) => <span className="font-mono text-xs text-slate-600">{item.slug}</span>,
+          },
+          {
+            id: 'usageCount',
+            header: 'Số game',
+            minWidth: 100,
+            cell: (item) => <span className="text-xs font-semibold text-slate-700">{item.usageCount} game</span>,
+          },
+          {
+            id: 'sortOrder',
+            header: 'Thứ tự',
+            minWidth: 80,
+            cell: (item) => <span className="text-xs text-slate-600">{item.sortOrder}</span>,
+          },
+          {
+            id: 'status',
+            header: 'Trạng thái',
+            minWidth: 130,
+            cell: (item) => (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                  item.isActive
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                <span
+                  className={`size-1.5 rounded-full ${
+                    item.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                  }`}
+                />
+                {item.isActive ? 'Đang dùng' : 'Ngừng dùng'}
+              </span>
+            ),
+          },
+          {
+            id: 'updatedAt',
+            header: 'Cập nhật',
+            minWidth: 120,
+            cell: (item) => (
+              <span className="whitespace-nowrap text-xs text-slate-500">
+                {formatDate(item.updatedAt)}
+              </span>
+            ),
+          },
+        ]}
+        actions={(item) => {
+          const canDelete = !item.isActive && item.usageCount === 0;
+          return [
+            {
+              key: 'edit',
+              label: 'Chỉnh sửa',
+              icon: Edit3,
+              onClick: () => openEdit(item),
+            },
+            {
+              key: 'delete',
+              label: 'Xóa thể loại',
+              icon: Trash2,
+              variant: 'danger',
+              disabled: !canDelete || mutations.remove.isPending,
+              separatorBefore: true,
+              badge: canDelete ? undefined : 'In-use',
+              onClick: () => remove(item),
+            },
+          ];
+        }}
+      />
 
       {editor ? <GenreEditor editor={editor} setEditor={setEditor} pending={pending} onSave={save} /> : null}
     </div>

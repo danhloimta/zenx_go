@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Edit3, Plus, Save, X } from 'lucide-react';
+import { BookOpen, Edit3, Plus, Save, X, HelpCircle } from 'lucide-react';
 import type { SupportAdminCategory, SupportAdminFaq } from '@zenx-go/api-client';
+import { PageHeader } from '@/components/page-header';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSupportAdminFaqs } from '@/hooks/use-support';
 import { api } from '@/lib/api';
@@ -80,23 +81,23 @@ export default function SupportAdminFaqsPage() {
     faqUpdate.isPending;
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold text-[#00873E]">Support Operations</p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-900">Quản lý FAQ</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Nội dung Markdown giới hạn, có preview an toàn trước khi lưu.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditor({ kind: 'category' })}>
-            <Plus className="size-4" /> Danh mục
-          </Button>
-          <Button size="sm" onClick={() => setEditor({ kind: 'faq' })} disabled={!category}>
-            <Plus className="size-4" /> FAQ mới
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Quản lý FAQ"
+        icon={HelpCircle}
+        eyebrow="Support Operations"
+        description="Nội dung Markdown giới hạn, có preview an toàn trước khi lưu."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditor({ kind: 'category' })}>
+              <Plus className="size-4" /> Danh mục
+            </Button>
+            <Button size="sm" onClick={() => setEditor({ kind: 'faq' })} disabled={!category}>
+              <Plus className="size-4" /> FAQ mới
+            </Button>
+          </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
       {query.isLoading ? (
         <Skeleton className="h-[560px] rounded-2xl" />
       ) : query.isError ? (

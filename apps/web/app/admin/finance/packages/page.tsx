@@ -15,6 +15,7 @@ import {
 import type { AdminFinanceCoinPackage, CoinPackageStatus } from '@zenx-go/api-client';
 import { useAdminFinancePackageMutations, useAdminFinancePackages } from '@/hooks/use-finance';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +23,7 @@ import { formatAmount, formatDate } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { toast } from 'sonner';
 import { useAdminAbility } from '@/lib/admin-ability';
+import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
 
 type Form = {
   code: string;
@@ -164,44 +166,177 @@ export default function AdminFinancePackagesPage() {
     });
   };
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, page, pageSize]);
+
+  const columns = useMemo<ColumnDef<AdminFinanceCoinPackage>[]>(
+    () => [
+      {
+        id: 'name',
+        header: 'Tên gói nạp & Mã',
+        minWidth: 220,
+        cell: (item) => (
+          <div>
+            <p className="font-bold text-slate-900 text-sm whitespace-nowrap">{item.name}</p>
+            <p className="font-mono text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">{item.code}</p>
+          </div>
+        ),
+      },
+      {
+        id: 'price',
+        header: 'Giá bán (VNĐ)',
+        minWidth: 140,
+        cell: (item) => (
+          <div className="whitespace-nowrap">
+            <span className="text-sm font-black text-slate-900">
+              {formatAmount(item.priceVnd)}
+            </span>
+            <span className="text-xs text-slate-500 ml-1">₫</span>
+          </div>
+        ),
+      },
+      {
+        id: 'coins',
+        header: 'Coin nhận được',
+        minWidth: 150,
+        cell: (item) => (
+          <div className="whitespace-nowrap">
+            <span className="text-sm font-black text-emerald-600">
+              +{formatAmount(item.coinAmount)}
+            </span>
+            <span className="text-xs text-emerald-700/70 font-semibold ml-1">Coin</span>
+          </div>
+        ),
+      },
+      {
+        id: 'rate',
+        header: 'Tỷ giá quy đổi',
+        minWidth: 160,
+        cell: (item) => {
+          const price = Number(item.priceVnd) || 0;
+          const coins = Number(item.coinAmount) || 0;
+          const rate = price > 0 ? (coins / price) * 1000 : 0;
+          return (
+            <div className="text-slate-500 whitespace-nowrap">
+              <span className="font-semibold text-slate-700">
+                {rate > 0 ? `${formatAmount(Math.round(rate))} Coin` : '—'}
+              </span>
+              <span className="text-[11px] text-slate-400"> / 1.000₫</span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'sortOrder',
+        header: 'Thứ tự',
+        minWidth: 90,
+        cell: (item) => (
+          <span className="inline-flex size-6 items-center justify-center rounded-lg bg-slate-100 text-slate-600 font-mono font-bold text-[11px] whitespace-nowrap shrink-0">
+            {item.sortOrder}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Trạng thái',
+        minWidth: 130,
+        cell: (item) => {
+          const isActive = item.status === 'ACTIVE';
+          return (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap shrink-0 ${
+                isActive
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-slate-100 text-slate-500 border-slate-200'
+              }`}
+            >
+              <span
+                className={`size-1.5 rounded-full shrink-0 ${
+                  isActive ? 'bg-emerald-500' : 'bg-slate-400'
+                }`}
+              />
+              {isActive ? 'Đang bán' : 'Ngừng bán'}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'updatedAt',
+        header: 'Cập nhật',
+        minWidth: 130,
+        cell: (item) => (
+          <span className="text-slate-500 text-[11px] whitespace-nowrap">
+            {formatDate(item.updatedAt)}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const actions = (item: AdminFinanceCoinPackage): TableAction<AdminFinanceCoinPackage>[] => {
+    if (!canManage) return [];
+    return [
+      {
+        key: 'edit',
+        label: 'Chỉnh sửa gói nạp',
+        icon: Edit3,
+        onClick: () => openEdit(item),
+      },
+      {
+        key: 'delete',
+        label: 'Xóa gói nạp',
+        icon: Trash2,
+        variant: 'danger',
+        onClick: () => remove(item),
+      },
+    ];
+  };
+
   return (
     <div className="space-y-4 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">Gói nạp ZENX Coin</h1>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
-              {allItems.length} gói
-            </span>
+      <PageHeader
+        title="Gói nạp ZENX Coin"
+        icon={Coins}
+        description="Cấu hình giá bán (VNĐ), số Coin nhận được và thứ tự hiển thị khi người chơi nạp tiền."
+        badge={
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+            {allItems.length} gói
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void query.refetch()}
+              disabled={query.isFetching}
+              className="text-xs h-8 px-3 rounded-xl"
+            >
+              <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
+              Làm mới
+            </Button>
+
+            {canManage ? (
+              <Button
+                size="sm"
+                onClick={openCreate}
+                className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] hover:bg-[#00873E]/90 text-white shadow-xs"
+              >
+                <Plus className="size-4 mr-1.5" />
+                Tạo gói nạp
+              </Button>
+            ) : null}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Cấu hình giá bán (VNĐ), số Coin nhận được và thứ tự hiển thị khi người chơi nạp tiền.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-            className="text-xs h-8 px-3 rounded-xl"
-          >
-            <RefreshCw className={`size-3.5 mr-1.5 ${query.isFetching ? 'animate-spin' : ''}`} />
-            Làm mới
-          </Button>
-
-          {canManage ? <Button
-            size="sm"
-            onClick={openCreate}
-            className="text-xs h-8 px-3.5 rounded-xl font-bold bg-[#00873E] hover:bg-[#00873E]/90 text-white shadow-xs"
-          >
-            <Plus className="size-4 mr-1.5" />
-            Tạo gói nạp
-          </Button> : null}
-        </div>
-      </div>
+        }
+        className="pb-3 border-b border-slate-100"
+      />
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -308,159 +443,57 @@ export default function AdminFinancePackagesPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/60 font-semibold text-slate-500">
-                  <th className="py-2.5 px-4 w-14 text-center">Thứ tự</th>
-                  <th className="py-2.5 px-4">Tên gói nạp</th>
-                  <th className="py-2.5 px-4">Giá bán (VNĐ)</th>
-                  <th className="py-2.5 px-4">Coin nhận được</th>
-                  <th className="py-2.5 px-4">Tỷ giá quy đổi</th>
-                  <th className="py-2.5 px-4">Trạng thái</th>
-                  <th className="py-2.5 px-4">Cập nhật</th>
-                  <th className="py-2.5 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100/80">
-                {items.map((item) => {
-                  const price = Number(item.priceVnd) || 0;
-                  const coins = Number(item.coinAmount) || 0;
-                  const rate = price > 0 ? (coins / price) * 1000 : 0;
-                  const isActive = item.status === 'ACTIVE';
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/60 transition-colors group"
-                    >
-                      {/* Sort Order */}
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex size-6 items-center justify-center rounded-lg bg-slate-100 text-slate-600 font-mono font-bold text-[11px]">
-                          {item.sortOrder}
-                        </span>
-                      </td>
-
-                      {/* Name & Code */}
-                      <td className="py-3 px-4">
-                        <p className="font-bold text-slate-900 text-sm">{item.name}</p>
-                        <p className="font-mono text-[11px] text-slate-400 mt-0.5">{item.code}</p>
-                      </td>
-
-                      {/* Price VND */}
-                      <td className="py-3 px-4">
-                        <span className="text-sm font-black text-slate-900">
-                          {formatAmount(item.priceVnd)}
-                        </span>
-                        <span className="text-xs text-slate-500 ml-1">₫</span>
-                      </td>
-
-                      {/* Coin Amount */}
-                      <td className="py-3 px-4">
-                        <span className="text-sm font-black text-emerald-600">
-                          +{formatAmount(item.coinAmount)}
-                        </span>
-                        <span className="text-xs text-emerald-700/70 font-semibold ml-1">Coin</span>
-                      </td>
-
-                      {/* Rate */}
-                      <td className="py-3 px-4 text-slate-500">
-                        <span className="font-semibold text-slate-700">
-                          {rate > 0 ? `${formatAmount(Math.round(rate))} Coin` : '—'}
-                        </span>
-                        <span className="text-[11px] text-slate-400"> / 1.000₫</span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${
-                            isActive
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-slate-100 text-slate-500 border-slate-200'
-                          }`}
-                        >
-                          <span
-                            className={`size-1.5 rounded-full ${
-                              isActive ? 'bg-emerald-500' : 'bg-slate-400'
-                            }`}
-                          />
-                          {isActive ? 'Đang bán' : 'Ngừng bán'}
-                        </span>
-                      </td>
-
-                      {/* Updated Date */}
-                      <td className="py-3 px-4 text-slate-500 text-[11px]">
-                        {formatDate(item.updatedAt)}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {canManage ? <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(item)}
-                            className="h-7 px-2 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg"
-                          >
-                            <Edit3 className="size-3.5 mr-1 text-slate-400" />
-                            Sửa
-                          </Button> : null}
-                          {canManage ? <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => remove(item)}
-                            className="h-7 px-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
-                          >
-                            <Trash2 className="size-3.5 mr-1 text-rose-500" />
-                            Xóa
-                          </Button> : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {!items.length ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      <Coins className="mx-auto size-8 text-slate-300 mb-2" />
-                      <p className="font-semibold text-slate-600">Không tìm thấy gói nạp nào</p>
-                      {filter !== 'ALL' || search ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFilter('ALL');
-                            setSearch('');
-                          }}
-                          className="mt-2 text-xs font-semibold text-[#00873E] hover:underline"
-                        >
-                          Xóa bộ lọc để xem tất cả
-                        </button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={openCreate}
-                          className="mt-3 text-xs font-semibold bg-[#00873E] hover:bg-[#00873E]/90 text-white rounded-xl"
-                        >
-                          <Plus className="size-3.5 mr-1" />
-                          Tạo gói nạp đầu tiên
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer note */}
-          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Thứ tự càng nhỏ sẽ được ưu tiên hiển thị trước trên giao diện nạp tiền của khách.</span>
-            <span>Tổng số: {items.length} gói</span>
-          </div>
-        </div>
+        <CommonTable<AdminFinanceCoinPackage>
+          showIndexColumn
+          data={paginatedItems}
+          columns={columns}
+          actions={canManage ? actions : undefined}
+          actionHeaderTitle="Thao tác"
+          isLoading={query.isLoading}
+          isFetching={query.isFetching}
+          emptyTitle="Không tìm thấy gói nạp nào"
+          emptyDescription={
+            filter !== 'ALL' || search
+              ? 'Không có gói nạp nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm.'
+              : 'Chưa có gói nạp nào được tạo trên hệ thống.'
+          }
+          emptyIcon={Coins}
+          emptyAction={
+            filter !== 'ALL' || search ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilter('ALL');
+                  setSearch('');
+                  setPage(1);
+                }}
+                className="mt-3 text-xs gap-1.5 border-slate-200 font-semibold"
+              >
+                <X className="size-3" /> Xóa bộ lọc
+              </Button>
+            ) : canManage ? (
+              <Button
+                size="sm"
+                onClick={openCreate}
+                className="mt-3 text-xs font-semibold bg-[#00873E] hover:bg-[#007033] text-white rounded-xl"
+              >
+                <Plus className="size-3.5 mr-1" /> Tạo gói nạp đầu tiên
+              </Button>
+            ) : undefined
+          }
+          pagination={{
+            page,
+            pageSize,
+            totalItems: items.length,
+            onPageChange: (newPage) => setPage(newPage),
+            onPageSizeChange: (newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            },
+            pageSizeOptions: [10, 20, 50],
+          }}
+        />
       )}
 
       {/* Package Editor Modal */}

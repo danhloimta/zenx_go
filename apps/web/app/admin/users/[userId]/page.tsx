@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   Ban,
@@ -20,12 +21,16 @@ import {
   Check,
   User,
   Clock,
-  ChevronRight,
   Shield,
   CreditCard,
   Pencil,
   Trash2,
   RotateCcw,
+  Crown,
+  Headphones,
+  ChevronDown,
+  ChevronUp,
+  Info,
 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AdminUserDetail, RoleDetail, RoleSummary, UserActivityLog } from '@zenx-go/api-client';
@@ -33,7 +38,7 @@ import { useAdminMe, useAdminUser } from '@/hooks/use-admin';
 import { useAdminFinanceWalletAdjustment } from '@/hooks/use-finance';
 import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatAmount, formatDate, formatDateOnly, transactionTypeLabel } from '@/lib/utils';
+import { cn, formatAmount, formatDate, formatDateOnly, transactionTypeLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -43,6 +48,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { AccountStatusBadge } from '@/components/account-status-badge';
 import { toast } from 'sonner';
 import { useAdminAbility } from '@/lib/admin-ability';
+import { CommonTable, type ColumnDef } from '@/components/ui/common-table';
 
 type Action = 'password' | 'editIdentity' | 'deleteUser' | 'roles' | null;
 
@@ -267,26 +273,12 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="space-y-5">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-          <Link href="/admin" className="hover:text-slate-700">
-            Tổng quan
-          </Link>
-          <ChevronRight className="size-3.5 text-slate-300" />
-          <Link href="/admin/users" className="hover:text-slate-700">
-            Người dùng
-          </Link>
-          <ChevronRight className="size-3.5 text-slate-300" />
-          <span className="text-slate-800 font-bold truncate max-w-48">
-            @{user.username}
-          </span>
-        </div>
-
-        <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-slate-600">
+      {/* Back to users list */}
+      <div>
+        <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 -ml-2">
           <Link href="/admin/users">
             <ArrowLeft className="size-3.5" />
-            <span>Quay lại</span>
+            <span>Quay lại danh sách người dùng</span>
           </Link>
         </Button>
       </div>
@@ -747,8 +739,128 @@ export default function AdminUserDetailPage() {
 function ActivityLogSection({ userId }: { userId: string }) {
   const [category, setCategory] = useState<'ALL' | 'LOGIN' | 'SECURITY'>('ALL');
   const [page, setPage] = useState(1);
-  const logs = useQuery({ queryKey: ['admin', 'users', userId, 'activity-logs', category, page], queryFn: () => api.admin.activityLogs(userId, { page, pageSize: 20, category }), retry: false });
-  return <section className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4"><div><h3 className="font-bold text-slate-900">Lịch sử hoạt động</h3><p className="text-xs text-slate-500">Đăng nhập và hoạt động bảo mật trong 180 ngày gần đây.</p></div><div className="flex gap-1">{(['ALL', 'LOGIN', 'SECURITY'] as const).map((value) => <Button key={value} size="sm" variant={category === value ? 'default' : 'outline'} onClick={() => { setCategory(value); setPage(1); }}>{value === 'ALL' ? 'Tất cả' : value === 'LOGIN' ? 'Đăng nhập' : 'Bảo mật'}</Button>)}</div></div>{logs.isLoading ? <Skeleton className="mt-4 h-40" /> : logs.isError ? <p className="mt-4 text-sm text-red-600">Không thể tải lịch sử hoạt động.</p> : <><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-3">Thời gian</th><th className="pb-3">Hoạt động</th><th className="pb-3">IP</th><th className="pb-3">Thiết bị</th><th className="pb-3">User-Agent</th></tr></thead><tbody>{logs.data?.items.length ? logs.data.items.map((item: UserActivityLog) => <tr className="border-t border-slate-100" key={item.id}><td className="py-3 text-slate-500">{formatDate(item.createdAt)}</td><td className={item.outcome === 'FAILED' ? 'py-3 text-red-600' : 'py-3 text-slate-800'}>{adminActivityLabel(item)}{item.outcome === 'FAILED' ? ' (thất bại)' : ''}</td><td className="py-3 font-mono text-slate-600">{item.ipAddress ?? '—'}</td><td className="py-3 text-slate-600">{item.deviceLabel ?? '—'}</td><td className="max-w-xs truncate py-3 text-slate-400" title={item.userAgent ?? undefined}>{item.userAgent ?? '—'}</td></tr>) : <tr><td colSpan={5} className="py-8 text-center text-slate-400">Chưa có lịch sử hoạt động.</td></tr>}</tbody></table></div>{(logs.data?.totalPages ?? 1) > 1 ? <div className="mt-4 flex justify-end gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Trước</Button><Button size="sm" variant="outline" disabled={page >= (logs.data?.totalPages ?? 1)} onClick={() => setPage(page + 1)}>Sau</Button></div> : null}</>}</section>;
+  const [pageSize, setPageSize] = useState(20);
+  const logs = useQuery({
+    queryKey: ['admin', 'users', userId, 'activity-logs', category, page, pageSize],
+    queryFn: () => api.admin.activityLogs(userId, { page, pageSize, category }),
+    retry: false,
+  });
+
+  const columns = useMemo<ColumnDef<UserActivityLog>[]>(
+    () => [
+      {
+        id: 'createdAt',
+        header: 'Thời gian',
+        accessorKey: 'createdAt',
+        cell: (item) => (
+          <span className="text-slate-500 whitespace-nowrap shrink-0 text-xs">
+            {formatDate(item.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: 'eventType',
+        header: 'Hoạt động',
+        cell: (item) => (
+          <span
+            className={`text-xs whitespace-nowrap shrink-0 font-medium ${
+              item.outcome === 'FAILED' ? 'text-rose-600' : 'text-slate-800'
+            }`}
+          >
+            {adminActivityLabel(item)}
+            {item.outcome === 'FAILED' ? ' (thất bại)' : ''}
+          </span>
+        ),
+      },
+      {
+        id: 'ipAddress',
+        header: 'IP',
+        accessorKey: 'ipAddress',
+        cell: (item) => (
+          <span className="font-mono text-xs text-slate-600 whitespace-nowrap shrink-0">
+            {item.ipAddress ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'deviceLabel',
+        header: 'Thiết bị',
+        accessorKey: 'deviceLabel',
+        cell: (item) => (
+          <span className="text-xs text-slate-600 whitespace-nowrap shrink-0">
+            {item.deviceLabel ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'userAgent',
+        header: 'User-Agent',
+        accessorKey: 'userAgent',
+        cell: (item) => (
+          <span
+            className="max-w-xs truncate text-xs text-slate-400 block"
+            title={item.userAgent ?? undefined}
+          >
+            {item.userAgent ?? '—'}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+        <div>
+          <h3 className="font-bold text-slate-900">Lịch sử hoạt động</h3>
+          <p className="text-xs text-slate-500">
+            Đăng nhập và hoạt động bảo mật trong 180 ngày gần đây.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {(['ALL', 'LOGIN', 'SECURITY'] as const).map((value) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={category === value ? 'default' : 'outline'}
+              onClick={() => {
+                setCategory(value);
+                setPage(1);
+              }}
+            >
+              {value === 'ALL' ? 'Tất cả' : value === 'LOGIN' ? 'Đăng nhập' : 'Bảo mật'}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {logs.isError ? (
+        <p className="mt-4 text-sm text-red-600">Không thể tải lịch sử hoạt động.</p>
+      ) : (
+        <CommonTable<UserActivityLog>
+          showIndexColumn
+          data={logs.data?.items ?? []}
+          columns={columns}
+          isLoading={logs.isLoading}
+          isFetching={logs.isFetching}
+          emptyTitle="Chưa có lịch sử hoạt động"
+          emptyDescription="Không tìm thấy bản ghi hoạt động nào phù hợp với bộ lọc."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: logs.data?.total ?? 0,
+            onPageChange: (newPage) => setPage(newPage),
+            onPageSizeChange: (newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            },
+            pageSizeOptions: [10, 20, 50],
+          }}
+        />
+      )}
+    </section>
+  );
 }
 
 function adminActivityLabel(item: UserActivityLog) {
@@ -924,8 +1036,120 @@ function WalletSection({ user, canAdjustWallet }: { user: AdminUserDetail; canAd
           )}
         </div>
       </div>
-      {kind ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4"><div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h4 className="text-lg font-black text-slate-900">{kind === 'credit' ? 'Cộng Coin vào ví' : 'Trừ Coin khỏi ví'}</h4><p className="mt-1 text-xs text-slate-500">Số dư hiện tại: <strong>{formatAmount(user.wallet?.balance)} ZENX</strong></p></div><Button variant="ghost" size="icon" onClick={() => setKind(null)}><X className="size-4" /></Button></div><div className="mt-5 space-y-4"><label className="block text-xs font-bold text-slate-600">Số Coin<Input className="mt-1.5" inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))} placeholder="1000" /></label><label className="block text-xs font-bold text-slate-600">Ghi chú tùy chọn<Input className="mt-1.5" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Điều chỉnh số dư…" /></label><div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">{amount && /^\d+$/.test(amount) ? <>Số dư dự kiến: <strong className={kind === 'credit' ? 'text-emerald-700' : 'text-red-700'}>{formatAmount(kind === 'credit' ? BigInt(String(user.wallet?.balance ?? 0)) + BigInt(amount) : BigInt(String(user.wallet?.balance ?? 0)) - BigInt(amount))} ZENX</strong></> : 'Nhập số Coin để xem số dư dự kiến.'}</div></div><div className="mt-6 flex justify-end gap-2"><Button variant="outline" onClick={() => setKind(null)}>Hủy</Button><Button variant={kind === 'debit' ? 'destructive' : 'default'} onClick={submitAdjustment} disabled={pending}>{pending ? 'Đang xử lý…' : 'Xác nhận'}</Button></div></div></div> : null}
+      {kind ? (
+        <ModalPortal onClose={() => setKind(null)} maxWidth="max-w-md" preventClose={pending}>
+          <div className="flex items-start justify-between border-b border-slate-100 pb-3.5 shrink-0">
+            <div>
+              <h4 className="text-lg font-black text-slate-900">
+                {kind === 'credit' ? 'Cộng Coin vào ví' : 'Trừ Coin khỏi ví'}
+              </h4>
+              <p className="mt-1 text-xs text-slate-500">
+                Số dư hiện tại: <strong>{formatAmount(user.wallet?.balance)} ZENX</strong>
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setKind(null)} disabled={pending}>
+              <X className="size-4" />
+            </Button>
+          </div>
+          <div className="mt-4 space-y-4 overflow-y-auto -mr-1 pr-1 flex-1">
+            <label className="block text-xs font-bold text-slate-600">
+              Số Coin
+              <Input
+                className="mt-1.5"
+                inputMode="numeric"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value.replace(/\D/g, ''))}
+                placeholder="1000"
+              />
+            </label>
+            <label className="block text-xs font-bold text-slate-600">
+              Ghi chú tùy chọn
+              <Input
+                className="mt-1.5"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                maxLength={500}
+                placeholder="Điều chỉnh số dư…"
+              />
+            </label>
+            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+              {amount && /^\d+$/.test(amount) ? (
+                <>
+                  Số dư dự kiến:{' '}
+                  <strong className={kind === 'credit' ? 'text-emerald-700' : 'text-red-700'}>
+                    {formatAmount(
+                      kind === 'credit'
+                        ? BigInt(String(user.wallet?.balance ?? 0)) + BigInt(amount)
+                        : BigInt(String(user.wallet?.balance ?? 0)) - BigInt(amount)
+                    )}{' '}
+                    ZENX
+                  </strong>
+                </>
+              ) : (
+                'Nhập số Coin để xem số dư dự kiến.'
+              )}
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
+            <Button variant="outline" onClick={() => setKind(null)} disabled={pending}>
+              Hủy
+            </Button>
+            <Button
+              variant={kind === 'debit' ? 'destructive' : 'default'}
+              onClick={submitAdjustment}
+              disabled={pending}
+            >
+              {pending ? 'Đang xử lý…' : 'Xác nhận'}
+            </Button>
+          </div>
+        </ModalPortal>
+      ) : null}
     </section>
+  );
+}
+
+function ModalPortal({
+  children,
+  onClose,
+  maxWidth = 'max-w-md',
+  preventClose = false,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+  maxWidth?: string;
+  preventClose?: boolean;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !preventClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, preventClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !preventClose) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className={`w-full ${maxWidth} max-h-[calc(100dvh-2.5rem)] my-auto flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl overflow-hidden`}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -958,64 +1182,63 @@ function PasswordDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-900">Đặt mật khẩu tạm thời</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Nhập mật khẩu mới cho tài khoản <strong className="text-slate-800">@{user.username}</strong>.
-            </p>
-          </div>
-          <button
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onClose}
-            aria-label="Đóng hộp thoại"
-          >
-            <X className="size-5" />
-          </button>
+    <ModalPortal onClose={onClose} maxWidth="max-w-md" preventClose={pending}>
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3.5 shrink-0">
+        <div>
+          <h2 className="text-lg font-black tracking-tight text-slate-900">Đặt mật khẩu tạm thời</h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            Nhập mật khẩu mới cho tài khoản <strong className="text-slate-800">@{user.username}</strong>.
+          </p>
         </div>
-
-        <div className="mt-5 space-y-3.5">
-            <Field label="Mật khẩu tạm mới">
-              <Input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="new-password"
-                placeholder="Tối thiểu 8 ký tự"
-                className="h-10 text-sm"
-              />
-            </Field>
-            <Field label="Xác nhận mật khẩu tạm">
-              <Input
-                type="password"
-                value={confirmation}
-                onChange={(event) => setConfirmation(event.target.value)}
-                autoComplete="new-password"
-                placeholder="Nhập lại mật khẩu tạm"
-                className="h-10 text-sm"
-              />
-            </Field>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              * Mật khẩu yêu cầu gồm chữ hoa, chữ thường, số và ký tự đặc biệt. Người dùng sẽ bị bắt
-              buộc đổi mật khẩu ở lần đăng nhập tới.
-            </p>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2.5">
-          <Button variant="outline" onClick={onClose} disabled={pending}>
-            Hủy bỏ
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={pending || password.length < 8 || password !== confirmation}
-          >
-            {pending ? 'Đang xử lý…' : 'Đặt mật khẩu'}
-          </Button>
-        </div>
+        <button
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          onClick={onClose}
+          aria-label="Đóng hộp thoại"
+          disabled={pending}
+        >
+          <X className="size-5" />
+        </button>
       </div>
-    </div>
+
+      <div className="mt-4 space-y-3.5 overflow-y-auto -mr-1 pr-1 flex-1">
+        <Field label="Mật khẩu tạm mới">
+          <Input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            placeholder="Tối thiểu 8 ký tự"
+            className="h-10 text-sm"
+          />
+        </Field>
+        <Field label="Xác nhận mật khẩu tạm">
+          <Input
+            type="password"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            autoComplete="new-password"
+            placeholder="Nhập lại mật khẩu tạm"
+            className="h-10 text-sm"
+          />
+        </Field>
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          * Mật khẩu yêu cầu gồm chữ hoa, chữ thường, số và ký tự đặc biệt. Người dùng sẽ bị bắt
+          buộc đổi mật khẩu ở lần đăng nhập tới.
+        </p>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2.5 pt-2 border-t border-slate-100 shrink-0">
+        <Button variant="outline" onClick={onClose} disabled={pending}>
+          Hủy bỏ
+        </Button>
+        <Button
+          onClick={submit}
+          disabled={pending || password.length < 8 || password !== confirmation}
+        >
+          {pending ? 'Đang xử lý…' : 'Đặt mật khẩu'}
+        </Button>
+      </div>
+    </ModalPortal>
   );
 }
 
@@ -1039,26 +1262,26 @@ function RevealDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <ShieldCheck className="size-4" />
-            </div>
-            <h2 className="text-base font-black text-slate-900">Thông tin CCCD đã giải mã</h2>
+    <ModalPortal onClose={onClose} maxWidth="max-w-md">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <ShieldCheck className="size-4" />
           </div>
-          <button
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onClose}
-            aria-label="Đóng"
-          >
-            <X className="size-5" />
-          </button>
+          <h2 className="text-base font-black text-slate-900">Thông tin CCCD đã giải mã</h2>
         </div>
+        <button
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          onClick={onClose}
+          aria-label="Đóng"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
 
+      <div className="overflow-y-auto -mr-1 pr-1 mt-4 flex-1">
         {identity ? (
-          <div className="mt-5 space-y-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-sm">
+          <div className="space-y-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 p-5 text-sm">
             <div>
               <span className="text-xs font-semibold text-amber-700">Số Căn cước công dân</span>
               <div className="mt-1 flex items-center justify-between">
@@ -1087,27 +1310,27 @@ function RevealDialog({
             </div>
           </div>
         ) : (
-          <p className="mt-5 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+          <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
             Tài khoản chưa có thông tin CCCD được cấu hình.
           </p>
         )}
-
-        <div className="mt-6 flex gap-2.5">
-          {identity && onEdit ? (
-            <Button
-              variant="outline"
-              className="flex-1 font-semibold border-slate-200 hover:bg-slate-50 gap-1.5"
-              onClick={onEdit}
-            >
-              <Pencil className="size-3.5" /> Chỉnh sửa
-            </Button>
-          ) : null}
-          <Button className="flex-1 font-semibold" onClick={onClose}>
-            Đóng thông tin
-          </Button>
-        </div>
       </div>
-    </div>
+
+      <div className="mt-6 flex gap-2.5 pt-2 border-t border-slate-100 shrink-0">
+        {identity && onEdit ? (
+          <Button
+            variant="outline"
+            className="flex-1 font-semibold border-slate-200 hover:bg-slate-50 gap-1.5"
+            onClick={onEdit}
+          >
+            <Pencil className="size-3.5" /> Chỉnh sửa
+          </Button>
+        ) : null}
+        <Button className="flex-1 font-semibold" onClick={onClose}>
+          Đóng thông tin
+        </Button>
+      </div>
+    </ModalPortal>
   );
 }
 
@@ -1149,28 +1372,29 @@ function EditIdentityDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-900">
-              {user.sensitiveProfile.identity.configured ? 'Chỉnh sửa thông tin CCCD' : 'Thêm mới số CCCD'}
-            </h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Cập nhật thông tin Căn cước công dân cho tài khoản{' '}
-              <strong className="text-slate-800">@{user.username}</strong>.
-            </p>
-          </div>
-          <button
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            onClick={onClose}
-            aria-label="Đóng hộp thoại"
-          >
-            <X className="size-5" />
-          </button>
+    <ModalPortal onClose={onClose} maxWidth="max-w-md" preventClose={pending}>
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3.5 shrink-0">
+        <div>
+          <h2 className="text-lg font-black tracking-tight text-slate-900">
+            {user.sensitiveProfile.identity.configured ? 'Chỉnh sửa thông tin CCCD' : 'Thêm mới số CCCD'}
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            Cập nhật thông tin Căn cước công dân cho tài khoản{' '}
+            <strong className="text-slate-800">@{user.username}</strong>.
+          </p>
         </div>
+        <button
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          onClick={onClose}
+          aria-label="Đóng hộp thoại"
+          disabled={pending}
+        >
+          <X className="size-5" />
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+      <div className="overflow-y-auto -mr-1 pr-1 mt-4 flex-1">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Số CCCD (12 chữ số)">
             <div className="relative">
               <Input
@@ -1254,7 +1478,7 @@ function EditIdentityDialog({
             </div>
           ) : null}
 
-          <div className="mt-6 flex items-center justify-between pt-2 border-t border-slate-100">
+          <div className="mt-6 flex items-center justify-between pt-2 border-t border-slate-100 shrink-0">
             {user.sensitiveProfile.identity.configured && !showConfirmDelete ? (
               <Button
                 type="button"
@@ -1281,7 +1505,7 @@ function EditIdentityDialog({
           </div>
         </form>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 
@@ -1297,23 +1521,23 @@ function DeleteUserDialog({
   pending: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-rose-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-start gap-3.5">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
-            <Trash2 className="size-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-black tracking-tight text-slate-900">
-              Xác nhận xóa tài khoản?
-            </h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Bạn đang thực hiện xóa mềm tài khoản <strong className="text-slate-800">@{user.username}</strong> ({user.email}).
-            </p>
-          </div>
+    <ModalPortal onClose={onClose} maxWidth="max-w-md" preventClose={pending}>
+      <div className="flex items-start gap-3.5 border-b border-slate-100 pb-3.5 shrink-0">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
+          <Trash2 className="size-5" />
         </div>
+        <div>
+          <h2 className="text-lg font-black tracking-tight text-slate-900">
+            Xác nhận xóa tài khoản?
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            Bạn đang thực hiện xóa mềm tài khoản <strong className="text-slate-800">@{user.username}</strong> ({user.email}).
+          </p>
+        </div>
+      </div>
 
-        <div className="mt-4 rounded-xl bg-rose-50/70 border border-rose-200/80 p-3.5 text-xs text-rose-900 leading-relaxed">
+      <div className="overflow-y-auto -mr-1 pr-1 mt-4 flex-1">
+        <div className="rounded-xl bg-rose-50/70 border border-rose-200/80 p-3.5 text-xs text-rose-900 leading-relaxed">
           <ul className="list-disc pl-4 space-y-1 text-slate-700">
             <li>Tài khoản sẽ chuyển sang trạng thái <strong>Đã xóa (DELETED)</strong>.</li>
             <li>Toàn bộ phiên đăng nhập của người dùng sẽ bị <strong>thu hồi ngay lập tức</strong>.</li>
@@ -1321,26 +1545,26 @@ function DeleteUserDialog({
             <li>Bạn có thể khôi phục lại tài khoản này bất cứ lúc nào khi cần.</li>
           </ul>
         </div>
-
-        <div className="mt-6 flex justify-end gap-2.5">
-          <Button variant="outline" onClick={onClose} disabled={pending}>
-            Hủy bỏ
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={pending}
-            className="font-semibold gap-1.5"
-          >
-            {pending ? 'Đang xử lý…' : (
-              <>
-                <Trash2 className="size-4" /> Xác nhận xóa
-              </>
-            )}
-          </Button>
-        </div>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2.5 pt-2 border-t border-slate-100 shrink-0">
+        <Button variant="outline" onClick={onClose} disabled={pending}>
+          Hủy bỏ
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={onConfirm}
+          disabled={pending}
+          className="font-semibold gap-1.5"
+        >
+          {pending ? 'Đang xử lý…' : (
+            <>
+              <Trash2 className="size-4" /> Xác nhận xóa
+            </>
+          )}
+        </Button>
+      </div>
+    </ModalPortal>
   );
 }
 
@@ -1361,17 +1585,30 @@ function UpdateRolesDialog({
 }) {
   const [selectedRoles, setSelectedRoles] = useState<RoleSummary[]>(user.roles);
   const [reason, setReason] = useState('');
+  const [showTechDetails, setShowTechDetails] = useState(false);
 
-  const toggleRole = (role: RoleSummary) => {
+  // Sắp xếp vai trò hợp lý: Super Admin trước, Support CSKH tiếp theo, sau đó là các vai trò khác
+  const platformRoles = useMemo(() => {
+    const list = availableRoles.filter((role) => role.scopeType !== 'GAME');
+    return [...list].sort((a, b) => {
+      if (a.code === 'SUPER_ADMIN') return -1;
+      if (b.code === 'SUPER_ADMIN') return 1;
+      if (a.code === 'SUPPORT') return -1;
+      if (b.code === 'SUPPORT') return 1;
+      return a.name.localeCompare(b.name, 'vi');
+    });
+  }, [availableRoles]);
+
+  const toggleRole = (role: RoleDetail | RoleSummary) => {
     setSelectedRoles((prev) =>
-      prev.some((entry) => entry.id === role.id) ? prev.filter((entry) => entry.id !== role.id) : [...prev, role],
+      prev.some((entry) => entry.id === role.id)
+        ? prev.filter((entry) => entry.id !== role.id)
+        : [...prev, { id: role.id, code: role.code, name: role.name }],
     );
   };
 
   const isSelf = currentAdminId === user.id;
-  const superRole = availableRoles.find((role) => role.code === 'SUPER_ADMIN');
-  const supportRole = availableRoles.find((role) => role.code === 'SUPPORT');
-  const isTargetSuperAdmin = Boolean(superRole);
+  const isTargetSuperAdmin = user.roles.some((role) => role.code === 'SUPER_ADMIN');
   const isRemovingOwnSuperAdmin = isSelf && isTargetSuperAdmin && !selectedRoles.some((role) => role.code === 'SUPER_ADMIN');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1380,134 +1617,266 @@ function UpdateRolesDialog({
     if (!reason.trim()) return;
     onConfirm(selectedRoles.map((role) => role.id), reason.trim());
   };
-  const effectivePermissions = Array.from(new Set(
-    selectedRoles.flatMap((selected) => availableRoles.find((role) => role.id === selected.id)?.permissions.map((permission) => permission.code) ?? []),
-  ));
+
+  const effectivePermissions = useMemo(() => {
+    const map = new Map<string, { id: string; code: string; name: string; description?: string | null }>();
+    for (const selected of selectedRoles) {
+      const fullRole = availableRoles.find((role) => role.id === selected.id);
+      if (fullRole?.permissions) {
+        for (const permission of fullRole.permissions) {
+          if (!map.has(permission.code)) {
+            map.set(permission.code, {
+              id: permission.id,
+              code: permission.code,
+              name: permission.name || permission.code,
+              description: permission.description,
+            });
+          }
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  }, [selectedRoles, availableRoles]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#00873E] border border-emerald-100">
-              <Shield className="size-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black tracking-tight text-slate-900">
-                Phân quyền & Vai trò
-              </h2>
-              <p className="text-xs text-slate-500">
-                Tài khoản: <strong className="text-slate-800">@{user.username}</strong> ({user.email})
-              </p>
+    <ModalPortal onClose={onClose} maxWidth="max-w-xl" preventClose={pending}>
+      {/* Tiêu đề & Thông tin tài khoản */}
+      <div className="flex items-center justify-between border-b border-slate-100 pb-4 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#00873E] border border-emerald-100 shadow-2xs">
+            <ShieldCheck className="size-6" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-black tracking-tight text-slate-900">
+              Phân quyền & Vai trò
+            </h2>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5 truncate">
+              <span>Tài khoản:</span>
+              <span className="font-bold text-slate-800">@{user.username}</span>
+              {user.email && <span className="text-slate-400">({user.email})</span>}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            disabled={pending}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X className="size-5" />
-          </button>
         </div>
+        <button
+          onClick={onClose}
+          disabled={pending}
+          className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+          aria-label="Đóng"
+        >
+          <X className="size-5" />
+        </button>
+      </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+      {/* Nội dung danh sách vai trò */}
+      <div className="overflow-y-auto -mr-2 pr-2 mt-4 flex-1">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-xs text-slate-500 leading-relaxed">
-            Chọn các vai trò quản trị được cấp cho người dùng này. Nếu không chọn vai trò nào, tài khoản sẽ là thành viên thông thường (Member).
+            Chọn các vai trò quản trị được cấp cho tài khoản này. Nếu không chọn vai trò nào, tài khoản sẽ là thành viên thông thường (Member).
           </p>
 
-          {/* Option 1: SUPER_ADMIN */}
-          <label
-            className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
-              selectedRoles.some((role) => role.code === 'SUPER_ADMIN')
-                ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={selectedRoles.some((role) => role.code === 'SUPER_ADMIN')}
-              onChange={() => superRole && toggleRole(superRole)}
-              disabled={pending || !superRole || (isSelf && isTargetSuperAdmin)}
-              className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]"
-            />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-900">Super Admin (Quản trị tối cao)</span>
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-black text-[#00873E]">
-                  SUPER_ADMIN
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                Toàn quyền quản trị hệ thống: Quản lý người dùng, duyệt tài chính & nạp tiền, quản trị CMS nội dung game, phân quyền vai trò.
-              </p>
-              {isSelf && isTargetSuperAdmin && (
-                <p className="mt-1.5 text-[11px] font-semibold text-amber-600">
-                  ⚠️ Không thể tự tước quyền Super Admin của chính bạn.
+          {/* Danh sách thẻ vai trò */}
+          <div className="space-y-2.5">
+            {platformRoles.map((role) => {
+              const isSelected = selectedRoles.some((entry) => entry.id === role.id);
+              const isSuper = role.code === 'SUPER_ADMIN';
+              const isSupport = role.code === 'SUPPORT';
+              const isSelfSuperAdminDisabled = isSelf && isSuper && isTargetSuperAdmin;
+
+              let displayTitle = role.name;
+              let displayDesc = role.description;
+              let badgeLabel = role.isSystem ? 'Hệ thống' : 'Tùy chỉnh';
+              let badgeColor = 'bg-slate-100 text-slate-600 border-slate-200';
+              let IconComponent = Shield;
+
+              if (isSuper) {
+                displayTitle = 'Super Admin (Quản trị tối cao)';
+                displayDesc = 'Toàn quyền điều hành toàn bộ hệ sinh thái: Quản lý người dùng, duyệt tài chính, cấu hình trò chơi, phân quyền và cài đặt hệ thống.';
+                badgeLabel = 'Toàn quyền';
+                badgeColor = 'bg-emerald-50 text-[#00873E] border-emerald-200';
+                IconComponent = Crown;
+              } else if (isSupport) {
+                displayTitle = 'Chuyên viên Hỗ trợ (Support CSKH)';
+                displayDesc = 'Truy cập Trung tâm hỗ trợ: Tiếp nhận, phân luồng, trả lời ticket khiếu nại của người chơi và quản lý bài viết FAQ.';
+                badgeLabel = 'CSKH';
+                badgeColor = 'bg-violet-50 text-violet-700 border-violet-200';
+                IconComponent = Headphones;
+              } else if (!displayDesc) {
+                displayDesc = 'Vai trò quản trị tùy chỉnh với các quyền hạn được cấu hình trong mục Quản lý vai trò.';
+              }
+
+              const permCount = role.permissions?.length ?? 0;
+
+              return (
+                <label
+                  key={role.id}
+                  className={cn(
+                    'group relative flex items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4 transition-all duration-150 select-none',
+                    isSelfSuperAdminDisabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer',
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60',
+                  )}
+                >
+                  <div className="pt-0.5 shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRole(role)}
+                      disabled={pending || isSelfSuperAdminDisabled}
+                      className="size-4.5 rounded border-slate-300 text-[#00873E] focus:ring-[#00873E]/30 accent-[#00873E] cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1.5 font-bold text-sm text-slate-900">
+                        <IconComponent className={cn('size-4 shrink-0', isSelected ? 'text-[#00873E]' : 'text-slate-400')} />
+                        <span>{displayTitle}</span>
+                      </div>
+                      <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-bold', badgeColor)}>
+                        {badgeLabel}
+                      </span>
+                      <span className="font-mono text-[10px] font-semibold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                        {role.code}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                      {displayDesc}
+                    </p>
+
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-400">
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        <KeyRound className="size-3 text-slate-400" />
+                        {isSuper ? 'Toàn bộ quyền hạn hệ thống' : `${permCount} quyền chức năng`}
+                      </span>
+                    </div>
+
+                    {isSelfSuperAdminDisabled && (
+                      <p className="mt-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1.5">
+                        ⚠️ Bạn đang đăng nhập bằng tài khoản này nên không thể tự gỡ quyền Super Admin của chính mình.
+                      </p>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* Banner tóm tắt trạng thái phân quyền */}
+          {selectedRoles.length === 0 ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900">
+              <Info className="size-4.5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Đang không chọn vai trò quản trị nào</p>
+                <p className="text-amber-700 mt-0.5 leading-relaxed">
+                  Tài khoản này sẽ là <strong>Thành viên thông thường (Member)</strong>, chỉ có các quyền người dùng cơ bản và không thể truy cập bất kỳ khu vực Quản trị nào.
                 </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-xs text-emerald-950">
+              <CheckCircle2 className="size-4.5 text-[#00873E] shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-bold text-[#00873E]">
+                  Đã chọn {selectedRoles.length} vai trò quản trị
+                </p>
+                <p className="text-emerald-800 mt-0.5">
+                  Tài khoản sẽ được cấp: <span className="font-semibold">{selectedRoles.map((r) => r.name).join(', ')}</span>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Chi tiết danh sách quyền hạn: Ẩn mặc định để người dùng thông thường không bị ngợp */}
+          {effectivePermissions.length > 0 && (
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => setShowTechDetails((v) => !v)}
+                className="w-full flex items-center justify-between p-3 text-left font-semibold text-slate-600 hover:bg-slate-100/60 transition"
+              >
+                <span className="flex items-center gap-2">
+                  <KeyRound className="size-3.5 text-slate-400" />
+                  <span>Xem danh sách quyền hạn ({effectivePermissions.length} quyền)</span>
+                </span>
+                {showTechDetails ? (
+                  <ChevronUp className="size-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="size-4 text-slate-400" />
+                )}
+              </button>
+              {showTechDetails && (
+                <div className="p-3 pt-2 border-t border-slate-200/60 bg-white">
+                  <p className="text-[11px] text-slate-500 mb-2">
+                    Các quyền hạn chi tiết được kích hoạt theo vai trò đã chọn:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {effectivePermissions.map((perm) => (
+                      <span
+                        key={perm.code}
+                        title={`Mã quyền: ${perm.code}${perm.description ? ` · ${perm.description}` : ''}`}
+                        className="inline-flex items-center gap-1.5 text-xs bg-slate-50 hover:bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200 transition select-none"
+                      >
+                        <Check className="size-3 text-[#00873E] shrink-0" />
+                        <span className="font-medium">{perm.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          </label>
+          )}
 
-          {availableRoles.filter((role) => role.scopeType !== 'GAME' && !['SUPER_ADMIN', 'SUPPORT'].includes(role.code)).map((role) => (
-            <label key={role.id} className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${selectedRoles.some((entry) => entry.id === role.id) ? 'border-[#00873E] bg-[#E8F7EC]/40 ring-1 ring-[#00873E]/30' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'}`}>
-              <input type="checkbox" checked={selectedRoles.some((entry) => entry.id === role.id)} onChange={() => toggleRole(role)} disabled={pending} className="mt-1 size-4 rounded text-[#00873E] focus:ring-[#00873E]" />
-              <div className="flex-1"><div className="flex items-center gap-2"><span className="text-xs font-bold text-slate-900">{role.name}</span><span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-black text-slate-600">{role.code}</span></div></div>
-            </label>
-          ))}
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-            <p className="font-bold text-slate-800">Permission hiệu lực ({effectivePermissions.length})</p>
-            <p className="mt-1 break-words">{effectivePermissions.length ? effectivePermissions.join(' · ') : 'Không có quyền chức năng ngoài admin.access.'}</p>
-          </div>
-
-          <Input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Lý do thay đổi phân quyền" required disabled={pending} />
-
-          {/* Option 2: SUPPORT */}
-          <label
-            className={`flex items-start gap-3.5 rounded-2xl border p-4 cursor-pointer transition ${
-              selectedRoles.some((role) => role.code === 'SUPPORT')
-                ? 'border-violet-500 bg-violet-50/40 ring-1 ring-violet-500/30'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={selectedRoles.some((role) => role.code === 'SUPPORT')}
-              onChange={() => supportRole && toggleRole(supportRole)}
-              disabled={pending || !supportRole}
-              className="mt-1 size-4 rounded text-violet-600 focus:ring-violet-500"
-            />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-900">Chuyên viên Hỗ trợ (Support CSKH)</span>
-                <span className="rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-[10px] font-black text-violet-700">
-                  SUPPORT
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                Truy cập Trung tâm hỗ trợ: Tiếp nhận, phân luồng, trả lời ticket yêu cầu người chơi và quản trị bài viết FAQ.
-              </p>
+          {/* Ô nhập lý do thay đổi (bắt buộc theo quy chuẩn Audit Log) */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800">
+                Lý do thay đổi phân quyền <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] text-slate-400">Lưu nhật ký kiểm toán</span>
             </div>
-          </label>
-
-          <div className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-200/80">
-            💡 Sau khi lưu, toàn bộ phiên đăng nhập của người dùng sẽ được thu hồi để yêu cầu đăng nhập và làm mới lại quyền hạn ngay lập tức.
+            <Input
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Ví dụ: Cấp quyền nhân viên CSKH mới, bổ nhiệm quản trị viên..."
+              required
+              disabled={pending}
+              className="h-10 text-xs sm:text-sm bg-white border-slate-200 focus:border-[#00873E] focus:ring-[#00873E]/20"
+            />
+            <p className="text-[11px] text-slate-400">
+              Lý do này sẽ được ghi lại cố định vào lịch sử hoạt động để tra soát an toàn thông tin.
+            </p>
           </div>
 
-          <div className="mt-6 flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+          {/* Ghi chú về phiên đăng nhập */}
+          <div className="flex items-start gap-2.5 rounded-xl bg-slate-50 p-3 text-xs text-slate-500 border border-slate-200/60">
+            <span className="text-sm shrink-0">💡</span>
+            <p className="leading-relaxed">
+              Sau khi lưu, hệ thống sẽ tự động làm mới phiên đăng nhập để tài khoản nhận quyền hạn mới ngay lập tức.
+            </p>
+          </div>
+
+          {/* Nút hành động */}
+          <div className="mt-6 flex justify-end gap-2.5 pt-3 border-t border-slate-100 shrink-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-              Hủy
+              Hủy bỏ
             </Button>
             <Button
               type="submit"
               disabled={pending || isRemovingOwnSuperAdmin || !reason.trim()}
-              className="bg-[#00873E] hover:bg-[#007033] text-white font-semibold"
+              className="bg-[#00873E] hover:bg-[#007033] text-white font-semibold gap-1.5 shadow-xs"
             >
-              {pending ? 'Đang lưu…' : 'Lưu phân quyền'}
+              {pending ? 'Đang lưu…' : (
+                <>
+                  <Check className="size-4" />
+                  <span>Lưu phân quyền</span>
+                </>
+              )}
             </Button>
           </div>
         </form>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

@@ -15,6 +15,9 @@ export function getPublicWebOrigin() {
 }
 
 export function getPublicBaseDomain() {
+  const configured = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? process.env.PUBLIC_BASE_DOMAIN;
+  if (configured) return normalizeBaseDomain(configured);
+
   if (typeof window !== 'undefined' && window.location?.hostname) {
     const hostname = window.location.hostname;
     if (hostname === 'localhost' || hostname.endsWith('.localhost')) {
@@ -25,8 +28,7 @@ export function getPublicBaseDomain() {
     }
     return normalizeBaseDomain(hostname);
   }
-  const configured = process.env.PUBLIC_BASE_DOMAIN ?? process.env.NEXT_PUBLIC_BASE_DOMAIN;
-  if (configured) return normalizeBaseDomain(configured);
+
   try { return normalizeBaseDomain(new URL(getPublicWebOrigin()).hostname); } catch { return 'lvh.me'; }
 }
 
@@ -40,8 +42,14 @@ export function gameUrl(subdomain: string, pathname = '/') {
   return origin.toString().replace(/\/$/, pathname === '/' ? '/' : '');
 }
 
+export function gameAdminUrl(subdomain: string, pathname = '/') {
+  const adminPath = pathname === '/' ? '/admin' : `/admin/${pathname.replace(/^\//, '')}`;
+  return gameUrl(subdomain, adminPath);
+}
+
 export function portalUrl(pathname = '/') {
   const origin = new URL(getPublicWebOrigin());
+  origin.hostname = getPublicBaseDomain();
   origin.pathname = pathname.startsWith('/') ? pathname : `/${pathname}`;
   origin.search = '';
   origin.hash = '';
