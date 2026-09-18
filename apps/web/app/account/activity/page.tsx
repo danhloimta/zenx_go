@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { AlertCircle, ChevronLeft, ChevronRight, History, Monitor, ShieldCheck } from 'lucide-react';
@@ -12,14 +13,45 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/page-header';
 import { getErrorMessage } from '@/lib/errors';
 
-const categories: Array<{ value: ActivityCategory; label: string }> = [{ value: 'ALL', label: 'Tất cả' }, { value: 'LOGIN', label: 'Đăng nhập' }, { value: 'SECURITY', label: 'Bảo mật' }];
+const categories: Array<{ value: ActivityCategory; label: string }> = [
+  { value: 'ALL', label: 'Tất cả' },
+  { value: 'LOGIN', label: 'Đăng nhập' },
+  { value: 'SECURITY', label: 'Bảo mật' },
+];
 
-export default function ActivityPage() {
-  const account = useAccount(); const params = useSearchParams(); const router = useRouter(); const pathname = usePathname();
-  const category = categories.some((item) => item.value === params.get('category')) ? params.get('category') as ActivityCategory : 'ALL';
+function ActivityContent() {
+  const account = useAccount();
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const category = categories.some((item) => item.value === params.get('category'))
+    ? (params.get('category') as ActivityCategory)
+    : 'ALL';
   const page = Math.max(1, Number(params.get('page')) || 1);
-  const query = useQuery({ queryKey: ['account', 'activity-logs', page, category], queryFn: () => api.account.activityLogs({ page, pageSize: 20, category }), enabled: Boolean(account.data), retry: false });
-  const update = (next: Partial<{ page: number; category: ActivityCategory }>) => { const value = new URLSearchParams(params); const nextPage = next.page ?? page; const nextCategory = next.category ?? category; nextPage <= 1 ? value.delete('page') : value.set('page', String(nextPage)); nextCategory === 'ALL' ? value.delete('category') : value.set('category', nextCategory); router.replace(value.size ? `${pathname}?${value}` : pathname, { scroll: false }); };
+  const query = useQuery({
+    queryKey: ['account', 'activity-logs', page, category],
+    queryFn: () => api.account.activityLogs({ page, pageSize: 20, category }),
+    enabled: Boolean(account.data),
+    retry: false,
+  });
+
+  const update = (next: Partial<{ page: number; category: ActivityCategory }>) => {
+    const value = new URLSearchParams(params.toString());
+    const nextPage = next.page ?? page;
+    const nextCategory = next.category ?? category;
+    if (nextPage <= 1) {
+      value.delete('page');
+    } else {
+      value.set('page', String(nextPage));
+    }
+    if (nextCategory === 'ALL') {
+      value.delete('category');
+    } else {
+      value.set('category', nextCategory);
+    }
+    router.replace(value.size ? `${pathname}?${value}` : pathname, { scroll: false });
+  };
+
   return (
     <div className="w-full space-y-6 pb-10">
       <PageHeader
@@ -73,6 +105,14 @@ export default function ActivityPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ActivityPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-80 rounded-xl" />}>
+      <ActivityContent />
+    </Suspense>
   );
 }
 
