@@ -1365,8 +1365,8 @@ async function seedGameRolesAndPlayers({
   const allGames = [lddm, vthl, ttm, cto];
   const assignments = allGames.flatMap((g) => [
     { username: 'tuan.nguyenminh', gameId: g.id, roleCode: 'GAME_ADMIN' },
-    { username: 'mai.vuphuong', gameId: g.id, roleCode: 'GAME_CONTENT_MANAGER' },
-    { username: 'khanh.dangquoc', gameId: g.id, roleCode: 'GAME_PLAYER_MODERATOR' },
+    { username: 'mai.vuphuong', gameId: g.id, roleCode: 'GAME_ADMIN' },
+    { username: 'khanh.dangquoc', gameId: g.id, roleCode: 'GAME_ADMIN' },
   ]);
 
   for (const item of assignments) {
