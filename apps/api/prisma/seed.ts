@@ -1361,12 +1361,13 @@ async function seedGameRolesAndPlayers({
   const ttm = games.get('TTM')!;
   const cto = games.get('CTO')!;
 
-  // 1. Phân quyền Game Admin / Quản lý nội dung cho nhân sự
-  const assignments = [
-    { username: 'tuan.nguyenminh', gameId: lddm.id, roleCode: 'GAME_ADMIN' },
-    { username: 'mai.vuphuong', gameId: vthl.id, roleCode: 'GAME_CONTENT_MANAGER' },
-    { username: 'khanh.dangquoc', gameId: cto.id, roleCode: 'GAME_PLAYER_MODERATOR' },
-  ];
+  // 1. Phân quyền Game Admin / Quản lý nội dung cho nhân sự trên tất cả các game
+  const allGames = [lddm, vthl, ttm, cto];
+  const assignments = allGames.flatMap((g) => [
+    { username: 'tuan.nguyenminh', gameId: g.id, roleCode: 'GAME_ADMIN' },
+    { username: 'mai.vuphuong', gameId: g.id, roleCode: 'GAME_CONTENT_MANAGER' },
+    { username: 'khanh.dangquoc', gameId: g.id, roleCode: 'GAME_PLAYER_MODERATOR' },
+  ]);
 
   for (const item of assignments) {
     const user = users.get(item.username);

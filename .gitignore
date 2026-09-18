@@ -18,3 +18,4 @@ test-results
 .turbo
 .DS_Store
 */.DS_Store
+.worktrees
