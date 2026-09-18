@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
+import { formatCategoryLabel } from '@/lib/games-data';
 import { toast } from 'sonner';
 import { gameContentWorkspace } from '@/components/admin-content/content-workspace-adapter';
 import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
@@ -317,7 +318,7 @@ export default function GameArticlesPage() {
       header: 'Chuyên mục',
       cell: (article) => {
         const catConfig = CATEGORY_CONFIG[article.category as GameArticleCategory] || {
-          label: article.category,
+          label: formatCategoryLabel(article.category),
           badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
           icon: Tag,
         };

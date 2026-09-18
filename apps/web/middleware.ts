@@ -81,6 +81,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(target);
   }
 
+  const internalAdminPrefix = `/game-admin/${host.subdomain}`;
+  if (pathname === internalAdminPrefix || pathname.startsWith(`${internalAdminPrefix}/`)) {
+    const canonical = request.nextUrl.clone();
+    canonical.pathname = `/admin${pathname.slice(internalAdminPrefix.length)}`;
+    return NextResponse.redirect(canonical);
+  }
+
   // Validate against the database so newly edited public subdomains work immediately,
   // while unknown/private subdomains still return a real 404 from the edge.
   if (!(await isPublicGameSubdomain(host.subdomain ?? ''))) {

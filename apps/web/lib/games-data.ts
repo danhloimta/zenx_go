@@ -71,7 +71,9 @@ export function formatCategoryLabel(category?: string | null): string {
     case 'TIẾN_ĐỘ_PHÁT_TRIỂN':
     case 'CẬP_NHẬT_VẬN_HÀNH':
     case 'CAP_NHAT_VAN_HANH':
-      return 'Cập nhật vận hành';
+    case 'CẬP_NHẬT':
+    case 'CAP_NHAT':
+      return 'Bản tin cập nhật';
     case 'ANNOUNCEMENT':
     case 'THÔNG_BÁO':
     case 'THONG_BAO':

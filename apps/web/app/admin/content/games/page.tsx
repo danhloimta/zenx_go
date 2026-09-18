@@ -11,16 +11,15 @@ import {
   Gamepad2,
   Plus,
   RefreshCw,
-  Search,
   SlidersHorizontal,
   Sparkles,
-  X,
   Copy,
+  X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AdminContentGame, GameLifecycleStatus, GameOperationalStatus } from '@zenx-go/api-client';
 import { useAdminContentGames } from '@/hooks/use-content';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search-input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -365,26 +364,15 @@ export default function AdminContentGamesPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm theo tên game, code (LDDM), slug…"
-            className="pl-8 pr-8 h-8 rounded-xl text-xs"
-            aria-label="Tìm game"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <SearchInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Tìm theo tên game, code (LDDM), slug…"
+          sizeVariant="sm"
+          aria-label="Tìm game"
+        />
 
         <Select
           value={lifecycleStatus}
@@ -392,7 +380,7 @@ export default function AdminContentGamesPage() {
             setLifecycleStatus(event.target.value as '' | GameLifecycleStatus);
             setPage(1);
           }}
-          className="h-8 rounded-xl text-xs"
+          sizeVariant="sm"
           aria-label="Lọc vòng đời"
         >
           {lifecycleOptions.map((option) => (
@@ -408,7 +396,7 @@ export default function AdminContentGamesPage() {
             setOperationalStatus(event.target.value as '' | GameOperationalStatus);
             setPage(1);
           }}
-          className="h-8 rounded-xl text-xs"
+          sizeVariant="sm"
           aria-label="Lọc trạng thái vận hành"
         >
           {operationalOptions.map((option) => (
@@ -424,7 +412,7 @@ export default function AdminContentGamesPage() {
             setVisibility(event.target.value as '' | 'PUBLIC' | 'PRIVATE');
             setPage(1);
           }}
-          className="h-8 rounded-xl text-xs"
+          sizeVariant="sm"
           aria-label="Lọc hiển thị"
         >
           <option value="">Tất cả hiển thị</option>

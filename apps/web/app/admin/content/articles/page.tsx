@@ -25,7 +25,7 @@ import {
   useAdminDeleteArticle,
   useAdminRestoreArticle,
 } from '@/hooks/use-content';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search-input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
@@ -384,26 +384,15 @@ export default function AdminContentArticlesPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-2.5 size-3.5 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm tiêu đề, slug, tóm tắt bài viết…"
-            className="pl-8 pr-8 h-8 rounded-xl text-xs"
-            aria-label="Tìm bài viết"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr]">
+        <SearchInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Tìm tiêu đề, slug, tóm tắt bài viết…"
+          sizeVariant="sm"
+          aria-label="Tìm bài viết"
+        />
 
         <Select
           value={gameId}
@@ -411,7 +400,7 @@ export default function AdminContentArticlesPage() {
             setGameId(event.target.value);
             setPage(1);
           }}
-          className="h-8 rounded-xl text-xs"
+          sizeVariant="sm"
           aria-label="Lọc game"
         >
           <option value="">Tất cả game</option>
@@ -428,7 +417,7 @@ export default function AdminContentArticlesPage() {
             setCategory(event.target.value as '' | GameArticleCategory);
             setPage(1);
           }}
-          className="h-8 rounded-xl text-xs"
+          sizeVariant="sm"
           aria-label="Lọc chuyên mục"
         >
           {categories.map((item) => (

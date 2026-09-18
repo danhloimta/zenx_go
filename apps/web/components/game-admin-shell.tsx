@@ -99,7 +99,7 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
     )
     .concat(
       can('manage', 'GameSupport')
-        ? [{ href: '/admin/support', label: 'Hỗ trợ người chơi', icon: MessageSquare }]
+        ? [{ href: '/admin/support', label: 'Hỗ trợ', icon: MessageSquare }]
         : [],
     )
     .concat(
@@ -109,7 +109,7 @@ export function GameAdminShell({ children }: { children: React.ReactNode }) {
     )
     .concat(
       can('read', 'GameAudit')
-        ? [{ href: '/admin/audit', label: 'Nhật ký hoạt động', icon: History }]
+        ? [{ href: '/admin/audit', label: 'Nhật ký', icon: History }]
         : [],
     );
 

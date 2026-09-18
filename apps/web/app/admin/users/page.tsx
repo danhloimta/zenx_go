@@ -20,7 +20,7 @@ import { PageHeader } from '@/components/page-header';
 import { useAdminMe, useAdminUsers } from '@/hooks/use-admin';
 import { UserAvatar } from '@/components/user-avatar';
 import { AccountStatusBadge } from '@/components/account-status-badge';
-import { Input } from '@/components/ui/input';
+import { SearchInput } from '@/components/ui/search-input';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -298,25 +298,15 @@ export default function AdminUsersPage() {
 
       {/* Filter & Search Bar Section */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Tìm username, email, số điện thoại, họ tên người dùng…"
-            className="h-8 rounded-xl pl-9 pr-8 text-xs bg-white border-slate-200"
-            aria-label="Tìm kiếm người dùng"
-          />
-          {search ? (
-            <button
-              onClick={() => setSearch('')}
-              aria-label="Xóa từ khóa tìm kiếm"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            >
-              <X className="size-3" />
-            </button>
-          ) : null}
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Tìm username, email, số điện thoại, họ tên người dùng…"
+          sizeVariant="sm"
+          containerClassName="flex-1"
+          aria-label="Tìm kiếm người dùng"
+        />
 
         {hasActiveFilters ? (
           <Button

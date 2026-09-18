@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -189,20 +190,6 @@ export default function GamePlayersPage() {
     setPage(1);
   };
 
-  if (context.isError || (!context.isLoading && !context.data)) {
-    return (
-      <div className="rounded-xl border border-red-200/80 bg-red-50/80 p-6 text-sm text-red-700 shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <ShieldAlert className="size-5 shrink-0 text-red-600" />
-          <h3 className="font-bold text-base">Không có quyền xem danh sách người chơi</h3>
-        </div>
-        <p className="mt-2 text-xs text-red-600 leading-relaxed">
-          Tài khoản của bạn chưa được phân quyền quản lý người chơi hoặc trò chơi không tồn tại. Vui lòng kiểm tra lại.
-        </p>
-      </div>
-    );
-  }
-
   const items = playersQuery.data?.items ?? [];
   const totalItems = playersQuery.data?.total ?? 0;
 
@@ -242,9 +229,13 @@ export default function GamePlayersPage() {
             />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-slate-900 text-xs truncate">
+                <Link
+                  href={`/admin/players/${encodeURIComponent(player.userId)}`}
+                  className="font-semibold text-slate-900 text-xs truncate hover:text-[#00873E] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {displayName}
-                </span>
+                </Link>
                 {player.user.username && (
                   <span className="font-mono text-slate-400 text-[11px] truncate">
                     @{player.user.username}
@@ -326,7 +317,7 @@ export default function GamePlayersPage() {
         key: 'view',
         label: 'Xem chi tiết',
         icon: Eye,
-        onClick: (p) => router.push(`/game-admin/${subdomain}/players/${encodeURIComponent(p.userId)}`),
+        onClick: (p) => router.push(`/admin/players/${encodeURIComponent(p.userId)}`),
       },
       {
         key: 'toggle-block',
@@ -343,6 +334,20 @@ export default function GamePlayersPage() {
       },
     ];
   }, [router, subdomain]);
+
+  if (context.isError || (!context.isLoading && !context.data)) {
+    return (
+      <div className="rounded-xl border border-red-200/80 bg-red-50/80 p-6 text-sm text-red-700 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <ShieldAlert className="size-5 shrink-0 text-red-600" />
+          <h3 className="font-bold text-base">Không có quyền xem danh sách người chơi</h3>
+        </div>
+        <p className="mt-2 text-xs text-red-600 leading-relaxed">
+          Tài khoản của bạn chưa được phân quyền quản lý người chơi hoặc trò chơi không tồn tại. Vui lòng kiểm tra lại.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full relative">
@@ -608,7 +613,7 @@ export default function GamePlayersPage() {
         actions={actions}
         isLoading={playersQuery.isLoading && !playersQuery.data}
         showIndexColumn={true}
-        onRowClick={(player) => router.push(`/game-admin/${subdomain}/players/${encodeURIComponent(player.userId)}`)}
+        onRowClick={(player) => router.push(`/admin/players/${encodeURIComponent(player.userId)}`)}
         pagination={{
           page,
           pageSize,
