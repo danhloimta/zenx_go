@@ -96,7 +96,6 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           href: gameAdminUrl(gr.subdomain),
           label: gr.gameName,
           icon: Gamepad2,
-          badge: gr.roleName,
           external: true,
         })),
       });
@@ -241,20 +240,14 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                         onClick={() => setOpen(false)}
                         className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm transition-colors text-slate-700 hover:bg-emerald-50 hover:text-[#00873E] group"
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
                           <Icon
                             className="size-5 shrink-0 text-emerald-600 group-hover:text-[#00873E]"
                             strokeWidth={1.8}
                           />
                           <span className="truncate font-medium">{item.label}</span>
                         </div>
-                        {(item as any).badge ? (
-                          <span className="rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-bold text-[#00873E] shrink-0 ml-1.5 border border-emerald-200/60">
-                            {(item as any).badge}
-                          </span>
-                        ) : (
-                          <ExternalLink className="size-3.5 text-slate-400 group-hover:text-[#00873E] shrink-0" />
-                        )}
+                        <ExternalLink className="size-3.5 text-slate-400 group-hover:text-[#00873E] shrink-0 ml-2" />
                       </a>
                     );
                   }
@@ -515,12 +508,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                             <a
                               key={gr.gameId}
                               href={gameAdminUrl(gr.subdomain)}
-                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
                             >
+                              <Gamepad2 className="size-3.5 text-emerald-600 shrink-0" />
                               <span className="truncate">{gr.gameName}</span>
-                              <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100/90 rounded px-1.5 py-0.5 shrink-0 ml-1.5">
-                                {gr.roleName}
-                              </span>
                             </a>
                           ))}
                         </div>

@@ -211,12 +211,10 @@ export function HomeNavbar() {
                             <a
                               key={gr.gameId}
                               href={gameAdminUrl(gr.subdomain)}
-                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
+                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
                             >
+                              <Gamepad2 className="size-3.5 text-emerald-600 shrink-0" />
                               <span className="truncate">{gr.gameName}</span>
-                              <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100/90 rounded px-1.5 py-0.5 shrink-0 ml-1.5">
-                                {gr.roleName}
-                              </span>
                             </a>
                           ))}
                         </div>
@@ -384,12 +382,10 @@ export function HomeNavbar() {
                         <a
                           key={gr.gameId}
                           href={gameAdminUrl(gr.subdomain)}
-                          className="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#00873E] shadow-2xs"
+                          className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 hover:text-[#00873E] shadow-2xs"
                         >
+                          <Gamepad2 className="size-3.5 text-emerald-600 shrink-0" />
                           <span className="truncate">{gr.gameName}</span>
-                          <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100 rounded px-1.5 py-0.5">
-                            {gr.roleName}
-                          </span>
                         </a>
                       ))}
                     </div>
