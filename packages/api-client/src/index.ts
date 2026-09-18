@@ -366,6 +366,16 @@ export interface UserProfile {
   profileCompletedAt?: string | null;
 }
 
+export interface UserGameRole {
+  gameId: string;
+  gameCode: string;
+  gameName: string;
+  subdomain: string;
+  iconUrl?: string | null;
+  roleCode: string;
+  roleName: string;
+}
+
 export interface AccountMe extends AuthUser {
   email?: string | null;
   phone?: string | null;
@@ -378,6 +388,7 @@ export interface AccountMe extends AuthUser {
     google: boolean;
     facebook: boolean;
   };
+  gameRoles?: UserGameRole[];
 }
 
 export interface AdminUserSummary extends Omit<AuthUser, 'roles'> {

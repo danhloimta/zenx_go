@@ -39,35 +39,72 @@ export class AccountService {
     private readonly activity?: ActivityService,
   ) {}
 
-  getMe(userId: string) {
-    return this.prisma.user
-      .findUniqueOrThrow({
-        where: { id: userId },
-        include: {
-          profile: true,
-          socialIdentities: { select: { provider: true } },
-          wallet: { select: { balance: true, currency: true } },
-          roles: { select: { role: { select: { code: true } } } },
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: {
+        profile: true,
+        socialIdentities: { select: { provider: true } },
+        wallet: { select: { balance: true, currency: true } },
+        roles: { select: { role: { select: { code: true } } } },
+        gameRoleAssignments: {
+          where: { role: { isActive: true } },
+          select: {
+            role: { select: { code: true, name: true } },
+            game: { select: { id: true, code: true, name: true, subdomain: true, iconUrl: true } },
+          },
+          orderBy: { game: { name: 'asc' } },
         },
-      })
-      .then((user) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        status: user.status,
-        phoneVerifiedAt: user.phoneVerifiedAt,
-        emailVerifiedAt: user.emailVerifiedAt,
-        mustChangePassword: user.mustChangePassword,
-        hasPassword: Boolean(user.passwordHash),
-        profile: user.profile,
-        social: {
-          google: user.socialIdentities.some((identity) => identity.provider === 'GOOGLE'),
-          facebook: user.socialIdentities.some((identity) => identity.provider === 'FACEBOOK'),
-        },
-        wallet: user.wallet,
-        roles: user.roles.map(({ role }) => role.code),
+      },
+    });
+
+    const isSuperAdmin = user.roles.some(({ role }) => role.code === 'SUPER_ADMIN');
+    let gameRoles = user.gameRoleAssignments.map((gra) => ({
+      gameId: gra.game.id,
+      gameCode: gra.game.code,
+      gameName: gra.game.name,
+      subdomain: gra.game.subdomain,
+      iconUrl: gra.game.iconUrl,
+      roleCode: gra.role.code,
+      roleName: gra.role.name,
+    }));
+
+    if (isSuperAdmin && gameRoles.length === 0) {
+      const allGames = await this.prisma.game.findMany({
+        where: { operationalStatus: { not: 'DELETED' } },
+        select: { id: true, code: true, name: true, subdomain: true, iconUrl: true },
+        orderBy: { name: 'asc' },
+      });
+      gameRoles = allGames.map((g) => ({
+        gameId: g.id,
+        gameCode: g.code,
+        gameName: g.name,
+        subdomain: g.subdomain,
+        iconUrl: g.iconUrl,
+        roleCode: 'GAME_ADMIN',
+        roleName: 'Game Admin',
       }));
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
+      emailVerifiedAt: user.emailVerifiedAt,
+      mustChangePassword: user.mustChangePassword,
+      hasPassword: Boolean(user.passwordHash),
+      profile: user.profile,
+      social: {
+        google: user.socialIdentities.some((identity) => identity.provider === 'GOOGLE'),
+        facebook: user.socialIdentities.some((identity) => identity.provider === 'FACEBOOK'),
+      },
+      wallet: user.wallet,
+      roles: user.roles.map(({ role }) => role.code),
+      gameRoles,
+    };
   }
 
 

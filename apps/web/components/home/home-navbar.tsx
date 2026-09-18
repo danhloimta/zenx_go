@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   UserRound,
   X,
+  Gamepad2,
 } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand-logo';
@@ -21,6 +22,7 @@ import { ZenxCoinGoldIcon } from '@/components/icons';
 import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
 import { formatAmount, mediaUrl } from '@/lib/utils';
+import { gameAdminUrl } from '@/lib/domain';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Trang chủ' },
@@ -197,6 +199,29 @@ export function HomeNavbar() {
                         </span>
                       </Link>
                     )}
+
+                    {user?.gameRoles && user.gameRoles.length > 0 && (
+                      <div className="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-1.5">
+                        <div className="px-2 py-1 text-[10px] font-bold text-[#00873E] uppercase tracking-wider flex items-center gap-1.5">
+                          <Gamepad2 className="size-3 text-[#00873E]" />
+                          Quản trị Game ({user.gameRoles.length})
+                        </div>
+                        <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                          {user.gameRoles.map((gr) => (
+                            <a
+                              key={gr.gameId}
+                              href={gameAdminUrl(gr.subdomain)}
+                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
+                            >
+                              <span className="truncate">{gr.gameName}</span>
+                              <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100/90 rounded px-1.5 py-0.5 shrink-0 ml-1.5">
+                                {gr.roleName}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <Link
                       href="/account/profile"
                       onClick={() => setUserDropdownOpen(false)}
@@ -347,6 +372,28 @@ export function HomeNavbar() {
                       <span>Trang quản trị (Admin)</span>
                     </Link>
                   </Button>
+                )}
+
+                {user?.gameRoles && user.gameRoles.length > 0 && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-2.5 space-y-1.5">
+                    <p className="text-[11px] font-bold text-[#00873E] flex items-center gap-1.5">
+                      <Gamepad2 className="size-3.5" /> Quản trị Game ({user.gameRoles.length})
+                    </p>
+                    <div className="space-y-1">
+                      {user.gameRoles.map((gr) => (
+                        <a
+                          key={gr.gameId}
+                          href={gameAdminUrl(gr.subdomain)}
+                          className="flex items-center justify-between rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#00873E] shadow-2xs"
+                        >
+                          <span className="truncate">{gr.gameName}</span>
+                          <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100 rounded px-1.5 py-0.5">
+                            {gr.roleName}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
                   <Button asChild size="sm" variant="outline" className="rounded-xl text-xs font-semibold h-10">

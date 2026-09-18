@@ -22,6 +22,8 @@ import {
   WalletCards,
   X,
   Loader2,
+  Gamepad2,
+  ExternalLink,
 } from 'lucide-react';
 
 import { BrandLogo } from '@/components/brand-logo';
@@ -32,7 +34,7 @@ import { useAccount } from '@/hooks/use-account';
 import { useWallet } from '@/hooks/use-wallet';
 import { useSupportUnreadCount } from '@/hooks/use-support';
 import { cn, formatAmount, mediaUrl } from '@/lib/utils';
-import { portalUrl } from '@/lib/domain';
+import { portalUrl, gameAdminUrl } from '@/lib/domain';
 import { ApiError } from '@zenx-go/api-client';
 import { toast } from 'sonner';
 import { useNavigationLoading, CommonLoadingBadge } from '@/components/global-progress-bar';
@@ -85,17 +87,32 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const supportUnread = useSupportUnreadCount(Boolean(user && !user.mustChangePassword));
 
   const navGroups = useMemo(() => {
-    if (!isAdmin) return groups;
-    return [
-      ...groups,
-      {
+    const list = [...groups];
+
+    if (user?.gameRoles && user.gameRoles.length > 0) {
+      list.push({
+        title: 'QUẢN TRỊ GAME',
+        items: user.gameRoles.map((gr) => ({
+          href: gameAdminUrl(gr.subdomain),
+          label: gr.gameName,
+          icon: Gamepad2,
+          badge: gr.roleName,
+          external: true,
+        })),
+      });
+    }
+
+    if (isAdmin) {
+      list.push({
         title: 'HỆ THỐNG',
         items: [
           { href: '/admin', label: 'Quản trị hệ thống', icon: ShieldAlert },
         ],
-      },
-    ];
-  }, [isAdmin]);
+      });
+    }
+
+    return list;
+  }, [isAdmin, user?.gameRoles]);
 
 
   // Close dropdowns on outside click
@@ -213,7 +230,34 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const active = isActive(item.href);
+                  const isExternal = (item as any).external;
+                  const active = !isExternal && isActive(item.href);
+
+                  if (isExternal) {
+                    return (
+                      <a
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm transition-colors text-slate-700 hover:bg-emerald-50 hover:text-[#00873E] group"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <Icon
+                            className="size-5 shrink-0 text-emerald-600 group-hover:text-[#00873E]"
+                            strokeWidth={1.8}
+                          />
+                          <span className="truncate font-medium">{item.label}</span>
+                        </div>
+                        {(item as any).badge ? (
+                          <span className="rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-bold text-[#00873E] shrink-0 ml-1.5 border border-emerald-200/60">
+                            {(item as any).badge}
+                          </span>
+                        ) : (
+                          <ExternalLink className="size-3.5 text-slate-400 group-hover:text-[#00873E] shrink-0" />
+                        )}
+                      </a>
+                    );
+                  }
 
                   return (
                     <Link
@@ -458,6 +502,29 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                         </Link>
                         <GameSwitcher variant="menu" />
                       </>
+                    )}
+
+                    {user?.gameRoles && user.gameRoles.length > 0 && (
+                      <div className="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-1.5">
+                        <div className="px-2 py-1 text-[10px] font-bold text-[#00873E] uppercase tracking-wider flex items-center gap-1.5">
+                          <Gamepad2 className="size-3 text-[#00873E]" />
+                          Quản trị Game ({user.gameRoles.length})
+                        </div>
+                        <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                          {user.gameRoles.map((gr) => (
+                            <a
+                              key={gr.gameId}
+                              href={gameAdminUrl(gr.subdomain)}
+                              className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
+                            >
+                              <span className="truncate">{gr.gameName}</span>
+                              <span className="text-[10px] font-bold text-[#00873E] bg-emerald-100/90 rounded px-1.5 py-0.5 shrink-0 ml-1.5">
+                                {gr.roleName}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
                     )}
                     <Link
                       href="/account/profile"
