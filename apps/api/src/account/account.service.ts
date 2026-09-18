@@ -59,15 +59,32 @@ export class AccountService {
     });
 
     const isSuperAdmin = user.roles.some(({ role }) => role.code === 'SUPER_ADMIN');
-    let gameRoles = user.gameRoleAssignments.map((gra) => ({
-      gameId: gra.game.id,
-      gameCode: gra.game.code,
-      gameName: gra.game.name,
-      subdomain: gra.game.subdomain,
-      iconUrl: gra.game.iconUrl,
-      roleCode: gra.role.code,
-      roleName: gra.role.name,
-    }));
+    const gameRoleMap = new Map<string, {
+      gameId: string;
+      gameCode: string;
+      gameName: string;
+      subdomain: string;
+      iconUrl: string | null;
+      roleCode: string;
+      roleName: string;
+    }>();
+
+    for (const gra of user.gameRoleAssignments) {
+      const existing = gameRoleMap.get(gra.game.id);
+      if (!existing || gra.role.code === 'GAME_ADMIN') {
+        gameRoleMap.set(gra.game.id, {
+          gameId: gra.game.id,
+          gameCode: gra.game.code,
+          gameName: gra.game.name,
+          subdomain: gra.game.subdomain,
+          iconUrl: gra.game.iconUrl,
+          roleCode: gra.role.code,
+          roleName: gra.role.name,
+        });
+      }
+    }
+
+    let gameRoles = Array.from(gameRoleMap.values());
 
     if (isSuperAdmin && gameRoles.length === 0) {
       const allGames = await this.prisma.game.findMany({

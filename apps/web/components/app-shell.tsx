@@ -90,9 +90,12 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     const list = [...groups];
 
     if (user?.gameRoles && user.gameRoles.length > 0) {
+      const uniqueGames = Array.from(
+        new Map(user.gameRoles.map((gr) => [gr.gameId, gr])).values(),
+      );
       list.push({
         title: 'QUẢN TRỊ GAME',
-        items: user.gameRoles.map((gr) => ({
+        items: uniqueGames.map((gr) => ({
           href: gameAdminUrl(gr.subdomain),
           label: gr.gameName,
           icon: Gamepad2,
@@ -497,26 +500,31 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                       </>
                     )}
 
-                    {user?.gameRoles && user.gameRoles.length > 0 && (
-                      <div className="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-1.5">
-                        <div className="px-2 py-1 text-[10px] font-bold text-[#00873E] uppercase tracking-wider flex items-center gap-1.5">
-                          <Gamepad2 className="size-3 text-[#00873E]" />
-                          Quản trị Game ({user.gameRoles.length})
+                    {user?.gameRoles && user.gameRoles.length > 0 && (() => {
+                      const uniqueGames = Array.from(
+                        new Map(user.gameRoles.map((gr) => [gr.gameId, gr])).values(),
+                      );
+                      return (
+                        <div className="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-1.5">
+                          <div className="px-2 py-1 text-[10px] font-bold text-[#00873E] uppercase tracking-wider flex items-center gap-1.5">
+                            <Gamepad2 className="size-3 text-[#00873E]" />
+                            Quản trị Game ({uniqueGames.length})
+                          </div>
+                          <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                            {uniqueGames.map((gr) => (
+                              <a
+                                key={gr.gameId}
+                                href={gameAdminUrl(gr.subdomain)}
+                                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
+                              >
+                                <Gamepad2 className="size-3.5 text-emerald-600 shrink-0" />
+                                <span className="truncate">{gr.gameName}</span>
+                              </a>
+                            ))}
+                          </div>
                         </div>
-                        <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                          {user.gameRoles.map((gr) => (
-                            <a
-                              key={gr.gameId}
-                              href={gameAdminUrl(gr.subdomain)}
-                              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700 hover:bg-white hover:text-[#00873E] hover:shadow-2xs transition-all group"
-                            >
-                              <Gamepad2 className="size-3.5 text-emerald-600 shrink-0" />
-                              <span className="truncate">{gr.gameName}</span>
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                     <Link
                       href="/account/profile"
                       className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors"

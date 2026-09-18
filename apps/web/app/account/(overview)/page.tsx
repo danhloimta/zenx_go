@@ -104,75 +104,80 @@ export default function AccountOverviewPage() {
       </div>
 
       {/* 1.5. Game Admin Quick Access */}
-      {user?.gameRoles && user.gameRoles.length > 0 && (
-        <div className="rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 p-5 sm:p-6 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-[#00873E] text-white shadow-2xs">
-                <Gamepad2 className="size-5" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span>Khu Vực Quản Trị Trò Chơi</span>
-                  <span className="rounded-full bg-emerald-100 text-[#00873E] px-2 py-0.5 text-[10px] font-extrabold">
-                    {user.gameRoles.length} game
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Tài khoản của bạn được phân quyền quản trị các trò chơi sau:
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {user.gameRoles.map((gr) => (
-              <div
-                key={gr.gameId}
-                className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs hover:border-[#00873E]/50 hover:shadow-xs transition-all"
-              >
+      {user?.gameRoles && user.gameRoles.length > 0 && (() => {
+        const uniqueGames = Array.from(
+          new Map(user.gameRoles.map((gr) => [gr.gameId, gr])).values(),
+        );
+        return (
+          <div className="rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 p-5 sm:p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-[#00873E] text-white shadow-2xs">
+                  <Gamepad2 className="size-5" />
+                </div>
                 <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
-                      {gr.iconUrl ? (
-                        <img src={mediaUrl(gr.iconUrl)} alt={gr.gameName} className="size-full object-cover" />
-                      ) : (
-                        <Gamepad2 className="size-5 text-[#00873E]" />
-                      )}
-                    </div>
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#00873E] border border-emerald-200/60">
-                      {gr.roleName}
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Khu Vực Quản Trị Trò Chơi</span>
+                    <span className="rounded-full bg-emerald-100 text-[#00873E] px-2 py-0.5 text-[10px] font-extrabold">
+                      {uniqueGames.length} game
                     </span>
-                  </div>
-                  <h3 className="mt-3 font-bold text-slate-900 text-sm leading-snug line-clamp-1">
-                    {gr.gameName}
-                  </h3>
-                  <p className="mt-0.5 text-[11px] font-mono text-slate-400">
-                    {gr.gameCode} · {gr.subdomain}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Tài khoản của bạn được phân quyền quản trị các trò chơi sau:
                   </p>
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                  <a
-                    href={gameAdminUrl(gr.subdomain)}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#00873E] px-3 py-2 text-xs font-bold text-white shadow-2xs hover:bg-[#007033] transition-colors"
-                  >
-                    <span>Vào Admin</span>
-                    <ExternalLink className="size-3.5" />
-                  </a>
-                  <a
-                    href={gameAdminUrl(gr.subdomain, '/players')}
-                    title="Quản lý người chơi"
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                  >
-                    <Users className="size-3.5" />
-                  </a>
-                </div>
               </div>
-            ))}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {uniqueGames.map((gr) => (
+                <div
+                  key={gr.gameId}
+                  className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs hover:border-[#00873E]/50 hover:shadow-xs transition-all"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
+                        {gr.iconUrl ? (
+                          <img src={mediaUrl(gr.iconUrl)} alt={gr.gameName} className="size-full object-cover" />
+                        ) : (
+                          <Gamepad2 className="size-5 text-[#00873E]" />
+                        )}
+                      </div>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#00873E] border border-emerald-200/60">
+                        {gr.roleName}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 font-bold text-slate-900 text-sm leading-snug line-clamp-1">
+                      {gr.gameName}
+                    </h3>
+                    <p className="mt-0.5 text-[11px] font-mono text-slate-400">
+                      {gr.gameCode} · {gr.subdomain}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+                    <a
+                      href={gameAdminUrl(gr.subdomain)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#00873E] px-3 py-2 text-xs font-bold text-white shadow-2xs hover:bg-[#007033] transition-colors"
+                    >
+                      <span>Vào Admin</span>
+                      <ExternalLink className="size-3.5" />
+                    </a>
+                    <a
+                      href={gameAdminUrl(gr.subdomain, '/players')}
+                      title="Quản lý người chơi"
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                    >
+                      <Users className="size-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 2. Key Stats Overview Cards */}
       <div className="grid gap-5 sm:grid-cols-3">
