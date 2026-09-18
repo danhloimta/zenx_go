@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-type BadgeVariant = "default" | "secondary" | "success" | "warning" | "destructive" | "zenx";
+type BadgeVariant = "default" | "secondary" | "success" | "warning" | "destructive" | "zenx" | "outline";
 
 const variants: Record<BadgeVariant, string> = {
   default: "bg-slate-100 text-slate-700",
@@ -10,6 +10,7 @@ const variants: Record<BadgeVariant, string> = {
   warning: "bg-amber-50 text-amber-700",
   destructive: "bg-red-50 text-red-600",
   zenx: "bg-[#00873E] text-white",
+  outline: "border border-slate-200 text-slate-700 bg-white",
 };
 
 export function Badge({

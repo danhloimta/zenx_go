@@ -131,6 +131,12 @@ export const GameOperationalStatus = {
 } as const;
 export type GameOperationalStatus =
   (typeof GameOperationalStatus)[keyof typeof GameOperationalStatus];
+export const GamePlayerStatus = {
+  ACTIVE: 'ACTIVE',
+  TEMPORARILY_BLOCKED: 'TEMPORARILY_BLOCKED',
+  PERMANENTLY_BANNED: 'PERMANENTLY_BANNED',
+} as const;
+export type GamePlayerStatus = (typeof GamePlayerStatus)[keyof typeof GamePlayerStatus];
 export const GameArticleStatus = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' } as const;
 export type GameArticleStatus = (typeof GameArticleStatus)[keyof typeof GameArticleStatus];
 export const ContentPublishStatus = { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED' } as const;

@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const GAME_ROLES = ['GAME_ADMIN', 'GAME_CONTENT_MANAGER', 'GAME_PLAYER_MODERATOR'];
-
 export default function GameAccessPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const queryClient = useQueryClient();
@@ -24,7 +22,7 @@ export default function GameAccessPage() {
   const [isActive, setIsActive] = useState(false);
   const [secret, setSecret] = useState<string | null>(null);
   const admins = useQuery({ queryKey: ['admin', 'game-admins', gameId], queryFn: () => api.admin.gamesManagement.admins(gameId) });
-  const roles = useQuery({ queryKey: ['admin', 'roles', 'game'], queryFn: () => api.admin.access.roles(true) });
+  const roles = useQuery({ queryKey: ['admin', 'roles', 'game'], queryFn: () => api.admin.access.roles(true, 'GAME') });
   const sso = useQuery({ queryKey: ['admin', 'sso-client', gameId], queryFn: () => api.admin.gamesManagement.ssoClient(gameId) });
   const users = useQuery({ queryKey: ['admin', 'users', 'game-assignment', search], queryFn: () => api.admin.users({ search, pageSize: 10 }), enabled: assignmentOpen && search.trim().length >= 2 });
   useEffect(() => { if (sso.data) { setRedirectUri(sso.data.redirectUri); setIsActive(sso.data.isActive); } }, [sso.data]);
@@ -33,7 +31,7 @@ export default function GameAccessPage() {
   const saveSso = useMutation({ mutationFn: () => api.admin.gamesManagement.updateSsoClient(gameId, { redirectUri: redirectUri.trim(), isActive }), onSuccess: (client) => { if (client.clientSecret) setSecret(client.clientSecret); void queryClient.invalidateQueries({ queryKey: ['admin', 'sso-client', gameId] }); } });
   const toggleSso = useMutation({ mutationFn: () => api.admin.gamesManagement.updateSsoClient(gameId, { redirectUri: sso.data!.redirectUri, isActive: !sso.data!.isActive }), onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin', 'sso-client', gameId] }) });
   const rotate = useMutation({ mutationFn: () => api.admin.gamesManagement.rotateSsoSecret(gameId), onSuccess: (client) => setSecret(client.clientSecret ?? null) });
-  const gameRoles = (roles.data ?? []).filter((role) => GAME_ROLES.includes(role.code));
+  const gameRoles = roles.data ?? [];
   return <div className="mx-auto max-w-5xl space-y-6">
     <div className="flex items-center justify-between"><div><h1 className="text-2xl font-black">Admin & SSO game</h1><p className="mt-1 text-sm text-slate-500">Chỉ admin tổng có thể cấp quyền và quản lý SSO client.</p></div><Button asChild variant="outline"><Link href={`/admin/content/games/${gameId}`}>Quay lại game</Link></Button></div>
     <Card><CardHeader><CardTitle>Ban quản trị game</CardTitle></CardHeader><CardContent><Button onClick={() => setAssignmentOpen(true)}>Cấp hoặc thu hồi quyền</Button><div className="mt-5 divide-y rounded-lg border">{admins.data?.map((entry) => <div key={entry.id} className="flex items-center justify-between p-3 text-sm"><span><b>{entry.user.username}</b> · {entry.role.name}</span><span className="text-slate-500">{new Date(entry.assignedAt).toLocaleString('vi-VN')}</span></div>)}{admins.data?.length === 0 ? <p className="p-4 text-sm text-slate-500">Chưa có phân quyền theo game.</p> : null}</div></CardContent></Card>

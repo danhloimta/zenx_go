@@ -3,9 +3,9 @@ import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.guard';
 import { GameAccessGuard, GameAdminRequest } from './game-access.guard';
 import { GamePermissionGuard } from './game-permission.guard';
-import { RequirePermission } from './permission.decorator';
+import { RequireAnyPermission, RequirePermission } from './permission.decorator';
 import { GameAdminService } from './game-admin.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto, GameSupportTicketsQueryDto } from './game-admin.dto';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerTemporaryLockDto, GamePlayerPermanentBanDto, GamePlayerReleaseRestrictionDto, GamePlayerChatRestrictionDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto, GameSupportTicketsQueryDto } from './game-admin.dto';
 import { AdminProfileUpdateDto } from './admin.dto';
 import { CreateSupportMessageDto, SupportTicketMessagesQueryDto } from '../support/dto';
 
@@ -46,6 +46,30 @@ export class GameAdminController {
   @UseGuards(GameAccessGuard, GamePermissionGuard)
   @RequirePermission({ code: 'game.players.moderate', action: 'moderate', subject: 'GamePlayer' })
   updatePlayerStatus(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerStatusDto, @Req() request: GameAdminRequest) { return this.games.updatePlayerStatus(gameId, userId, dto, request.user.sub); }
+
+  @Patch('games/:gameId/players/:userId/temporary-lock')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.players.temporary-lock', action: 'lock', subject: 'GamePlayer' })
+  temporaryLock(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerTemporaryLockDto, @Req() request: GameAdminRequest) { return this.games.temporaryLockPlayer(gameId, userId, dto, request.user.sub); }
+
+  @Patch('games/:gameId/players/:userId/permanent-ban')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.players.permanent-ban', action: 'ban', subject: 'GamePlayer' })
+  permanentBan(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerPermanentBanDto, @Req() request: GameAdminRequest) { return this.games.permanentBanPlayer(gameId, userId, dto, request.user.sub); }
+
+  @Patch('games/:gameId/players/:userId/restriction/release')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequireAnyPermission(
+    { code: 'game.players.temporary-lock', action: 'lock', subject: 'GamePlayer' },
+    { code: 'game.players.permanent-ban', action: 'ban', subject: 'GamePlayer' },
+    { code: 'game.players.moderate', action: 'moderate', subject: 'GamePlayer' },
+  )
+  releaseRestriction(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerReleaseRestrictionDto, @Req() request: GameAdminRequest) { return this.games.releasePlayerRestriction(gameId, userId, dto, request.user.sub, request.gameAdmin); }
+
+  @Patch('games/:gameId/players/:userId/chat-restriction')
+  @UseGuards(GameAccessGuard, GamePermissionGuard)
+  @RequirePermission({ code: 'game.players.chat.moderate', action: 'moderate', subject: 'GamePlayerChat' })
+  chatRestriction(@Param('gameId') gameId: string, @Param('userId') userId: string, @Body() dto: GamePlayerChatRestrictionDto, @Req() request: GameAdminRequest) { return this.games.updatePlayerChatRestriction(gameId, userId, dto, request.user.sub); }
 
   @Patch('games/:gameId/players/:userId/support-note')
   @UseGuards(GameAccessGuard, GamePermissionGuard)

@@ -23,7 +23,6 @@ import {
   Landmark,
   Receipt,
   Tags,
-  Loader2,
   Settings,
 } from 'lucide-react';
 import { useAdminMe } from '@/hooks/use-admin';
@@ -36,10 +35,10 @@ import { getErrorMessage } from '@/lib/errors';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useIsFetching, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminAbilityProvider } from '@/lib/admin-ability';
 import { GameSwitcher } from '@/components/game-switcher';
-import { useNavigationLoading, CommonLoadingBadge } from '@/components/global-progress-bar';
+import { CommonLoadingBadge } from '@/components/global-progress-bar';
 
 interface NavItem {
   href: string;
@@ -66,28 +65,28 @@ const allNavSections: NavSection[] = [
     ],
   },
   {
-    title: 'Nội dung & Game',
+    title: 'Nội dung',
     items: [
-      { href: '/admin/content', label: 'Tổng quan CMS', icon: Layers, exact: true, permission: { action: 'read', subject: 'ContentDashboard' } },
-      { href: '/admin/content/games', label: 'Quản lý Game', icon: Gamepad2, permission: { action: 'read', subject: 'Game' } },
-      { href: '/admin/content/genres', label: 'Thể loại game', icon: Tags, permission: { action: 'manage', subject: 'Genre' } },
-      { href: '/admin/content/articles', label: 'Bài viết & Tin tức', icon: FileText, permission: { action: 'manage', subject: 'Article' } },
-      { href: '/admin/content/events', label: 'Sự kiện Game', icon: CalendarDays, permission: { action: 'manage', subject: 'Event' } },
-      { href: '/admin/content/announcements', label: 'Thông báo Portal', icon: Megaphone, permission: { action: 'manage', subject: 'Announcement' } },
+      { href: '/admin/content', label: 'Tổng quan nội dung', icon: Layers, exact: true, permission: { action: 'read', subject: 'ContentDashboard' } },
+      { href: '/admin/content/games', label: 'Trò chơi', icon: Gamepad2, permission: { action: 'read', subject: 'Game' } },
+      { href: '/admin/content/genres', label: 'Thể loại', icon: Tags, permission: { action: 'manage', subject: 'Genre' } },
+      { href: '/admin/content/articles', label: 'Bài viết', icon: FileText, permission: { action: 'manage', subject: 'Article' } },
+      { href: '/admin/content/events', label: 'Sự kiện', icon: CalendarDays, permission: { action: 'manage', subject: 'Event' } },
+      { href: '/admin/content/announcements', label: 'Thông báo', icon: Megaphone, permission: { action: 'manage', subject: 'Announcement' } },
     ],
   },
   {
     title: 'Tài chính',
     items: [
       { href: '/admin/finance', label: 'Tổng quan tài chính', icon: Landmark, exact: true, permission: { action: 'read', subject: 'FinanceDashboard' } },
-      { href: '/admin/finance/packages', label: 'Gói nạp ZENX Coin', icon: Coins, permission: { action: 'manage', subject: 'CoinPackage' } },
+      { href: '/admin/finance/packages', label: 'Gói nạp', icon: Coins, permission: { action: 'manage', subject: 'CoinPackage' } },
       { href: '/admin/finance/payments', label: 'Đơn nạp tiền', icon: Receipt, permission: { action: 'read', subject: 'Payment' } },
     ],
   },
   {
-    title: 'Vận hành & Bảo mật',
+    title: 'Vận hành',
     items: [
-      { href: '/admin/support', label: 'Hỗ trợ khách hàng', icon: LifeBuoy, hasBadge: true, permission: { action: 'read', subject: 'SupportDashboard' } },
+      { href: '/admin/support', label: 'Hỗ trợ', icon: LifeBuoy, hasBadge: true, permission: { action: 'read', subject: 'SupportDashboard' } },
     ],
   },
 ];
@@ -101,9 +100,6 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
   const navSections = allNavSections
     .map((section) => ({ ...section, items: section.items.filter((item) => ability.can(item.permission.action, item.permission.subject)) }))
     .filter((section) => section.items.length > 0);
-
-  const isFetching = useIsFetching();
-  const { isNavigating, navigatingHref } = useNavigationLoading();
 
   const allItems = navSections.flatMap((s) => s.items);
 
@@ -212,8 +208,8 @@ export function AdminShell({ children }: Readonly<{ children: React.ReactNode }>
               <span className="text-base font-black">
                 ZENX <span className="text-[#00873E]">GO</span>
               </span>
-              <span className="mt-1 text-[10px] font-bold tracking-widest uppercase text-slate-400">
-                Command Hub
+              <span className="mt-1 text-[10px] font-bold tracking-wider uppercase text-slate-400">
+                Quản trị hệ thống
               </span>
             </div>
           </Link>

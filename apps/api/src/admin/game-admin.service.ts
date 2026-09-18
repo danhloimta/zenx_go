@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { DomainError, ErrorCode } from '../common/errors';
 import { PrismaService } from '../database/prisma.service';
-import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto, GameSupportTicketsQueryDto } from './game-admin.dto';
-import { GameAccessService } from './game-access.service';
+import { GamePlayersQueryDto, GamePlayerStatusDto, GamePlayerTemporaryLockDto, GamePlayerPermanentBanDto, GamePlayerReleaseRestrictionDto, GamePlayerChatRestrictionDto, GamePlayerSupportNoteDto, GamePlayerActivityQueryDto, GameAuditQueryDto, GameMaintenanceUpdateDto, GameSupportTicketsQueryDto } from './game-admin.dto';
+import { GameAccessService, GameAuthorizationAccess } from './game-access.service';
 import { AdminService } from './admin.service';
 import { AdminProfileUpdateDto } from './admin.dto';
 import { vietnamCalendarStart, vietnamDaysAgoStart } from './game-metrics';
@@ -24,6 +24,7 @@ export class GameAdminService {
   }
 
   async dashboard(gameId: string) {
+    await this.expireTemporaryLocks(gameId);
     const now = new Date();
     const day = vietnamCalendarStart(now);
     const sevenDays = vietnamDaysAgoStart(now, 6);
@@ -38,13 +39,18 @@ export class GameAdminService {
 
   async listPlayers(gameId: string, query: GamePlayersQueryDto) {
     const players = this.prisma.gamePlayer as any;
-    const where: any = { gameId, ...(query.status ? { status: query.status } : {}) };
-    if (query.search) where.OR = [{ userId: { contains: query.search } }, { user: { username: { contains: query.search } } }, { user: { profile: { fullName: { contains: query.search } } } }];
+    await this.expireTemporaryLocks(gameId);
+    const filters: any[] = [];
+    if (query.status === 'BLOCKED') filters.push({ OR: [{ status: 'TEMPORARILY_BLOCKED' }, { status: 'PERMANENTLY_BANNED' }, { status: 'BLOCKED' }] });
+    else if (query.status) filters.push({ status: query.status });
+    if (query.search) filters.push({ OR: [{ userId: { contains: query.search } }, { user: { username: { contains: query.search } } }, { user: { profile: { fullName: { contains: query.search } } } }] });
+    const where: any = { gameId, ...(filters.length ? { AND: filters } : {}) };
     const [total, items] = await Promise.all([players.count({ where }), players.findMany({ where, orderBy: { lastLoginAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: playerInclude })]);
     return { items: items.map((entry: any) => this.serializePlayer(entry)), total, page: query.page, pageSize: query.pageSize };
   }
 
   async getPlayer(gameId: string, userId: string) {
+    await this.expireTemporaryLocks(gameId);
     const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, include: playerInclude });
     if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
     return this.serializePlayer(player);
@@ -88,6 +94,95 @@ export class GameAdminService {
     return this.serializePlayerProfile(player.id, updated);
   }
 
+  async temporaryLockPlayer(gameId: string, userId: string, dto: GamePlayerTemporaryLockDto, actorUserId: string) {
+    const current = await this.findPlayerForModeration(gameId, userId);
+    this.assertExpectedPlayerVersion(current, dto.expectedUpdatedAt);
+    const expiresAt = new Date(dto.expiresAt);
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
+      throw new DomainError(ErrorCode.GAME_PLAYER_RESTRICTION_INVALID, 'Temporary lock expiry must be in the future', 400);
+    }
+    if (current.status === 'PERMANENTLY_BANNED' || current.status === 'BLOCKED') {
+      throw new DomainError(ErrorCode.GAME_PLAYER_PERMANENTLY_BANNED, 'A permanently banned player cannot be temporarily locked', 409);
+    }
+    return this.writePlayerRestriction(gameId, current, {
+      status: 'TEMPORARILY_BLOCKED', blockedUntil: expiresAt, actorUserId, reason: dto.reason,
+      action: 'GAME_PLAYER_TEMPORARILY_BLOCKED',
+    });
+  }
+
+  async permanentBanPlayer(gameId: string, userId: string, dto: GamePlayerPermanentBanDto, actorUserId: string) {
+    const current = await this.findPlayerForModeration(gameId, userId);
+    this.assertExpectedPlayerVersion(current, dto.expectedUpdatedAt);
+    return this.writePlayerRestriction(gameId, current, {
+      status: 'PERMANENTLY_BANNED', blockedUntil: null, actorUserId, reason: dto.reason,
+      action: 'GAME_PLAYER_PERMANENTLY_BANNED',
+    });
+  }
+
+  async releasePlayerRestriction(gameId: string, userId: string, dto: GamePlayerReleaseRestrictionDto, actorUserId: string, access: GameAuthorizationAccess) {
+    const current = await this.findPlayerForModeration(gameId, userId);
+    this.assertExpectedPlayerVersion(current, dto.expectedUpdatedAt);
+    const isPermanent = current.status === 'PERMANENTLY_BANNED' || current.status === 'BLOCKED';
+    const isTemporary = current.status === 'TEMPORARILY_BLOCKED';
+    if (!isPermanent && !isTemporary) throw new DomainError(ErrorCode.GAME_PLAYER_RESTRICTION_INVALID, 'Player has no active restriction', 409);
+    const canRelease = access.isSuperAdmin || (isPermanent ? access.ability.can('ban', 'GamePlayer') : access.ability.can('lock', 'GamePlayer'));
+    if (!canRelease) throw new DomainError(ErrorCode.GAME_PERMISSION_REQUIRED, 'Permission for this restriction is required', 403);
+    return this.writePlayerRestriction(gameId, current, {
+      status: 'ACTIVE', blockedUntil: null, actorUserId, reason: dto.reason,
+      action: isPermanent ? 'GAME_PLAYER_PERMANENT_BAN_RELEASED' : 'GAME_PLAYER_TEMPORARY_LOCK_RELEASED',
+    });
+  }
+
+  async updatePlayerChatRestriction(gameId: string, userId: string, dto: GamePlayerChatRestrictionDto, actorUserId: string) {
+    const current = await this.findPlayerForModeration(gameId, userId);
+    this.assertExpectedPlayerVersion(current, dto.expectedUpdatedAt);
+    const now = new Date();
+    const data = dto.locked
+      ? { chatBlocked: true, chatBlockedAt: now, chatBlockedByUserId: actorUserId, chatBlockReason: dto.reason, updatedAt: now }
+      : { chatBlocked: false, chatBlockedAt: null, chatBlockedByUserId: null, chatBlockReason: null, updatedAt: now };
+    const action = dto.locked ? 'GAME_PLAYER_CHAT_BLOCKED' : 'GAME_PLAYER_CHAT_UNBLOCKED';
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const write = await (tx.gamePlayer as any).updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
+      const next = await (tx.gamePlayer as any).findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
+      await tx.authorizationAuditLog.create({ data: { actorUserId, gameId, action, targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify(this.serializePlayerForModerationAudit(current)), afterData: JSON.stringify(this.serializePlayerForModerationAudit(next)), reason: dto.reason } });
+      return next;
+    });
+    return this.serializePlayer(updated);
+  }
+
+  private async findPlayerForModeration(gameId: string, userId: string) {
+    await this.expireTemporaryLocks(gameId);
+    const current = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, include: playerInclude });
+    if (!current) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
+    return current;
+  }
+
+  private async expireTemporaryLocks(gameId: string) {
+    const players = this.prisma.gamePlayer as any;
+    if (typeof players.updateMany !== 'function') return;
+    await players.updateMany({ where: { gameId, status: 'TEMPORARILY_BLOCKED', blockedUntil: { lte: new Date() } }, data: { status: 'ACTIVE', blockedAt: null, blockedUntil: null, blockedByUserId: null, blockReason: null, updatedAt: new Date() } });
+  }
+
+  private assertExpectedPlayerVersion(current: any, expectedUpdatedAt: string) {
+    if (current.updatedAt.getTime() !== new Date(expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
+  }
+
+  private async writePlayerRestriction(gameId: string, current: any, input: { status: string; blockedUntil: Date | null; actorUserId: string; reason: string; action: string }) {
+    const now = new Date();
+    const data = input.status === 'ACTIVE'
+      ? { status: 'ACTIVE', blockedAt: null, blockedUntil: null, blockedByUserId: null, blockReason: null, updatedAt: now }
+      : { status: input.status, blockedAt: now, blockedUntil: input.blockedUntil, blockedByUserId: input.actorUserId, blockReason: input.reason, updatedAt: now };
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const write = await (tx.gamePlayer as any).updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data });
+      if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
+      const next = await (tx.gamePlayer as any).findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
+      await tx.authorizationAuditLog.create({ data: { actorUserId: input.actorUserId, gameId, action: input.action, targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify(this.serializePlayerForModerationAudit(current)), afterData: JSON.stringify(this.serializePlayerForModerationAudit(next)), reason: input.reason } });
+      return next;
+    });
+    return this.serializePlayer(updated);
+  }
+
   async updatePlayerStatus(gameId: string, userId: string, dto: GamePlayerStatusDto, actorUserId: string) {
     const players = this.prisma.gamePlayer as any;
     const current = await players.findUnique({ where: { userId_gameId: { userId, gameId } }, include: playerInclude });
@@ -96,7 +191,7 @@ export class GameAdminService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const txPlayers = tx.gamePlayer as any;
       const now = new Date();
-      const write = await txPlayers.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: dto.status === 'BLOCKED' ? { status: 'BLOCKED', blockedAt: now, blockedByUserId: actorUserId, blockReason: dto.reason, updatedAt: now } : { status: 'ACTIVE', blockedAt: null, blockedByUserId: null, blockReason: null, updatedAt: now } });
+      const write = await txPlayers.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: dto.status === 'BLOCKED' ? { status: 'BLOCKED', blockedAt: now, blockedUntil: null, blockedByUserId: actorUserId, blockReason: dto.reason, updatedAt: now } : { status: 'ACTIVE', blockedAt: null, blockedUntil: null, blockedByUserId: null, blockReason: null, updatedAt: now } });
       if (write.count !== 1) throw new DomainError(ErrorCode.STALE_GAME_PLAYER_UPDATE, 'Game player was changed by another operator', 409);
       const next = await txPlayers.findUniqueOrThrow({ where: { id: current.id }, include: playerInclude });
       await tx.authorizationAuditLog.create({ data: { actorUserId, gameId, action: dto.status === 'BLOCKED' ? 'GAME_PLAYER_BLOCKED' : 'GAME_PLAYER_UNBLOCKED', targetType: 'GAME_PLAYER', targetId: current.id, beforeData: JSON.stringify(this.serializePlayerForModerationAudit(current)), afterData: JSON.stringify(this.serializePlayerForModerationAudit(next)), reason: dto.reason } });
@@ -124,14 +219,29 @@ export class GameAdminService {
   }
 
   async playerActivity(gameId: string, userId: string, query: GamePlayerActivityQueryDto) {
+    await this.expireTemporaryLocks(gameId);
     const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId } }, select: { id: true } });
     if (!player) throw new DomainError(ErrorCode.GAME_PLAYER_NOT_FOUND, 'Game player not found', 404);
-    const where: any = { gameId, targetType: 'GAME_PLAYER', targetId: player.id, action: { in: ['GAME_PLAYER_BLOCKED', 'GAME_PLAYER_UNBLOCKED', 'GAME_PLAYER_SUPPORT_NOTE_UPDATED'] } };
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.authorizationAuditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: { actor: { select: { id: true, username: true, profile: { select: { fullName: true } } } } } }),
-      this.prisma.authorizationAuditLog.count({ where }),
+    const base = { gameId, targetType: 'GAME_PLAYER', targetId: player.id };
+    const legacyWhere: any = { ...base, action: { in: ['GAME_PLAYER_BLOCKED', 'GAME_PLAYER_UNBLOCKED', 'GAME_PLAYER_SUPPORT_NOTE_UPDATED'] } };
+    const newerWhere: any = { ...base, action: { in: [
+      'GAME_PLAYER_TEMPORARILY_BLOCKED', 'GAME_PLAYER_PERMANENTLY_BANNED',
+      'GAME_PLAYER_TEMPORARY_LOCK_RELEASED', 'GAME_PLAYER_PERMANENT_BAN_RELEASED',
+      'GAME_PLAYER_CHAT_BLOCKED', 'GAME_PLAYER_CHAT_UNBLOCKED',
+    ] } };
+    const select = { actor: { select: { id: true, username: true, profile: { select: { fullName: true } } } } };
+    const [legacyItems, legacyTotal] = await this.prisma.$transaction([
+      this.prisma.authorizationAuditLog.findMany({ where: legacyWhere, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: select }),
+      this.prisma.authorizationAuditLog.count({ where: legacyWhere }),
     ]);
-    return { items: items.map((entry) => ({ id: entry.id, action: entry.action, targetType: entry.targetType, targetId: entry.targetId, reason: entry.reason, beforeData: this.data(entry.beforeData), afterData: this.data(entry.afterData), actor: entry.actor ? { id: entry.actor.id, username: entry.actor.username, displayName: entry.actor.profile?.fullName ?? entry.actor.username } : null, createdAt: entry.createdAt })), page: query.page, pageSize: query.pageSize, total };
+    const [newItems, newTotal] = await this.prisma.$transaction([
+      this.prisma.authorizationAuditLog.findMany({ where: newerWhere, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.pageSize, take: query.pageSize, include: select }),
+      this.prisma.authorizationAuditLog.count({ where: newerWhere }),
+    ]);
+    const seen = new Set<string>();
+    const items = [...legacyItems, ...newItems].filter((entry) => !seen.has(entry.id) && seen.add(entry.id)).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, query.pageSize);
+    const total = legacyTotal + newTotal - (legacyItems.length + newItems.length - seen.size);
+    return { items: items.map((entry) => ({ id: entry.id, action: entry.action, targetType: entry.targetType, targetId: entry.targetId, reason: entry.reason, beforeData: this.data(entry.beforeData), afterData: this.data(entry.afterData), actor: entry.actor ? { id: entry.actor.id, username: entry.actor.username, displayName: entry.actor.profile?.fullName ?? entry.actor.username } : null, createdAt: entry.createdAt })), page: query.page, pageSize: query.pageSize, total: Math.max(0, total) };
   }
 
   async operations(gameId: string) {
@@ -176,9 +286,63 @@ export class GameAdminService {
   }
 
   async listSupportTickets(gameId: string, query: GameSupportTicketsQueryDto) {
-    const where = { gameId };
-    const [items, total] = await this.prisma.$transaction([this.prisma.supportTicket.findMany({ where, orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize, select: this.supportTicketSelect() }), this.prisma.supportTicket.count({ where })]);
-    return { items: items.map((ticket) => this.serializeSupportTicket(ticket)), page: query.page, pageSize: query.pageSize, total, totalPages: Math.ceil(total / query.pageSize) };
+    const search = query.search?.trim();
+    const where: any = {
+      gameId,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.priority ? { priority: query.priority } : {}),
+      ...(search
+        ? {
+            OR: [
+              { ticketNo: { contains: search } },
+              { subject: { contains: search } },
+              { user: { is: { username: { contains: search } } } },
+              { user: { is: { email: { contains: search } } } },
+              { user: { is: { phone: { contains: search } } } },
+              { user: { is: { profile: { is: { fullName: { contains: search } } } } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [items, total, unassignedCount, ...statusCounts] = await this.prisma.$transaction([
+      this.prisma.supportTicket.findMany({
+        where,
+        orderBy: [{ lastActivityAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: this.supportTicketSelect(),
+      }),
+      this.prisma.supportTicket.count({ where }),
+      this.prisma.supportTicket.count({
+        where: { gameId, assigneeUserId: null, status: { not: SupportTicketStatus.CLOSED } },
+      }),
+      this.prisma.supportTicket.count({ where: { gameId, status: SupportTicketStatus.NEW } }),
+      this.prisma.supportTicket.count({ where: { gameId, status: SupportTicketStatus.IN_PROGRESS } }),
+      this.prisma.supportTicket.count({ where: { gameId, status: SupportTicketStatus.WAITING_USER } }),
+      this.prisma.supportTicket.count({ where: { gameId, status: SupportTicketStatus.RESOLVED } }),
+      this.prisma.supportTicket.count({ where: { gameId, status: SupportTicketStatus.CLOSED } }),
+    ]);
+
+    const byStatus: Record<string, number> = {
+      [SupportTicketStatus.NEW]: statusCounts[0],
+      [SupportTicketStatus.IN_PROGRESS]: statusCounts[1],
+      [SupportTicketStatus.WAITING_USER]: statusCounts[2],
+      [SupportTicketStatus.RESOLVED]: statusCounts[3],
+      [SupportTicketStatus.CLOSED]: statusCounts[4],
+    };
+
+    return {
+      items: items.map((ticket) => this.serializeSupportTicket(ticket)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      totalPages: Math.ceil(total / query.pageSize),
+      stats: {
+        byStatus,
+        unassigned: unassignedCount,
+      },
+    };
   }
 
   async getSupportTicket(gameId: string, ticketNo: string) {
@@ -208,10 +372,62 @@ export class GameAdminService {
   }
 
   private serializePlayer(entry: any) {
-    return { id: entry.id, userId: entry.userId, user: entry.user, status: entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockReason: entry.blockReason, supportNote: entry.supportNote ?? null, updatedAt: entry.updatedAt };
+    const expiredTemporary = entry.status === 'TEMPORARILY_BLOCKED' && entry.blockedUntil && new Date(entry.blockedUntil) <= new Date();
+    return { id: entry.id, userId: entry.userId, user: entry.user, status: expiredTemporary ? 'ACTIVE' : entry.status, firstLoginAt: entry.firstLoginAt, lastLoginAt: entry.lastLoginAt, loginCount: entry.loginCount, blockedAt: entry.blockedAt, blockedUntil: expiredTemporary ? null : entry.blockedUntil ?? null, blockedByUserId: entry.blockedByUserId ?? null, blockReason: entry.blockReason, chatBlocked: Boolean(entry.chatBlocked), chatBlockedAt: entry.chatBlockedAt ?? null, chatBlockedByUserId: entry.chatBlockedByUserId ?? null, chatBlockReason: entry.chatBlockReason ?? null, supportNote: entry.supportNote ?? null, updatedAt: entry.updatedAt };
   }
-  private supportTicketSelect() { return { ticketNo: true, subject: true, description: true, status: true, lastActivityAt: true, lastCustomerMessageAt: true, lastStaffReplyAt: true, createdAt: true, updatedAt: true, category: { select: { id: true, code: true, name: true } }, user: { select: { username: true, email: true, phone: true, profile: { select: { fullName: true } } } } } as const; }
-  private serializeSupportTicket(ticket: any) { return { ...ticket, user: { username: ticket.user.username, email: ticket.user.email, phone: ticket.user.phone, fullName: ticket.user.profile?.fullName ?? null } }; }
+  private supportTicketSelect() {
+    return {
+      id: true,
+      ticketNo: true,
+      subject: true,
+      description: true,
+      status: true,
+      priority: true,
+      lastActivityAt: true,
+      lastCustomerMessageAt: true,
+      lastStaffReplyAt: true,
+      createdAt: true,
+      updatedAt: true,
+      category: { select: { id: true, code: true, name: true } },
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          phone: true,
+          profile: { select: { fullName: true, avatarUrl: true } },
+        },
+      },
+      assignee: {
+        select: {
+          id: true,
+          username: true,
+          profile: { select: { fullName: true } },
+        },
+      },
+    } as const;
+  }
+  private serializeSupportTicket(ticket: any) {
+    return {
+      ...ticket,
+      user: {
+        id: ticket.user.id,
+        username: ticket.user.username,
+        email: ticket.user.email,
+        phone: ticket.user.phone,
+        fullName: ticket.user.profile?.fullName ?? null,
+        avatarUrl: ticket.user.profile?.avatarUrl ?? null,
+        profile: ticket.user.profile ?? null,
+      },
+      assignee: ticket.assignee
+        ? {
+            id: ticket.assignee.id,
+            username: ticket.assignee.username,
+            fullName: ticket.assignee.profile?.fullName ?? null,
+          }
+        : null,
+    };
+  }
   private serializePlayerProfile(playerId: string, user: any) {
     return {
       playerId,

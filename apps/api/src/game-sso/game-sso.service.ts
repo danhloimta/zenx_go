@@ -19,8 +19,8 @@ export class GameSsoService {
 
   async authorize(userId: string, clientId: string, redirectUri: string) {
     const client = await this.validateAuthorizeRequest(clientId, redirectUri);
-    const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId: client.gameId } }, select: { status: true } });
-    if (player?.status === 'BLOCKED') throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
+    const player = await (this.prisma.gamePlayer as any).findUnique({ where: { userId_gameId: { userId, gameId: client.gameId } }, select: { id: true, status: true, blockedUntil: true } });
+    await this.assertPlayerCanEnter(player);
     const rawCode = randomBytes(32).toString('base64url');
     const now = new Date();
     await (this.prisma.gameSsoAuthorizationCode as any).upsert({
@@ -39,14 +39,29 @@ export class GameSsoService {
       const stored = await (tx.gameSsoAuthorizationCode as any).findUnique({ where: { codeHash: codeHash(code) }, include: { game: { select: { id: true, code: true, isPublic: true, operationalStatus: true } }, user: { select: { id: true, username: true, status: true, profile: { select: { fullName: true } } } } } });
       if (!stored || stored.clientId !== client.id || stored.redirectUri !== redirectUri || stored.expiresAt <= new Date() || !stored.game.isPublic || ['LOCKED', 'SUSPENDED', 'DELETED'].includes(stored.user.status)) throw this.invalidCode();
       if (['MAINTENANCE', 'UNAVAILABLE'].includes(stored.game.operationalStatus)) throw new DomainError(ErrorCode.GAME_SSO_UNAVAILABLE, 'Game SSO is temporarily unavailable', 503);
-      const existing = await (tx.gamePlayer as any).findUnique({ where: { userId_gameId: { userId: stored.userId, gameId: stored.gameId } }, select: { status: true } });
-      if (existing?.status === 'BLOCKED') throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
+      const existing = await (tx.gamePlayer as any).findUnique({ where: { userId_gameId: { userId: stored.userId, gameId: stored.gameId } }, select: { id: true, status: true, blockedUntil: true } });
+      if (existing?.status === 'TEMPORARILY_BLOCKED' && existing.blockedUntil && existing.blockedUntil <= new Date()) {
+        const restored = await (tx.gamePlayer as any).updateMany({ where: { id: existing.id, status: 'TEMPORARILY_BLOCKED', blockedUntil: existing.blockedUntil }, data: { status: 'ACTIVE', blockedUntil: null, blockedAt: null, blockedByUserId: null, blockReason: null, updatedAt: new Date() } });
+        if (restored.count !== 1) throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
+      } else if (existing && (existing.status === 'TEMPORARILY_BLOCKED' || existing.status === 'PERMANENTLY_BANNED' || existing.status === 'BLOCKED')) {
+        throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
+      }
       const consumed = await (tx.gameSsoAuthorizationCode as any).deleteMany({ where: { id: stored.id } });
       if (consumed.count !== 1) throw this.invalidCode();
       const loginAt = new Date();
       await (tx.gamePlayer as any).upsert({ where: { userId_gameId: { userId: stored.userId, gameId: stored.gameId } }, create: { userId: stored.userId, gameId: stored.gameId, firstLoginAt: loginAt, lastLoginAt: loginAt, loginCount: 1 }, update: { lastLoginAt: loginAt, loginCount: { increment: 1 } } });
       return { user: { id: stored.user.id, username: stored.user.username, displayName: stored.user.profile?.fullName ?? stored.user.username }, game: { id: stored.game.id, code: stored.game.code }, loginAt };
     });
+  }
+
+  private async assertPlayerCanEnter(player: { id: string; status: string; blockedUntil: Date | null } | null) {
+    if (!player) return;
+    if (player.status === 'TEMPORARILY_BLOCKED' && player.blockedUntil && player.blockedUntil <= new Date()) {
+      const restored = await (this.prisma.gamePlayer as any).updateMany({ where: { id: player.id, status: 'TEMPORARILY_BLOCKED', blockedUntil: player.blockedUntil }, data: { status: 'ACTIVE', blockedUntil: null, blockedAt: null, blockedByUserId: null, blockReason: null, updatedAt: new Date() } });
+      if (restored.count !== 1) throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
+      return;
+    }
+    if (player.status === 'TEMPORARILY_BLOCKED' || player.status === 'PERMANENTLY_BANNED' || player.status === 'BLOCKED') throw new DomainError(ErrorCode.GAME_PLAYER_BLOCKED, 'Player is blocked for this game', 403);
   }
 
   private parseBasic(value: string | undefined) {

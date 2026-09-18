@@ -19,6 +19,9 @@ export class ApiErrorFilter implements ExceptionFilter {
     let code = 'INTERNAL_ERROR';
     let message = 'An unexpected error occurred';
     let details: unknown;
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[API Exception]', exception);
+    }
 
     if (exception instanceof DomainError) {
       status = exception.status;

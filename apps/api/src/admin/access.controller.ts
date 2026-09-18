@@ -5,7 +5,7 @@ import { PermissionGuard } from './permission.guard';
 import { RequireAnyPermission, RequirePermission } from './permission.decorator';
 import { AccessAdminService } from './access.service';
 import { DomainError, ErrorCode } from '../common/errors';
-import { CreateRoleDto, DeleteRoleDto, ReplaceRolePermissionsDto, RolesQueryDto, UpdateRoleDto } from './access.dto';
+import { CreateRoleDto, DeleteRoleDto, PermissionsQueryDto, ReplaceRolePermissionsDto, RolesQueryDto, UpdateRoleDto } from './access.dto';
 import { PERMISSIONS } from './permissions';
 
 const roleRead = PERMISSIONS.ROLES_VIEW;
@@ -13,9 +13,9 @@ const roleRead = PERMISSIONS.ROLES_VIEW;
 @UseGuards(AuthGuard, AdminGuard, PermissionGuard)
 export class AccessAdminController {
   constructor(private readonly access: AccessAdminService) {}
-  @Get('roles') @RequirePermission(roleRead) roles(@Query() query: RolesQueryDto) { return this.access.listRoles(query.active); }
+  @Get('roles') @RequirePermission(roleRead) roles(@Query() query: RolesQueryDto) { return this.access.listRoles(query.active, query.scopeType); }
   @Get('roles/:roleId') @RequirePermission(roleRead) role(@Param('roleId') roleId: string) { return this.access.getRole(roleId); }
-  @Get('permissions') @RequirePermission(roleRead) permissions() { return this.access.listPermissions(); }
+  @Get('permissions') @RequirePermission(roleRead) permissions(@Query() query: PermissionsQueryDto) { return this.access.listPermissions(query.scopeType); }
   @Post('roles') @RequirePermission(PERMISSIONS.ROLES_CREATE) create(@Body() dto: CreateRoleDto, @Req() request: AdminRequest) { return this.access.createRole(dto, request.user.sub, request.ip, request.headers['user-agent']); }
   @Patch('roles/:roleId') @RequireAnyPermission(PERMISSIONS.ROLES_UPDATE, PERMISSIONS.ROLES_PERMISSIONS_ASSIGN) update(@Param('roleId') roleId: string, @Body() dto: UpdateRoleDto, @Req() request: AdminRequest) {
     if (dto.permissionIds !== undefined && !request.admin.ability.can(PERMISSIONS.ROLES_PERMISSIONS_ASSIGN.action, PERMISSIONS.ROLES_PERMISSIONS_ASSIGN.subject)) throw new DomainError(ErrorCode.PERMISSION_REQUIRED, 'Permission is required', 403);

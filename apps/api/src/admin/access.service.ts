@@ -6,15 +6,15 @@ import { PERMISSIONS } from './permissions';
 
 const ROLE_INCLUDE = {
   permissions: { include: { permission: true }, orderBy: { permission: { sortOrder: 'asc' as const } } },
-  _count: { select: { users: true } },
+  _count: { select: { users: true, gameAssignments: true } },
 } as const;
 
 @Injectable()
 export class AccessAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
-  listRoles(active?: boolean) {
-    return this.prisma.role.findMany({ where: active === undefined ? {} : { isActive: active }, include: ROLE_INCLUDE, orderBy: [{ isSystem: 'desc' }, { name: 'asc' }] }).then((roles) => roles.map((role) => this.serializeRole(role)));
+  listRoles(active?: boolean, scopeType?: 'PLATFORM' | 'GAME') {
+    return this.prisma.role.findMany({ where: { ...(active === undefined ? {} : { isActive: active }), ...(scopeType ? { scopeType } : {}) }, include: ROLE_INCLUDE, orderBy: [{ isSystem: 'desc' }, { name: 'asc' }] }).then((roles) => roles.map((role) => this.serializeRole(role)));
   }
 
   async getRole(roleId: string) {
@@ -23,17 +23,18 @@ export class AccessAdminService {
     return this.serializeRole(role);
   }
 
-  async listPermissions() {
-    return this.prisma.permission.findMany({ where: { isActive: true }, orderBy: [{ module: 'asc' }, { sortOrder: 'asc' }] });
+  async listPermissions(scopeType?: 'PLATFORM' | 'GAME') {
+    return this.prisma.permission.findMany({ where: { isActive: true, ...(scopeType ? { scopeType } : {}) }, orderBy: [{ module: 'asc' }, { sortOrder: 'asc' }] });
   }
 
   async createRole(dto: CreateRoleDto, actorUserId: string, ipAddress?: string, userAgent?: string) {
     try {
       const role = await this.prisma.$transaction(async (tx) => {
-        const adminAccess = await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
-        if (!adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
-        const created = await tx.role.create({ data: { code: dto.code, name: dto.name.trim(), description: dto.description?.trim() ?? null }, include: ROLE_INCLUDE });
-        await tx.rolePermission.create({ data: { roleId: created.id, permissionId: adminAccess.id } });
+        const scopeType = dto.scopeType ?? 'PLATFORM';
+        const adminAccess = scopeType === 'PLATFORM' ? await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } }) : null;
+        if (scopeType === 'PLATFORM' && !adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
+        const created = await tx.role.create({ data: { code: dto.code, name: dto.name.trim(), description: dto.description?.trim() ?? null, scopeType }, include: ROLE_INCLUDE });
+        if (adminAccess) await tx.rolePermission.create({ data: { roleId: created.id, permissionId: adminAccess.id } });
         const result = await tx.role.findUniqueOrThrow({ where: { id: created.id }, include: ROLE_INCLUDE });
         await this.audit(tx, actorUserId, 'ROLE_CREATED', 'ROLE', result.id, null, this.serializeRole(result), dto.reason, ipAddress, userAgent);
         return result;
@@ -51,11 +52,11 @@ export class AccessAdminService {
     if (current.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be changed', 400);
     if (current.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
     const updated = await this.prisma.$transaction(async (tx) => {
-      const adminAccess = dto.permissionIds === undefined ? null : await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
-      if (dto.permissionIds !== undefined && !adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
-      const nextPermissionIds = dto.permissionIds === undefined ? null : [...new Set([...dto.permissionIds, adminAccess!.id])];
+      const adminAccess = dto.permissionIds === undefined || current.scopeType !== 'PLATFORM' ? null : await tx.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
+      if (dto.permissionIds !== undefined && current.scopeType === 'PLATFORM' && !adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
+      const nextPermissionIds = dto.permissionIds === undefined ? null : [...new Set(adminAccess ? [...dto.permissionIds, adminAccess.id] : dto.permissionIds)];
       if (nextPermissionIds) {
-        const valid = await tx.permission.count({ where: { id: { in: nextPermissionIds }, isActive: true } });
+        const valid = await tx.permission.count({ where: { id: { in: nextPermissionIds }, isActive: true, scopeType: current.scopeType } });
         if (valid !== nextPermissionIds.length) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'One or more permissions are unavailable', 400);
         await tx.rolePermission.deleteMany({ where: { roleId } });
         await tx.rolePermission.createMany({ data: nextPermissionIds.map((permissionId) => ({ roleId, permissionId })) });
@@ -74,7 +75,7 @@ export class AccessAdminService {
     const role = await this.prisma.role.findUnique({ where: { id: roleId }, include: ROLE_INCLUDE });
     if (!role) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (role.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System roles cannot be deleted', 400);
-    if (role._count.users) throw new DomainError(ErrorCode.ROLE_IN_USE, 'Role is assigned to users', 409);
+    if ((role._count?.users ?? 0) || (role._count?.gameAssignments ?? 0)) throw new DomainError(ErrorCode.ROLE_IN_USE, 'Role is assigned to users or games', 409);
     if (role.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
     await this.prisma.$transaction(async (tx) => {
       const deleted = await tx.role.deleteMany({ where: { id: roleId, updatedAt: role.updatedAt } });
@@ -89,10 +90,10 @@ export class AccessAdminService {
     if (!role) throw new DomainError(ErrorCode.ROLE_NOT_FOUND, 'Role not found', 404);
     if (role.isSystem) throw new DomainError(ErrorCode.SYSTEM_ROLE_PROTECTED, 'System role permissions cannot be changed', 400);
     if (role.updatedAt.getTime() !== new Date(dto.expectedUpdatedAt).getTime()) throw new DomainError(ErrorCode.STALE_ROLE_UPDATE, 'Role was changed by another operator', 409);
-    const adminAccess = await this.prisma.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } });
-    if (!adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
-    const ids = [...new Set([...dto.permissionIds, adminAccess.id])];
-    const permissions = ids.length ? await this.prisma.permission.findMany({ where: { id: { in: ids }, isActive: true }, select: { id: true } }) : [];
+    const adminAccess = role.scopeType === 'PLATFORM' ? await this.prisma.permission.findUnique({ where: { code: PERMISSIONS.ADMIN_ACCESS.code }, select: { id: true } }) : null;
+    if (role.scopeType === 'PLATFORM' && !adminAccess) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'Admin access permission is unavailable', 500);
+    const ids = [...new Set(adminAccess ? [...dto.permissionIds, adminAccess.id] : dto.permissionIds)];
+    const permissions = ids.length ? await this.prisma.permission.findMany({ where: { id: { in: ids }, isActive: true, scopeType: role.scopeType }, select: { id: true } }) : [];
     if (permissions.length !== ids.length) throw new DomainError(ErrorCode.PERMISSION_NOT_FOUND, 'One or more permissions are unavailable', 400);
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.rolePermission.deleteMany({ where: { roleId } });
@@ -119,6 +120,6 @@ export class AccessAdminService {
   }
 
   private serializeRole(role: any) {
-    return { id: role.id, code: role.code, name: role.name, description: role.description, isSystem: role.isSystem, isActive: role.isActive, scopeType: role.scopeType, createdAt: role.createdAt, updatedAt: role.updatedAt, userCount: role._count.users, permissions: role.permissions.map(({ permission }: any) => permission) };
+    return { id: role.id, code: role.code, name: role.name, description: role.description, isSystem: role.isSystem, isActive: role.isActive, scopeType: role.scopeType, createdAt: role.createdAt, updatedAt: role.updatedAt, userCount: role._count?.users ?? 0, gameAssignmentCount: role._count?.gameAssignments ?? 0, permissions: role.permissions.map(({ permission }: any) => permission) };
   }
 }

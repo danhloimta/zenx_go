@@ -49,6 +49,7 @@ model User {
   assignedGameRoles     GameRoleAssignment[]     @relation("GameRoleAssignmentAssignedBy")
   gamePlayers           GamePlayer[]             @relation("GamePlayerUser")
   blockedGamePlayers    GamePlayer[]             @relation("GamePlayerBlockedBy")
+  chatBlockedGamePlayers GamePlayer[]            @relation("GamePlayerChatBlockedBy")
   gameSsoCodes          GameSsoAuthorizationCode[]
   assignedSupportTickets SupportTicket[]          @relation("SupportTicketAssignee")
   supportMessages        SupportTicketMessage[]   @relation("SupportMessageAuthor")
@@ -242,23 +243,30 @@ model GamePlayer {
   id              String   @id @default(uuid()) @db.UniqueIdentifier
   userId          String   @map("user_id") @db.UniqueIdentifier
   gameId          String   @map("game_id") @db.UniqueIdentifier
-  status          String   @default("ACTIVE") @db.VarChar(16)
+  status          String   @default("ACTIVE") @db.VarChar(24)
   firstLoginAt    DateTime @default(now()) @map("first_login_at")
   lastLoginAt     DateTime @default(now()) @map("last_login_at")
   loginCount      Int      @default(1) @map("login_count")
   blockedAt       DateTime? @map("blocked_at")
+  blockedUntil    DateTime? @map("blocked_until")
   blockedByUserId String?  @map("blocked_by_user_id") @db.UniqueIdentifier
   blockReason     String?  @map("block_reason") @db.NVarChar(500)
+  chatBlocked     Boolean   @default(false) @map("chat_blocked")
+  chatBlockedAt   DateTime? @map("chat_blocked_at")
+  chatBlockedByUserId String? @map("chat_blocked_by_user_id") @db.UniqueIdentifier
+  chatBlockReason String?   @map("chat_block_reason") @db.NVarChar(500)
   supportNote     String?  @map("support_note") @db.NVarChar(2000)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   user            User     @relation("GamePlayerUser", fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
   blockedBy       User?    @relation("GamePlayerBlockedBy", fields: [blockedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  chatBlockedBy   User?    @relation("GamePlayerChatBlockedBy", fields: [chatBlockedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([userId, gameId])
   @@index([gameId, lastLoginAt])
   @@index([gameId, status, lastLoginAt])
+  @@index([gameId, blockedUntil])
   @@map("game_players")
 }
 

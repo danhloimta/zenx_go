@@ -7,7 +7,6 @@ import {
   ExternalLink,
   Gamepad2,
   Search,
-  Sparkles,
   Layers,
 } from 'lucide-react';
 import { useAdminContentGames } from '@/hooks/use-content';
@@ -69,7 +68,7 @@ export function GameSwitcher({ className, variant = 'header' }: GameSwitcherProp
         >
           <span className="flex items-center gap-2">
             <Gamepad2 className="size-4 text-[#00873E]" />
-            Quản trị Game ({items.length})
+            Trò chơi ({items.length})
           </span>
           <ChevronDown
             className={cn('size-3.5 transition-transform duration-200', open && 'rotate-180')}
@@ -120,10 +119,10 @@ export function GameSwitcher({ className, variant = 'header' }: GameSwitcherProp
             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50',
         )}
         aria-expanded={open}
-        aria-label="Menu chuyển đổi quản trị game"
+        aria-label="Menu chuyển đổi trò chơi"
       >
         <Gamepad2 className="size-4 text-[#00873E]" />
-        <span className="hidden sm:inline">Quản trị Game</span>
+        <span className="hidden sm:inline">Trò chơi</span>
         {items.length > 0 && (
           <span className="rounded-full bg-[#00873E]/10 px-1.5 py-0.2 text-[10px] font-extrabold text-[#00873E]">
             {items.length}
@@ -143,14 +142,14 @@ export function GameSwitcher({ className, variant = 'header' }: GameSwitcherProp
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 px-1">
             <div>
               <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Gamepad2 className="size-3.5 text-[#00873E]" /> Chọn Game để quản trị
+                <Gamepad2 className="size-3.5 text-[#00873E]" /> Chọn trò chơi
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Mở portal quản trị chuyên biệt từng tựa game
+                Trang quản trị cho từng game
               </p>
             </div>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#00873E]">
-              {items.length} Game
+              {items.length} game
             </span>
           </div>
 

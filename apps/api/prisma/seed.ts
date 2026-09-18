@@ -1,162 +1,59 @@
 import 'dotenv/config';
 import * as argon2 from 'argon2';
 import { PrismaClient } from '@prisma/client';
-import { SecurityQuestionCode, SupportStatus } from '../src/common/domain';
+import {
+  AccountStatus,
+  Gender,
+  PaymentMethod,
+  PaymentStatus,
+  SecurityQuestionCode,
+  SocialProvider,
+  SupportMessageAuthorType,
+  SupportMessageVisibility,
+  SupportStatus,
+  SupportTicketPriority,
+  SupportTicketStatus,
+  WalletTransactionStatus,
+  WalletTransactionType,
+} from '../src/common/domain';
 import { createPageConfig } from '../src/admin/content/game-templates';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  console.log('🚀 Khởi tạo dữ liệu mẫu cho hệ thống ZENX GO...');
+
   await prisma.authSettings.upsert({
     where: { id: 1 },
     update: {},
     create: { id: 1, phoneRegistrationOtpRequired: true },
   });
-  await seedRolesAndPermissions();
-  await seedUsers();
+
+  const { superAdmin, supportRole, gameRoles, financeRole } = await seedRolesAndPermissions();
+  const users = await seedUsers({ superAdmin, supportRole, financeRole });
   await seedSecurityQuestions();
-  await seedGames();
-  await seedPortalContent();
+  const { games } = await seedGames();
+  await seedGameRolesAndPlayers({ users, games, gameRoles });
+  await seedPortalContent(games);
+  const packages = await seedCoinPackages();
+  await seedFinanceAndTransactions({ users, packages });
+  await seedSupportSystem({ users, games });
+  await seedActivityAndAuditLogs({ users, games });
 
-  const packages = [
-    ['ZENX_1000', 'ZENX 1,000', 20000n, 1000n, 1],
-    ['ZENX_2500', 'ZENX 2,500', 50000n, 2500n, 2],
-    ['ZENX_5000', 'ZENX 5,000', 100000n, 5000n, 3],
-    ['ZENX_12500', 'ZENX 12,500', 200000n, 12500n, 4],
-    ['ZENX_25000', 'ZENX 25,000', 500000n, 25000n, 5],
-    ['ZENX_50000', 'ZENX 50,000', 1000000n, 50000n, 6],
-    ['ZENX_100000', 'ZENX 100,000', 2000000n, 100000n, 7],
-  ] as const;
-
-  for (const [code, name, priceVnd, coinAmount, sortOrder] of packages) {
-    await prisma.coinPackage.upsert({
-      where: { code },
-      // Keep finance configuration changes made in admin. Defaults are only
-      // applied when a package does not exist yet.
-      update: {},
-      create: { code, name, priceVnd, coinAmount, sortOrder },
-    });
-  }
-
-  const categories = [
-    {
-      code: 'ACCOUNT',
-      name: 'Tài khoản',
-      sortOrder: 1,
-      faqs: [
-        [
-          'Làm thế nào để đổi mật khẩu?',
-          'Vào Tài khoản → Đổi mật khẩu, nhập mật khẩu hiện tại và mật khẩu mới, sau đó xác nhận thay đổi.',
-        ],
-        [
-          'Tôi quên mật khẩu thì phải làm sao?',
-          'Chọn “Quên mật khẩu?” tại màn hình đăng nhập. Nhập email đã đăng ký và làm theo hướng dẫn để đặt lại mật khẩu.',
-        ],
-        [
-          'Làm thế nào để cập nhật thông tin cá nhân?',
-          'Vào Tài khoản → Thông tin cá nhân để cập nhật họ tên, ngày sinh, giới tính, thành phố và địa chỉ.',
-        ],
-        [
-          'Tôi có thể liên kết Google hoặc Facebook không?',
-          'Có. Vào Tài khoản → Liên kết tài khoản, chọn nền tảng muốn liên kết và hoàn tất xác thực.',
-        ],
-      ],
-    },
-    {
-      code: 'TOPUP',
-      name: 'Nạp tiền',
-      sortOrder: 2,
-      faqs: [
-        [
-          'Nạp ZENX Coin bằng cách nào?',
-          'Vào Nạp Coin, chọn gói ZENX Coin và phương thức thanh toán phù hợp, sau đó hoàn tất hướng dẫn của cổng thanh toán.',
-        ],
-        [
-          'Thanh toán thành công nhưng chưa nhận được Coin?',
-          'Kiểm tra Lịch sử giao dịch trước. Nếu giao dịch vẫn chưa được cập nhật, hãy tạo yêu cầu hỗ trợ và cung cấp mã payment.',
-        ],
-        [
-          'Tôi có thể xem lại các lần nạp tiền ở đâu?',
-          'Vào Ví ZENX → Lịch sử giao dịch để xem số tiền, trạng thái, mã giao dịch và thông tin thanh toán.',
-        ],
-      ],
-    },
-    {
-      code: 'WALLET',
-      name: 'Ví ZENX',
-      sortOrder: 3,
-      faqs: [
-        [
-          'Số dư ZENX Coin được cập nhật khi nào?',
-          'Số dư được cập nhật sau khi giao dịch được hệ thống xác nhận thành công. Bạn có thể tải lại trang Ví để kiểm tra.',
-        ],
-        [
-          'Làm sao xem chi tiết một giao dịch?',
-          'Vào Ví ZENX → Lịch sử giao dịch và chọn giao dịch muốn xem để mở bảng chi tiết.',
-        ],
-        [
-          'Nếu phát hiện giao dịch bất thường thì phải làm gì?',
-          'Không chia sẻ mật khẩu hoặc mã xác thực. Hãy tạo yêu cầu hỗ trợ ngay và ghi rõ mã giao dịch bất thường.',
-        ],
-      ],
-    },
-    {
-      code: 'OTHER',
-      name: 'Khác',
-      sortOrder: 4,
-      faqs: [
-        [
-          'Làm thế nào để gửi yêu cầu hỗ trợ?',
-          'Chọn “Tạo yêu cầu hỗ trợ” trên trang Hỗ trợ, đăng nhập nếu được yêu cầu, chọn danh mục và mô tả vấn đề của bạn.',
-        ],
-        [
-          'Tôi có thể theo dõi yêu cầu hỗ trợ ở đâu?',
-          'Vào Tài khoản → Hỗ trợ để xem danh sách ticket, trạng thái và nội dung từng yêu cầu.',
-        ],
-      ],
-    },
-  ] as const;
-
-  for (const categoryData of categories) {
-    const category = await prisma.supportCategory.upsert({
-      where: { code: categoryData.code },
-      update: {
-        name: categoryData.name,
-        sortOrder: categoryData.sortOrder,
-        status: SupportStatus.ACTIVE,
-      },
-      create: {
-        code: categoryData.code,
-        name: categoryData.name,
-        sortOrder: categoryData.sortOrder,
-        status: SupportStatus.ACTIVE,
-      },
-    });
-
-    for (const [sortOrder, [question, answer]] of categoryData.faqs.entries()) {
-      await prisma.supportFaq.upsert({
-        where: { categoryId_question: { categoryId: category.id, question } },
-        update: { answer, sortOrder, status: SupportStatus.ACTIVE },
-        create: {
-          categoryId: category.id,
-          question,
-          answer,
-          sortOrder,
-          status: SupportStatus.ACTIVE,
-        },
-      });
-    }
-  }
+  console.log('✅ Hoàn tất khởi tạo toàn bộ dữ liệu mẫu hệ thống!');
 }
 
+/* ========================================================================== */
+/* 1. ROLES & PERMISSIONS                                                     */
+/* ========================================================================== */
 async function seedRolesAndPermissions() {
   const superAdmin = await prisma.role.upsert({
     where: { code: 'SUPER_ADMIN' },
-    update: {},
+    update: { name: 'Super Admin', description: 'Toàn quyền quản trị hệ thống' },
     create: {
       code: 'SUPER_ADMIN',
       name: 'Super Admin',
-      description: 'Toàn quyền hệ thống',
+      description: 'Toàn quyền quản trị hệ thống',
       isSystem: true,
       isActive: true,
     },
@@ -164,20 +61,65 @@ async function seedRolesAndPermissions() {
 
   const supportRole = await prisma.role.upsert({
     where: { code: 'SUPPORT' },
-    update: {},
+    update: { name: 'Nhân viên hỗ trợ', description: 'Vận hành và chăm sóc khách hàng' },
     create: {
       code: 'SUPPORT',
       name: 'Nhân viên hỗ trợ',
-      description: 'Vận hành hỗ trợ khách hàng',
+      description: 'Vận hành và chăm sóc khách hàng',
       isSystem: true,
       isActive: true,
     },
   });
 
+  const financeRole = await prisma.role.upsert({
+    where: { code: 'FINANCE_MANAGER' },
+    update: { name: 'Quản lý tài chính', description: 'Đối soát nạp coin và quản lý dòng tiền' },
+    create: {
+      code: 'FINANCE_MANAGER',
+      name: 'Quản lý tài chính',
+      description: 'Đối soát nạp coin và quản lý dòng tiền',
+      isSystem: false,
+      isActive: true,
+    },
+  });
+
   const gameRoles = await Promise.all([
-    prisma.role.upsert({ where: { code: 'GAME_ADMIN' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_ADMIN', name: 'Game Admin', description: 'Quản trị vận hành một game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
-    prisma.role.upsert({ where: { code: 'GAME_CONTENT_MANAGER' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_CONTENT_MANAGER', name: 'Quản lý nội dung game', description: 'Quản lý nội dung và sự kiện game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
-    prisma.role.upsert({ where: { code: 'GAME_PLAYER_MODERATOR' }, update: { scopeType: 'GAME' }, create: { code: 'GAME_PLAYER_MODERATOR', name: 'Điều phối người chơi', description: 'Xem và khóa/mở người chơi trong game', isSystem: true, isActive: true, scopeType: 'GAME' } }),
+    prisma.role.upsert({
+      where: { code: 'GAME_ADMIN' },
+      update: { scopeType: 'GAME' },
+      create: {
+        code: 'GAME_ADMIN',
+        name: 'Game Admin',
+        description: 'Quản trị vận hành toàn diện một game',
+        isSystem: true,
+        isActive: true,
+        scopeType: 'GAME',
+      },
+    }),
+    prisma.role.upsert({
+      where: { code: 'GAME_CONTENT_MANAGER' },
+      update: { scopeType: 'GAME' },
+      create: {
+        code: 'GAME_CONTENT_MANAGER',
+        name: 'Quản lý nội dung game',
+        description: 'Quản lý nội dung, bài viết và sự kiện trong game',
+        isSystem: true,
+        isActive: true,
+        scopeType: 'GAME',
+      },
+    }),
+    prisma.role.upsert({
+      where: { code: 'GAME_PLAYER_MODERATOR' },
+      update: { scopeType: 'GAME' },
+      create: {
+        code: 'GAME_PLAYER_MODERATOR',
+        name: 'Điều phối người chơi',
+        description: 'Kiểm duyệt, hỗ trợ và quản lý trạng thái người chơi trong game',
+        isSystem: true,
+        isActive: true,
+        scopeType: 'GAME',
+      },
+    }),
   ]);
 
   const permissions = [
@@ -228,11 +170,15 @@ async function seedRolesAndPermissions() {
     { code: 'game.events.manage', module: 'game', action: 'manage', subject: 'GameEvent', name: 'Quản lý sự kiện game', sortOrder: 4, scopeType: 'GAME' },
     { code: 'game.players.view', module: 'game', action: 'read', subject: 'GamePlayer', name: 'Xem người chơi game', sortOrder: 5, scopeType: 'GAME' },
     { code: 'game.players.moderate', module: 'game', action: 'moderate', subject: 'GamePlayer', name: 'Khóa/mở người chơi game', sortOrder: 6, scopeType: 'GAME' },
-    { code: 'game.players.support-note', module: 'game', action: 'support-note', subject: 'GamePlayer', name: 'Ghi chú hỗ trợ người chơi', sortOrder: 7, scopeType: 'GAME' },
-    { code: 'game.players.profile.manage', module: 'game', action: 'manage', subject: 'GamePlayerProfile', name: 'Chỉnh sửa hồ sơ player', sortOrder: 8, scopeType: 'GAME' },
-    { code: 'game.operations.manage', module: 'game', action: 'manage', subject: 'GameOperations', name: 'Vận hành bảo trì game', sortOrder: 9, scopeType: 'GAME' },
-    { code: 'game.audit.view', module: 'game', action: 'read', subject: 'GameAudit', name: 'Xem nhật ký game', sortOrder: 10, scopeType: 'GAME' },
-    { code: 'game.support.manage', module: 'game', action: 'manage', subject: 'GameSupport', name: 'Hỗ trợ người chơi game', sortOrder: 11, scopeType: 'GAME' },
+    { code: 'game.players.temporary-lock', module: 'game', action: 'lock', subject: 'GamePlayer', name: 'Khóa tài khoản tạm thời', sortOrder: 7, scopeType: 'GAME' },
+    { code: 'game.players.permanent-ban', module: 'game', action: 'ban', subject: 'GamePlayer', name: 'Cấm tài khoản vĩnh viễn', sortOrder: 8, scopeType: 'GAME' },
+    { code: 'game.players.chat.moderate', module: 'game', action: 'moderate', subject: 'GamePlayerChat', name: 'Khóa/mở chat người chơi', sortOrder: 9, scopeType: 'GAME' },
+    { code: 'game.chat.history.view', module: 'game', action: 'read', subject: 'GameChatHistory', name: 'Truy xuất lịch sử hội thoại', sortOrder: 10, scopeType: 'GAME' },
+    { code: 'game.players.support-note', module: 'game', action: 'support-note', subject: 'GamePlayer', name: 'Ghi chú hỗ trợ người chơi', sortOrder: 11, scopeType: 'GAME' },
+    { code: 'game.players.profile.manage', module: 'game', action: 'manage', subject: 'GamePlayerProfile', name: 'Chỉnh sửa hồ sơ player', sortOrder: 12, scopeType: 'GAME' },
+    { code: 'game.operations.manage', module: 'game', action: 'manage', subject: 'GameOperations', name: 'Vận hành bảo trì game', sortOrder: 13, scopeType: 'GAME' },
+    { code: 'game.audit.view', module: 'game', action: 'read', subject: 'GameAudit', name: 'Xem nhật ký game', sortOrder: 14, scopeType: 'GAME' },
+    { code: 'game.support.manage', module: 'game', action: 'manage', subject: 'GameSupport', name: 'Hỗ trợ người chơi game', sortOrder: 15, scopeType: 'GAME' },
   ];
 
   for (const perm of permissions) {
@@ -241,68 +187,476 @@ async function seedRolesAndPermissions() {
       update: { name: perm.name, sortOrder: perm.sortOrder, scopeType: perm.scopeType ?? 'PLATFORM' },
       create: perm,
     });
-    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM') await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: superAdmin.id, permissionId: created.id } }, update: {}, create: { roleId: superAdmin.id, permissionId: created.id },
-    });
-    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM' && (perm.module === 'support' || perm.code === 'admin.access')) {
+
+    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM') {
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: superAdmin.id, permissionId: created.id } },
+        update: {},
+        create: { roleId: superAdmin.id, permissionId: created.id },
+      });
+    }
+
+    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM' && (perm.module === 'support' || perm.code === 'admin.access' || perm.code === 'users.view')) {
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: supportRole.id, permissionId: created.id } },
         update: {},
         create: { roleId: supportRole.id, permissionId: created.id },
       });
     }
+
+    if ((perm.scopeType ?? 'PLATFORM') === 'PLATFORM' && (perm.module === 'finance' || perm.code === 'admin.access' || perm.code === 'admin.dashboard.view' || perm.code === 'users.view')) {
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: financeRole.id, permissionId: created.id } },
+        update: {},
+        create: { roleId: financeRole.id, permissionId: created.id },
+      });
+    }
   }
 
   const gamePermissionCodes: Record<string, string[]> = {
-    GAME_ADMIN: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage', 'game.players.view', 'game.players.moderate', 'game.players.support-note', 'game.players.profile.manage', 'game.operations.manage', 'game.audit.view', 'game.support.manage'],
-    GAME_CONTENT_MANAGER: ['game.dashboard.view', 'game.presentation.manage', 'game.content.manage', 'game.events.manage'],
-    GAME_PLAYER_MODERATOR: ['game.dashboard.view', 'game.players.view', 'game.players.moderate', 'game.players.support-note'],
+    GAME_ADMIN: [
+      'game.dashboard.view', 'game.presentation.manage', 'game.content.manage',
+      'game.events.manage', 'game.players.view', 'game.players.moderate',
+      'game.players.temporary-lock', 'game.players.permanent-ban',
+      'game.players.chat.moderate', 'game.chat.history.view',
+      'game.players.support-note', 'game.players.profile.manage',
+      'game.operations.manage', 'game.audit.view', 'game.support.manage',
+    ],
+    GAME_CONTENT_MANAGER: [
+      'game.dashboard.view', 'game.presentation.manage',
+      'game.content.manage', 'game.events.manage',
+    ],
+    GAME_PLAYER_MODERATOR: [
+      'game.dashboard.view', 'game.players.view',
+      'game.players.moderate', 'game.players.temporary-lock',
+      'game.players.permanent-ban', 'game.players.support-note',
+    ],
   };
+
   for (const role of gameRoles) {
-    const permissionIds = (await prisma.permission.findMany({ where: { code: { in: gamePermissionCodes[role.code] } }, select: { id: true } })).map((entry) => entry.id);
-    for (const permissionId of permissionIds) await prisma.rolePermission.upsert({ where: { roleId_permissionId: { roleId: role.id, permissionId } }, update: {}, create: { roleId: role.id, permissionId } });
+    const permissionIds = (
+      await prisma.permission.findMany({
+        where: { code: { in: gamePermissionCodes[role.code] } },
+        select: { id: true },
+      })
+    ).map((entry) => entry.id);
+
+    for (const permissionId of permissionIds) {
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId } },
+        update: {},
+        create: { roleId: role.id, permissionId },
+      });
+    }
   }
 
-  return { superAdmin, supportRole };
+  return { superAdmin, supportRole, gameRoles, financeRole };
 }
 
-async function seedUsers() {
-  const { superAdmin, supportRole } = await seedRolesAndPermissions();
+/* ========================================================================== */
+/* 2. USERS & PROFILES                                                        */
+/* ========================================================================== */
+async function seedUsers({
+  superAdmin,
+  supportRole,
+  financeRole,
+}: {
+  superAdmin: { id: string };
+  supportRole: { id: string };
+  financeRole: { id: string };
+}) {
+  // Dọn dẹp tài khoản thử nghiệm cũ nếu có để tránh xung đột dữ liệu và loại bỏ các tên không phù hợp
+  const obsoleteUsernames = [
+    'manualadmin',
+    'manualcontent',
+    'manualmoderator',
+    'manualplayer',
+    'player1',
+    'support',
+    'testuser1',
+  ];
+  const obsoleteUsers = await prisma.user.findMany({
+    where: { username: { in: obsoleteUsernames } },
+    select: { id: true },
+  });
+  const obsoleteIds = obsoleteUsers.map((u) => u.id);
+  if (obsoleteIds.length > 0) {
+    await prisma.supportTicketMessage.deleteMany({ where: { authorUserId: { in: obsoleteIds } } });
+    await prisma.supportTicketReadState.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.supportTicket.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.walletTransaction.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.wallet.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.gamePlayer.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.gameRoleAssignment.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.userRole.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.userActivityLog.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.refreshSession.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.socialIdentity.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.sensitiveProfile.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.userProfile.deleteMany({ where: { userId: { in: obsoleteIds } } });
+    await prisma.user.deleteMany({ where: { id: { in: obsoleteIds } } });
+  }
 
-  const accounts = [
+  const adminPasswordHash = await argon2.hash('AdminPassword123!');
+  const userPasswordHash = await argon2.hash('ZenxGo@2026!');
+
+  const userDefinitions = [
+    // --- Ban Quản Trị & Vận Hành ---
     {
       username: 'admin',
       email: 'admin@zenxgo.vn',
       phone: '+84901000001',
       fullName: 'Super Administrator',
-      password: 'AdminPassword123!',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1990-01-15'),
+      city: 'Hà Nội',
+      address: 'Số 12 Nguyễn Thị Định, Cầu Giấy',
+      passwordHash: adminPasswordHash,
       roleId: superAdmin.id,
-      balance: 1_000_000n,
+      balance: 5_000_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '8821',
+      securityQuestionCode: SecurityQuestionCode.FIRST_SCHOOL,
+      socialProvider: null,
     },
     {
-      username: 'support',
-      email: 'support@zenxgo.vn',
-      phone: '+84901000002',
-      fullName: 'Hỗ Trợ Viên',
-      password: 'SupportPassword123!',
+      username: 'lan.lengoc',
+      email: 'lan.lengoc@zenxgo.vn',
+      phone: '+84901000021',
+      fullName: 'Lê Ngọc Lan',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('1994-06-22'),
+      city: 'Hà Nội',
+      address: '88 Láng Hạ, Đống Đa',
+      passwordHash: userPasswordHash,
       roleId: supportRole.id,
-      balance: 100_000n,
+      balance: 150_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '3912',
+      securityQuestionCode: SecurityQuestionCode.CHILDHOOD_NICKNAME,
+      socialProvider: null,
     },
     {
-      username: 'player1',
-      email: 'player1@zenxgo.vn',
-      phone: '+84901000003',
-      fullName: 'Người Chơi Mẫu',
-      password: 'PlayerPassword123!',
+      username: 'nam.tranhoang',
+      email: 'nam.tranhoang@zenxgo.vn',
+      phone: '+84901000022',
+      fullName: 'Trần Hoàng Nam',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1996-03-18'),
+      city: 'TP. Hồ Chí Minh',
+      address: '45 Nguyễn Đình Chiểu, Quận 3',
+      passwordHash: userPasswordHash,
+      roleId: supportRole.id,
+      balance: 120_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '5420',
+      securityQuestionCode: SecurityQuestionCode.FAVORITE_TEACHER,
+      socialProvider: null,
+    },
+    {
+      username: 'tuan.nguyenminh',
+      email: 'tuan.nguyenminh@zenxgo.vn',
+      phone: '+84901000023',
+      fullName: 'Nguyễn Minh Tuấn',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1991-08-10'),
+      city: 'Hà Nội',
+      address: '102 Thái Hà, Đống Đa',
+      passwordHash: userPasswordHash,
       roleId: null,
-      balance: 50_000n,
+      balance: 800_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '6741',
+      securityQuestionCode: SecurityQuestionCode.MEMORABLE_PLACE,
+      socialProvider: null,
+    },
+    {
+      username: 'mai.vuphuong',
+      email: 'mai.vuphuong@zenxgo.vn',
+      phone: '+84901000024',
+      fullName: 'Vũ Phương Mai',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('1995-11-05'),
+      city: 'Đà Nẵng',
+      address: '24 Bạch Đằng, Hải Châu',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 350_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '7104',
+      securityQuestionCode: SecurityQuestionCode.FIRST_PET,
+      socialProvider: null,
+    },
+    {
+      username: 'khanh.dangquoc',
+      email: 'khanh.dangquoc@zenxgo.vn',
+      phone: '+84901000025',
+      fullName: 'Đặng Quốc Khánh',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1993-04-12'),
+      city: 'TP. Hồ Chí Minh',
+      address: '178 Hai Bà Trưng, Quận 1',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 400_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '9283',
+      securityQuestionCode: SecurityQuestionCode.FIRST_SCHOOL,
+      socialProvider: null,
+    },
+    {
+      username: 'ha.lethanh',
+      email: 'ha.lethanh@zenxgo.vn',
+      phone: '+84901000026',
+      fullName: 'Lê Thanh Hà',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('1989-12-30'),
+      city: 'Hà Nội',
+      address: '36 Hoàng Cầu, Đống Đa',
+      passwordHash: userPasswordHash,
+      roleId: financeRole.id,
+      balance: 1_200_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '4198',
+      securityQuestionCode: SecurityQuestionCode.CHILDHOOD_NICKNAME,
+      socialProvider: null,
+    },
+
+    // --- Người Chơi Hoạt Động (VIP & Active Players) ---
+    {
+      username: 'quang.tran',
+      email: 'quang.tran88@gmail.com',
+      phone: '+84902111222',
+      fullName: 'Trần Nhật Quang',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1988-07-14'),
+      city: 'Hà Nội',
+      address: '15 Duy Tân, Cầu Giấy',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 4_250_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '4921',
+      securityQuestionCode: SecurityQuestionCode.FIRST_PET,
+      socialProvider: SocialProvider.GOOGLE,
+    },
+    {
+      username: 'anh.nguyenthuy',
+      email: 'thuyanh.nguyen@gmail.com',
+      phone: '+84903333444',
+      fullName: 'Nguyễn Thùy Anh',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('1997-09-25'),
+      city: 'TP. Hồ Chí Minh',
+      address: '220 Điện Biên Phủ, Bình Thạnh',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 1_850_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '3819',
+      securityQuestionCode: SecurityQuestionCode.MEMORABLE_PLACE,
+      socialProvider: SocialProvider.FACEBOOK,
+    },
+    {
+      username: 'dat.vutien',
+      email: 'dat.vutien95@outlook.com',
+      phone: '+84904555666',
+      fullName: 'Vũ Tiến Đạt',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1995-02-18'),
+      city: 'Đà Nẵng',
+      address: '54 Nguyễn Văn Linh, Thanh Khê',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 920_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '8204',
+      securityQuestionCode: SecurityQuestionCode.FIRST_SCHOOL,
+      socialProvider: SocialProvider.GOOGLE,
+    },
+    {
+      username: 'linh.dangthuy',
+      email: 'linhdang.design@gmail.com',
+      phone: '+84905777888',
+      fullName: 'Đặng Thùy Linh',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('1999-10-08'),
+      city: 'Hải Phòng',
+      address: '16 Cầu Đất, Ngô Quyền',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 650_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '7412',
+      securityQuestionCode: SecurityQuestionCode.CHILDHOOD_NICKNAME,
+      socialProvider: null,
+    },
+    {
+      username: 'bao.hoanggia',
+      email: 'bao.hoang99@gmail.com',
+      phone: '+84906999000',
+      fullName: 'Hoàng Gia Bảo',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1999-05-19'),
+      city: 'Cần Thơ',
+      address: '72 Hòa Bình, Ninh Kiều',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 3_100_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '1905',
+      securityQuestionCode: SecurityQuestionCode.FIRST_PET,
+      socialProvider: SocialProvider.GOOGLE,
+    },
+    {
+      username: 'thao.buiphuong',
+      email: 'thao.bp@icloud.com',
+      phone: '+84907111333',
+      fullName: 'Bùi Phương Thảo',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('2001-08-14'),
+      city: 'Bình Dương',
+      address: '89 Đại lộ Bình Dương, Thủ Dầu Một',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 180_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '6284',
+      securityQuestionCode: SecurityQuestionCode.FAVORITE_TEACHER,
+      socialProvider: null,
+    },
+    {
+      username: 'phuc.voduc',
+      email: 'phuc.voduc@gmail.com',
+      phone: '+84908222444',
+      fullName: 'Võ Đức Phúc',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('2000-01-20'),
+      city: 'Đồng Nai',
+      address: '14 Võ Thị Sáu, Biên Hòa',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 75_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '9031',
+      securityQuestionCode: SecurityQuestionCode.MEMORABLE_PLACE,
+      socialProvider: SocialProvider.GOOGLE,
+    },
+    {
+      username: 'son.lehoang',
+      email: 'son.lehoang@gmail.com',
+      phone: '+84909333555',
+      fullName: 'Lê Hoàng Sơn',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1994-11-11'),
+      city: 'Quảng Ninh',
+      address: '25 Lê Thánh Tông, Hạ Long',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 500_000n,
+      status: AccountStatus.ACTIVE,
+      citizenIdLast4: '2847',
+      securityQuestionCode: SecurityQuestionCode.FIRST_SCHOOL,
+      socialProvider: null,
+    },
+
+    // --- Các Trạng Thái Khác (Pending, Suspended, Locked, Deleted) ---
+    {
+      username: 'trang.dohuyen',
+      email: 'trang.dohuyen@gmail.com',
+      phone: '+84910444666',
+      fullName: 'Đỗ Huyền Trang',
+      gender: Gender.FEMALE,
+      dateOfBirth: new Date('2002-04-03'),
+      city: 'Nha Trang',
+      address: '10 Trần Phú, Lộc Thọ',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 0n,
+      status: AccountStatus.PENDING,
+      citizenIdLast4: null,
+      securityQuestionCode: null,
+      socialProvider: null,
+    },
+    {
+      username: 'hieu.nguyentrung',
+      email: 'hieu.nt98@gmail.com',
+      phone: '+84911555777',
+      fullName: 'Nguyễn Trung Hiếu',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1998-12-01'),
+      city: 'Huế',
+      address: '18 Lê Lợi, Vĩnh Ninh',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 0n,
+      status: AccountStatus.PENDING,
+      citizenIdLast4: null,
+      securityQuestionCode: null,
+      socialProvider: null,
+    },
+    {
+      username: 'kien.trantung',
+      email: 'kien.trantung@gmail.com',
+      phone: '+84912666888',
+      fullName: 'Trần Tùng Kiên',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1992-03-29'),
+      city: 'Hà Nội',
+      address: '68 Phố Huế, Hai Bà Trưng',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 25_000n,
+      status: AccountStatus.SUSPENDED,
+      citizenIdLast4: '1849',
+      securityQuestionCode: SecurityQuestionCode.CHILDHOOD_NICKNAME,
+      socialProvider: null,
+    },
+    {
+      username: 'long.vudinh',
+      email: 'long.vudinh@hotmail.com',
+      phone: '+84913777999',
+      fullName: 'Vũ Đình Long',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1996-08-16'),
+      city: 'Bắc Ninh',
+      address: '42 Trần Hưng Đạo, Tiền An',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 10_000n,
+      status: AccountStatus.LOCKED,
+      citizenIdLast4: '9512',
+      securityQuestionCode: SecurityQuestionCode.MEMORABLE_PLACE,
+      socialProvider: null,
+    },
+    {
+      username: 'minh.phanvan',
+      email: 'minh.phanvan@gmail.com',
+      phone: '+84914888000',
+      fullName: 'Phan Văn Minh',
+      gender: Gender.MALE,
+      dateOfBirth: new Date('1993-06-05'),
+      city: 'TP. Hồ Chí Minh',
+      address: '90 Cách Mạng Tháng 8, Quận 3',
+      passwordHash: userPasswordHash,
+      roleId: null,
+      balance: 0n,
+      status: AccountStatus.DELETED,
+      citizenIdLast4: null,
+      securityQuestionCode: null,
+      socialProvider: null,
     },
   ];
 
-  for (const acc of accounts) {
+  const userMap = new Map<string, { id: string; username: string; email: string; fullName: string }>();
+
+  for (const acc of userDefinitions) {
     const usernameNormalized = acc.username.toLowerCase();
     const emailNormalized = acc.email.toLowerCase();
-    const passwordHash = await argon2.hash(acc.password);
+    const phoneNormalized = acc.phone.toLowerCase();
+
+    const isPending = acc.status === AccountStatus.PENDING;
+    const verifiedAt = isPending ? null : new Date('2026-06-01T08:00:00Z');
 
     const user = await prisma.user.upsert({
       where: { usernameNormalized },
@@ -310,11 +664,11 @@ async function seedUsers() {
         email: acc.email,
         emailNormalized,
         phone: acc.phone,
-        phoneNormalized: acc.phone,
-        passwordHash,
-        status: 'ACTIVE',
-        emailVerifiedAt: new Date(),
-        phoneVerifiedAt: new Date(),
+        phoneNormalized,
+        passwordHash: acc.passwordHash,
+        status: acc.status,
+        emailVerifiedAt: verifiedAt,
+        phoneVerifiedAt: verifiedAt,
       },
       create: {
         username: acc.username,
@@ -322,51 +676,98 @@ async function seedUsers() {
         email: acc.email,
         emailNormalized,
         phone: acc.phone,
-        phoneNormalized: acc.phone,
-        passwordHash,
-        status: 'ACTIVE',
-        emailVerifiedAt: new Date(),
-        phoneVerifiedAt: new Date(),
-        profile: {
-          create: {
-            fullName: acc.fullName,
-            gender: 'UNSPECIFIED',
-            termsVersion: '2026-01',
-            privacyVersion: '2026-01',
-            acceptedAt: new Date(),
-          },
-        },
-        wallet: {
-          create: {
-            currency: 'ZENX',
-            balance: acc.balance,
-          },
-        },
+        phoneNormalized,
+        passwordHash: acc.passwordHash,
+        status: acc.status,
+        emailVerifiedAt: verifiedAt,
+        phoneVerifiedAt: verifiedAt,
       },
+    });
+
+    userMap.set(acc.username, {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: acc.fullName,
     });
 
     await prisma.userProfile.upsert({
       where: { userId: user.id },
-      update: { fullName: acc.fullName },
+      update: {
+        fullName: acc.fullName,
+        gender: acc.gender,
+        dateOfBirth: acc.dateOfBirth,
+        city: acc.city,
+        address: acc.address,
+        profileCompletedAt: isPending ? null : new Date('2026-06-02T10:00:00Z'),
+      },
       create: {
         userId: user.id,
         fullName: acc.fullName,
-        gender: 'UNSPECIFIED',
+        gender: acc.gender,
+        dateOfBirth: acc.dateOfBirth,
+        city: acc.city,
+        address: acc.address,
+        profileCompletedAt: isPending ? null : new Date('2026-06-02T10:00:00Z'),
         termsVersion: '2026-01',
         privacyVersion: '2026-01',
-        acceptedAt: new Date(),
+        acceptedAt: new Date('2026-06-01T08:00:00Z'),
       },
     });
 
     await prisma.wallet.upsert({
       where: { userId: user.id },
-      update: {},
+      update: { balance: acc.balance },
       create: {
         userId: user.id,
         currency: 'ZENX',
         balance: acc.balance,
       },
     });
+
+    if (acc.citizenIdLast4) {
+      await prisma.sensitiveProfile.upsert({
+        where: { userId: user.id },
+        update: {
+          citizenIdLast4: acc.citizenIdLast4,
+          citizenIdCiphertext: `enc_sec_${acc.citizenIdLast4}_prod`,
+          citizenIdIv: 'iv_prod_9918231',
+          citizenIdAuthTag: 'tag_prod_881923',
+          securityQuestionCode: acc.securityQuestionCode,
+          securityAnswerHash: '$argon2id$v=19$m=65536,t=3,p=4$dummySecurityAnswerHash',
+        },
+        create: {
+          userId: user.id,
+          citizenIdLast4: acc.citizenIdLast4,
+          citizenIdCiphertext: `enc_sec_${acc.citizenIdLast4}_prod`,
+          citizenIdIv: 'iv_prod_9918231',
+          citizenIdAuthTag: 'tag_prod_881923',
+          securityQuestionCode: acc.securityQuestionCode,
+          securityAnswerHash: '$argon2id$v=19$m=65536,t=3,p=4$dummySecurityAnswerHash',
+          securityVersion: 1,
+        },
+      });
+    }
+
+    if (acc.socialProvider) {
+      await prisma.socialIdentity.upsert({
+        where: {
+          provider_providerUserId: {
+            provider: acc.socialProvider,
+            providerUserId: `social_id_${acc.username}`,
+          },
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          provider: acc.socialProvider,
+          providerUserId: `social_id_${acc.username}`,
+          emailAtLinkTime: acc.email,
+          linkedAt: new Date('2026-06-15T09:30:00Z'),
+          lastLoginAt: new Date('2026-09-17T15:20:00Z'),
+        },
+      });
+    }
 
     if (acc.roleId) {
       await prisma.userRole.upsert({
@@ -375,13 +776,18 @@ async function seedUsers() {
         create: {
           userId: user.id,
           roleId: acc.roleId,
-          assignedAt: new Date(),
+          assignedAt: new Date('2026-06-01T08:00:00Z'),
         },
       });
     }
   }
+
+  return userMap;
 }
 
+/* ========================================================================== */
+/* 3. SECURITY QUESTIONS                                                      */
+/* ========================================================================== */
 async function seedSecurityQuestions() {
   const questions = [
     [SecurityQuestionCode.CHILDHOOD_NICKNAME, 'Biệt danh thời thơ ấu của bạn là gì?', 1],
@@ -400,6 +806,9 @@ async function seedSecurityQuestions() {
   }
 }
 
+/* ========================================================================== */
+/* 4. GAMES & CONTENT                                                         */
+/* ========================================================================== */
 async function seedGames() {
   const genres = [
     ['MMORPG', 'MMORPG', 'mmorpg', 1],
@@ -413,12 +822,12 @@ async function seedGames() {
     ['SIMULATION', 'Mô phỏng', 'mo-phong', 9],
     ['SHOOTER', 'Bắn súng', 'ban-sung', 10],
   ] as const;
+
   const genreIds = new Map<string, string>();
   for (const [code, name, slug, sortOrder] of genres) {
     const genre = await prisma.genre.upsert({
       where: { code },
-      // Preserve taxonomy changes made in admin; seed only bootstraps missing genres.
-      update: {},
+      update: { name, slug, sortOrder },
       create: { code, name, slug, sortOrder },
     });
     genreIds.set(code, genre.id);
@@ -516,50 +925,6 @@ async function seedGames() {
             '# Bản đồ đã mở rộng\n\nCác tuyến đường mới kết nối thành trì, vùng săn và điểm giao thương để hành trình xuyên Lục Địa liền mạch hơn.\n\nHệ thống ánh sáng và mốc định hướng được cập nhật để người chơi dễ nhận biết điểm đến trong cả ngày lẫn đêm.\n\nNhững khu vực tiếp theo sẽ được mở theo lịch vận hành của Season 6.',
           publishedAt: new Date('2026-08-28T08:00:00Z'),
         },
-        {
-          title: 'Cân bằng lớp nhân vật tháng 9',
-          slug: 'character-update',
-          excerpt:
-            'Bản cân bằng mới giúp các lớp nhân vật có vai trò rõ ràng hơn trong tổ đội và chiến trường.',
-          category: 'DEVELOPMENT_UPDATE',
-          coverImageUrl: '/images/games/luc-dia-dam-me/nhan_vat3.webp',
-          content:
-            '# Cân bằng lớp nhân vật tháng 9\n\nBản cập nhật tháng 9 điều chỉnh kỹ năng, nhịp hồi chiêu và khả năng phối hợp của các lớp nhân vật.\n\nMục tiêu là để mỗi lựa chọn đều có giá trị trong săn boss, công thành chiến và hoạt động nhóm.\n\nNgười chơi có thể xem chi tiết thay đổi trong nhật ký cập nhật của Season 6.',
-          publishedAt: new Date('2026-08-25T08:00:00Z'),
-        },
-        {
-          title: 'Cánh và thần thú mùa đầu tiên',
-          slug: 'canh-va-than-thu-di-chuyen-co-y-nghia',
-          excerpt:
-            'Hệ thống cánh và thần thú mở thêm các tuyến khám phá, kỹ năng hỗ trợ và phần thưởng mùa.',
-          category: 'DEVELOPMENT_UPDATE',
-          coverImageUrl: '/images/games/luc-dia-dam-me/hero3.webp',
-          content:
-            '# Cánh và thần thú mùa đầu tiên\n\nCánh và thần thú đã trở thành một phần của hành trình, từ di chuyển giữa các thành trì đến hỗ trợ trong những trận chiến lớn.\n\nMỗi lựa chọn có hướng phát triển riêng để người chơi xây dựng phong cách di chuyển và chiến đấu của mình.\n\n- Tuyến bay giữa các thành trì\n- Thần thú hỗ trợ khám phá\n- Phần thưởng gắn với hành trình',
-          publishedAt: new Date('2026-08-22T08:00:00Z'),
-        },
-        {
-          title: 'Bảo trì định kỳ đã hoàn tất',
-          slug: 'lo-trinh-thu-nghiem-cong-dong',
-          excerpt:
-            'Hệ thống hình ảnh và tuyến phân phối nội dung đã được đồng bộ sau đợt bảo trì định kỳ.',
-          category: 'MAINTENANCE',
-          coverImageUrl: '/images/games/luc-dia-dam-me/bg2.webp',
-          content:
-            '# Bảo trì định kỳ đã hoàn tất\n\nĐợt bảo trì định kỳ đã hoàn tất và các dịch vụ chính đã trở lại ổn định.\n\nBản cập nhật tối ưu thư viện hình ảnh, tốc độ tải và khả năng hiển thị trên PC, Mobile và Web.\n\nKhông có dữ liệu tài khoản hoặc tiến độ người chơi nào bị ảnh hưởng.',
-          publishedAt: new Date('2026-08-20T08:00:00Z'),
-        },
-        {
-          title: 'Quy tắc thị trường giao dịch',
-          slug: 'hoan-tat-bao-tri-thu-vien-hinh-anh',
-          excerpt:
-            'Các nguyên tắc giao dịch mới giúp thị trường vật phẩm minh bạch và an toàn cho mọi người chơi.',
-          category: 'ANNOUNCEMENT',
-          coverImageUrl: '/images/games/luc-dia-dam-me/nhan_vat2.webp',
-          content:
-            '# Quy tắc thị trường giao dịch\n\nThị trường giao dịch của Lục Địa Đam Mê vận hành theo các nguyên tắc rõ ràng về giá, lịch sử và quyền sở hữu vật phẩm.\n\nNgười chơi nên kiểm tra kỹ thông tin trước mỗi giao dịch và báo cáo hành vi bất thường qua trung tâm hỗ trợ.\n\nCác quy tắc được cập nhật cùng từng mùa vận hành.',
-          publishedAt: new Date('2026-08-18T08:00:00Z'),
-        },
       ],
       milestones: [
         [
@@ -582,34 +947,6 @@ async function seedGames() {
           '09/2026',
           'IN_PROGRESS',
           ['Cân bằng chiến trường', 'Theo dõi mùa bang hội'],
-        ],
-        [
-          'Sự kiện cánh và thần thú',
-          'Chuỗi hoạt động mùa dành cho người chơi mới và cũ.',
-          '09/2026',
-          'IN_PROGRESS',
-          ['Mở tuyến bay', 'Kích hoạt phần thưởng mùa'],
-        ],
-        [
-          'Cập nhật vùng trời mới',
-          'Mở rộng khu vực khám phá theo lịch vận hành.',
-          '10/2026',
-          'UPCOMING',
-          ['Hoàn thiện nhiệm vụ', 'Công bố khu vực mới'],
-        ],
-        [
-          'Mùa bang hội tiếp theo',
-          'Chuẩn bị chu kỳ cạnh tranh và phần thưởng mới.',
-          '11/2026',
-          'PLANNED',
-          ['Chốt luật mùa', 'Cập nhật bảng xếp hạng'],
-        ],
-        [
-          'Season 7',
-          'Mở mùa phiêu lưu tiếp theo trên toàn Lục Địa.',
-          '12/2026',
-          'PLANNED',
-          ['Công bố nội dung mùa', 'Mở chuỗi nhiệm vụ mới'],
         ],
       ],
     },
@@ -678,30 +1015,8 @@ async function seedGames() {
           category: 'ANNOUNCEMENT',
           coverImageUrl: '/images/games/vuong-trieu-hoa-long/detail-v1/dragon.webp',
           content:
-            '# Mùa Liên Minh đầu tiên đã khai mở\n\nMùa Liên Minh đưa các vương triều vào cùng một chiến trường, nơi ngoại giao và sức mạnh Long Thần quyết định từng bước tiến.\n\nThủ lĩnh có thể lập liên minh, chia sẻ tuyến tiếp tế và cùng mở khóa phần thưởng theo cột mốc lãnh thổ.\n\n- Bảng mục tiêu liên minh\n- Phần thưởng theo đóng góp\n- Long Thần hỗ trợ chiến trường',
+            '# Mùa Liên Minh đầu tiên đã khai mở\n\nMùa Liên Minh đưa các vương triều vào cùng một chiến trường, nơi ngoại giao và sức mạnh Long Thần quyết định từng bước tiến.\n\nThủ lĩnh có thể lập liên minh, chia sẻ tuyến tiếp tế và cùng mở khóa phần thưởng theo cột mốc lãnh thổ.',
           publishedAt: new Date('2026-09-01T21:00:00Z'),
-        },
-        {
-          title: 'Phòng thủ Hoàng Thành',
-          slug: 'phao-dai-va-chien-tuyen',
-          excerpt:
-            'Bố trí pháo đài, cổng thành và tuyến tiếp tế là chìa khóa giữ vững thủ đô trước các đợt công kích.',
-          category: 'EVENT',
-          coverImageUrl: '/images/games/vuong-trieu-hoa-long/detail-v1/fortress.webp',
-          content:
-            '# Phòng thủ Hoàng Thành\n\nHoàng Thành bước vào chu kỳ phòng thủ mới với các điểm nghẽn, tuyến tiếp tế và vị trí pháo binh có thể điều chỉnh theo từng trận.\n\nMỗi công trình phục vụ một mục tiêu chiến thuật rõ ràng, từ bảo vệ kho tài nguyên đến mở đường phản công.\n\nHãy phối hợp quân đoàn và theo dõi bản đồ thời gian thực để giữ vững cổng thành.',
-          publishedAt: new Date('2026-08-27T08:00:00Z'),
-        },
-        {
-          title: 'Long Thần hệ Hỏa gia nhập chiến trường',
-          slug: 'nhat-ky-lien-minh-dau-tien',
-          excerpt:
-            'Long Thần hệ Hỏa mang đến bộ kỹ năng mới cho các trận chiến liên minh và phòng thủ Hoàng Thành.',
-          category: 'DEVELOPMENT_UPDATE',
-          coverImageUrl: '/images/games/vuong-trieu-hoa-long/detail-v1/battlefield.webp',
-          content:
-            '# Long Thần hệ Hỏa gia nhập chiến trường\n\nLong Thần hệ Hỏa đã sẵn sàng đồng hành cùng các vương triều trong mùa vận hành hiện tại.\n\nBộ kỹ năng thiên về áp lực tuyến đầu, phá giáp và kiểm soát địa hình giúp đội hình có thêm lựa chọn khi giao tranh.\n\nNgười chơi có thể xem chỉ số, kỹ năng và hướng nâng cấp trong sổ tay chiến trường.',
-          publishedAt: new Date('2026-08-18T08:00:00Z'),
         },
       ],
       milestones: [
@@ -713,32 +1028,11 @@ async function seedGames() {
           ['Mở bản đồ liên minh', 'Kích hoạt phần thưởng đóng góp'],
         ],
         [
-          'Long Thần hệ Hỏa',
-          'Bộ Long Thần đầu tiên đã gia nhập các trận chiến mùa hiện tại.',
-          '08/2026',
-          'COMPLETED',
-          ['Mở kỹ năng hệ Hỏa', 'Cập nhật sổ tay chiến trường'],
-        ],
-        [
           'Phòng thủ Hoàng Thành',
           'Chu kỳ phòng thủ và phản công đang diễn ra hằng tuần.',
           '09/2026',
           'IN_PROGRESS',
           ['Xoay vòng bản đồ', 'Theo dõi đóng góp liên minh'],
-        ],
-        [
-          'Chiến trường liên vùng',
-          'Mở rộng giao tranh giữa các vùng lãnh thổ trong mùa tiếp theo.',
-          '10/2026',
-          'UPCOMING',
-          ['Cân bằng quân đoàn', 'Công bố luật liên vùng'],
-        ],
-        [
-          'Mùa Liên Minh II',
-          'Chuẩn bị mùa cạnh tranh mới với phần thưởng và mục tiêu mới.',
-          '11/2026',
-          'PLANNED',
-          ['Chốt bảng phần thưởng', 'Mở đăng ký liên minh'],
         ],
       ],
     },
@@ -807,30 +1101,8 @@ async function seedGames() {
           category: 'ANNOUNCEMENT',
           coverImageUrl: '/images/games/thi-tran-may/detail-v1/town-square.webp',
           content:
-            '# Một ngày ở Quảng trường Mây\n\nQuảng trường là nơi người chơi gặp nhau, trao đổi vật phẩm và bắt đầu các hoạt động theo mùa.\n\nMỗi ngày có các nhiệm vụ ngắn, góc chụp ảnh và lịch ghé thăm hàng xóm để thị trấn luôn có nhịp sống mới.\n\n- Chợ cuối tuần\n- Lễ hội ánh sáng\n- Góc chụp ảnh cộng đồng',
+            '# Một ngày ở Quảng trường Mây\n\nQuảng trường là nơi người chơi gặp nhau, trao đổi vật phẩm và bắt đầu các hoạt động theo mùa.\n\n- Chợ cuối tuần\n- Lễ hội ánh sáng\n- Góc chụp ảnh cộng đồng',
           publishedAt: new Date('2026-09-01T12:00:00Z'),
-        },
-        {
-          title: 'Khu vườn nổi vào mùa vụ mới',
-          slug: 'khu-vuon-noi-va-mua-vu',
-          excerpt:
-            'Mùa vụ mới mang đến giống cây, vật liệu trang trí và phần thưởng chăm sóc vườn cho cư dân trên mây.',
-          category: 'EVENT',
-          coverImageUrl: '/images/games/thi-tran-may/detail-v1/garden.webp',
-          content:
-            '# Khu vườn nổi vào mùa vụ mới\n\nCác hòn đảo đã bước vào mùa vụ mới với bộ giống cây và vật liệu trang trí theo chủ đề.\n\nBạn có thể sắp xếp khu vườn theo cá tính riêng, ghé thăm bạn bè và đổi nông sản tại Quảng trường Mây.\n\nPhần thưởng mùa được mở khóa qua những phiên chăm sóc ngắn, nhẹ nhàng mỗi ngày.',
-          publishedAt: new Date('2026-08-26T08:00:00Z'),
-        },
-        {
-          title: 'Tuyến Quảng trường Mây đã thông suốt',
-          slug: 'khinh-khi-cau-ket-noi-cac-dao',
-          excerpt:
-            'Tuyến khinh khí cầu mới rút ngắn hành trình giữa các đảo và mở thêm điểm ngắm cảnh cho cư dân.',
-          category: 'DEVELOPMENT_UPDATE',
-          coverImageUrl: '/images/games/thi-tran-may/detail-v1/airships.webp',
-          content:
-            '# Tuyến Quảng trường Mây đã thông suốt\n\nKhinh khí cầu kết nối các đảo đã được mở rộng, giúp người chơi di chuyển nhanh hơn giữa khu vườn, quảng trường và bến giao thương.\n\nMỗi chuyến thăm bạn bè có thêm hoạt động nhỏ, quà trang trí và cơ hội trao đổi nguyên liệu.\n\nLịch bay được cập nhật trong bảng thông tin của thị trấn để bạn dễ lên kế hoạch.',
-          publishedAt: new Date('2026-08-17T08:00:00Z'),
         },
       ],
       milestones: [
@@ -842,32 +1114,11 @@ async function seedGames() {
           ['Mở chợ cuối tuần', 'Kích hoạt lịch hoạt động'],
         ],
         [
-          'Khu vườn bốn mùa',
-          'Hệ thống mùa vụ và bộ giống đầu tiên đã vận hành ổn định.',
-          '08/2026',
-          'COMPLETED',
-          ['Mở bốn mùa vụ', 'Thêm vật liệu trang trí'],
-        ],
-        [
           'Lễ hội Khinh khí cầu',
           'Lễ hội kết nối các đảo đang diễn ra với nhiệm vụ và quà trang trí.',
           '09/2026',
           'IN_PROGRESS',
           ['Mở tuyến bay', 'Thu thập huy hiệu lễ hội'],
-        ],
-        [
-          'Mở rộng các đảo',
-          'Thêm không gian xây dựng và điểm ngắm cảnh trong bản cập nhật tới.',
-          '10/2026',
-          'UPCOMING',
-          ['Chuẩn bị mặt bằng', 'Công bố bộ trang trí'],
-        ],
-        [
-          'Mùa hội ánh sáng',
-          'Chuỗi hoạt động cộng đồng tiếp theo của Thị Trấn Mây.',
-          '11/2026',
-          'PLANNED',
-          ['Chọn chủ đề mùa', 'Mở lịch đăng ký'],
         ],
       ],
     },
@@ -937,30 +1188,8 @@ async function seedGames() {
           coverImageUrl:
             '/images/games/chien-tuyen-orion/detail-v3-light/battlefield-panorama.webp',
           content:
-            '# Ranked Season 1: Vành đai Orion\n\nRanked Season 1 đưa các biệt đội vào Vành đai Orion với mục tiêu thay đổi theo trận và bảng xếp hạng cập nhật liên tục.\n\nCác tuyến đường nhiều độ cao và vật cản tạo không gian để từng vai trò tạo ảnh hưởng theo cách riêng.\n\n- Điểm quan sát ngoài trời\n- Khu vực trú ẩn\n- Mục tiêu xoay vòng theo trận',
+            '# Ranked Season 1: Vành đai Orion\n\nRanked Season 1 đưa các biệt đội vào Vành đai Orion với mục tiêu thay đổi theo trận và bảng xếp hạng cập nhật liên tục.\n\n- Điểm quan sát ngoài trời\n- Khu vực trú ẩn\n- Mục tiêu xoay vòng theo trận',
           publishedAt: new Date('2026-09-01T23:00:00Z'),
-        },
-        {
-          title: 'Cân bằng ba vai trò trong tháng 9',
-          slug: 'ba-vai-tro-cho-mot-biet-doi',
-          excerpt:
-            'Recon, Assault và Support nhận điều chỉnh để mỗi đội hình đều có nhiều cách phối hợp hiệu quả.',
-          category: 'DEVELOPMENT_UPDATE',
-          coverImageUrl: '/images/games/chien-tuyen-orion/detail-v3-light/role-assault.webp',
-          content:
-            '# Cân bằng ba vai trò trong tháng 9\n\nBản cân bằng tháng 9 làm rõ nhiệm vụ của Recon, Assault và Support trong các tình huống giao tranh khác nhau.\n\nRecon mở thông tin, Assault tạo áp lực tuyến đầu còn Support duy trì khả năng chiến đấu cho cả đội.\n\nThay đổi được theo dõi qua dữ liệu trận đấu và phản hồi cộng đồng để giữ nhịp thi đấu công bằng.',
-          publishedAt: new Date('2026-08-29T08:00:00Z'),
-        },
-        {
-          title: 'Kho trang bị năng lượng đã mở',
-          slug: 'kho-trang-bi-nang-luong',
-          excerpt:
-            'Bộ trang bị năng lượng mới mở thêm lựa chọn chiến thuật cho các đặc vụ trong Vành đai Orion.',
-          category: 'ANNOUNCEMENT',
-          coverImageUrl: '/images/games/chien-tuyen-orion/detail-v3-light/equipment-strip.webp',
-          content:
-            '# Kho trang bị năng lượng đã mở\n\nKho trang bị năng lượng mang đến các thiết bị thay đổi cách đặc vụ tiếp cận một khu vực, thay vì chỉ cộng thêm sát thương.\n\nTừ giáp phản lực đến thiết bị tạo lá chắn, mỗi món đồ mở ra một lựa chọn chiến thuật khác nhau cho biệt đội.\n\nBộ trang bị được cập nhật theo mùa và hiển thị đầy đủ trong sổ tay chiến trường.',
-          publishedAt: new Date('2026-08-21T08:00:00Z'),
         },
       ],
       milestones: [
@@ -972,36 +1201,17 @@ async function seedGames() {
           ['Mở bản đồ chính', 'Kích hoạt ghép trận'],
         ],
         [
-          'Ba vai trò biệt đội',
-          'Recon, Assault và Support đã hoàn thiện bộ vai trò cốt lõi.',
-          '08/2026',
-          'COMPLETED',
-          ['Cân bằng kỹ năng', 'Mở sổ tay chiến thuật'],
-        ],
-        [
           'Ranked Season 1',
           'Mùa xếp hạng đầu tiên đang vận hành với bảng xếp hạng theo tuần.',
           '09/2026',
           'IN_PROGRESS',
           ['Mở mục tiêu xoay vòng', 'Trao phần thưởng mùa'],
         ],
-        [
-          'Kho trang bị tháng 9',
-          'Bộ trang bị năng lượng mới được mở theo lịch vận hành mùa.',
-          '09/2026',
-          'UPCOMING',
-          ['Cập nhật kho đồ', 'Công bố chỉ số thiết bị'],
-        ],
-        [
-          'Chiến tuyến mới',
-          'Mở rộng bản đồ và mục tiêu cho mùa tiếp theo.',
-          '11/2026',
-          'PLANNED',
-          ['Khảo sát tuyến đường', 'Chốt luật thi đấu'],
-        ],
       ],
     },
   ] as const;
+
+  const gameMap = new Map<string, { id: string; code: string; name: string; slug: string }>();
 
   for (const gameData of games) {
     const game = await prisma.game.upsert({
@@ -1068,17 +1278,23 @@ async function seedGames() {
         secondaryCtaPath: gameData.secondaryCtaPath,
       },
     });
+
+    gameMap.set(gameData.code, { id: game.id, code: game.code, name: game.name, slug: game.slug });
+
     await prisma.gameGenre.deleteMany({ where: { gameId: game.id } });
     await prisma.gamePlatform.deleteMany({ where: { gameId: game.id } });
     await prisma.gameArticle.deleteMany({ where: { gameId: game.id } });
     await prisma.gameMilestone.deleteMany({ where: { gameId: game.id } });
+
     await prisma.gameGenre.createMany({
       data: gameData.genres.map((code) => ({ gameId: game.id, genreId: genreIds.get(code)! })),
     });
+
     await prisma.gamePlatform.createMany({
       data: gameData.platforms.map((platform) => ({ gameId: game.id, platform })),
     });
-    if (gameData.articles.length)
+
+    if (gameData.articles.length) {
       await prisma.gameArticle.createMany({
         data: gameData.articles.map((article) => ({
           gameId: game.id,
@@ -1088,7 +1304,9 @@ async function seedGames() {
           seoDescription: article.excerpt,
         })),
       });
-    if (gameData.milestones.length)
+    }
+
+    if (gameData.milestones.length) {
       await prisma.gameMilestone.createMany({
         data: gameData.milestones.map(
           ([title, description, displayPeriod, status, checklist], sortOrder) => ({
@@ -1102,7 +1320,10 @@ async function seedGames() {
           }),
         ),
       });
+    }
   }
+
+  return { games: gameMap, genreIds };
 }
 
 function seedPageConfig(gameData: {
@@ -1122,13 +1343,120 @@ function seedPageConfig(gameData: {
   return pageConfig;
 }
 
-async function seedPortalContent() {
+/* ========================================================================== */
+/* 5. GAME PLAYERS & GAME ROLES                                               */
+/* ========================================================================== */
+async function seedGameRolesAndPlayers({
+  users,
+  games,
+  gameRoles,
+}: {
+  users: Map<string, { id: string }>;
+  games: Map<string, { id: string }>;
+  gameRoles: Array<{ id: string; code: string }>;
+}) {
+  const roleByCode = new Map(gameRoles.map((r) => [r.code, r.id]));
+  const lddm = games.get('LDDM')!;
+  const vthl = games.get('VTHL')!;
+  const ttm = games.get('TTM')!;
+  const cto = games.get('CTO')!;
+
+  // 1. Phân quyền Game Admin / Quản lý nội dung cho nhân sự
+  const assignments = [
+    { username: 'tuan.nguyenminh', gameId: lddm.id, roleCode: 'GAME_ADMIN' },
+    { username: 'mai.vuphuong', gameId: vthl.id, roleCode: 'GAME_CONTENT_MANAGER' },
+    { username: 'khanh.dangquoc', gameId: cto.id, roleCode: 'GAME_PLAYER_MODERATOR' },
+  ];
+
+  for (const item of assignments) {
+    const user = users.get(item.username);
+    const roleId = roleByCode.get(item.roleCode);
+    if (user && roleId) {
+      await prisma.gameRoleAssignment.upsert({
+        where: {
+          userId_gameId_roleId: {
+            userId: user.id,
+            gameId: item.gameId,
+            roleId,
+          },
+        },
+        update: {},
+        create: {
+          userId: user.id,
+          gameId: item.gameId,
+          roleId,
+          assignedAt: new Date('2026-06-01T09:00:00Z'),
+        },
+      });
+    }
+  }
+
+  // 2. Dữ liệu Người chơi trong Game (GamePlayer)
+  const playersInGames = [
+    // Lục Địa Đam Mê
+    { username: 'quang.tran', gameId: lddm.id, loginCount: 142, status: 'ACTIVE', firstLogin: '2026-06-05', lastLogin: '2026-09-17' },
+    { username: 'anh.nguyenthuy', gameId: lddm.id, loginCount: 68, status: 'ACTIVE', firstLogin: '2026-06-10', lastLogin: '2026-09-16' },
+    { username: 'dat.vutien', gameId: lddm.id, loginCount: 94, status: 'ACTIVE', firstLogin: '2026-06-08', lastLogin: '2026-09-17' },
+    { username: 'bao.hoanggia', gameId: lddm.id, loginCount: 110, status: 'ACTIVE', firstLogin: '2026-06-06', lastLogin: '2026-09-16' },
+    { username: 'kien.trantung', gameId: lddm.id, loginCount: 24, status: 'BLOCKED', firstLogin: '2026-07-01', lastLogin: '2026-09-10', reason: 'Nghi vấn phát sinh giao dịch không hợp lệ' },
+
+    // Vương Triều Hỏa Long
+    { username: 'quang.tran', gameId: vthl.id, loginCount: 85, status: 'ACTIVE', firstLogin: '2026-06-15', lastLogin: '2026-09-17' },
+    { username: 'son.lehoang', gameId: vthl.id, loginCount: 42, status: 'ACTIVE', firstLogin: '2026-07-02', lastLogin: '2026-09-15' },
+    { username: 'bao.hoanggia', gameId: vthl.id, loginCount: 79, status: 'ACTIVE', firstLogin: '2026-06-18', lastLogin: '2026-09-16' },
+
+    // Thị Trấn Mây
+    { username: 'anh.nguyenthuy', gameId: ttm.id, loginCount: 88, status: 'ACTIVE', firstLogin: '2026-07-01', lastLogin: '2026-09-17' },
+    { username: 'linh.dangthuy', gameId: ttm.id, loginCount: 56, status: 'ACTIVE', firstLogin: '2026-07-05', lastLogin: '2026-09-15' },
+    { username: 'thao.buiphuong', gameId: ttm.id, loginCount: 39, status: 'ACTIVE', firstLogin: '2026-07-12', lastLogin: '2026-09-14' },
+
+    // Chiến Tuyến Orion
+    { username: 'dat.vutien', gameId: cto.id, loginCount: 73, status: 'ACTIVE', firstLogin: '2026-07-08', lastLogin: '2026-09-17' },
+    { username: 'phuc.voduc', gameId: cto.id, loginCount: 45, status: 'ACTIVE', firstLogin: '2026-07-15', lastLogin: '2026-09-16' },
+    { username: 'long.vudinh', gameId: cto.id, loginCount: 18, status: 'BLOCKED', firstLogin: '2026-08-01', lastLogin: '2026-09-14', reason: 'Phát hiện can thiệp chỉnh sửa gói tin mạng trong trận đấu' },
+  ];
+
+  const adminUser = users.get('admin');
+
+  for (const item of playersInGames) {
+    const user = users.get(item.username);
+    if (!user) continue;
+
+    await prisma.gamePlayer.upsert({
+      where: { userId_gameId: { userId: user.id, gameId: item.gameId } },
+      update: {
+        status: item.status === 'BLOCKED' ? 'PERMANENTLY_BANNED' : item.status,
+        loginCount: item.loginCount,
+        firstLoginAt: new Date(`${item.firstLogin}T08:00:00Z`),
+        lastLoginAt: new Date(`${item.lastLogin}T20:30:00Z`),
+        blockReason: item.reason ?? null,
+        blockedAt: item.status === 'BLOCKED' ? new Date(`${item.lastLogin}T21:00:00Z`) : null,
+        blockedByUserId: item.status === 'BLOCKED' ? (adminUser?.id ?? null) : null,
+      },
+      create: {
+        userId: user.id,
+        gameId: item.gameId,
+        status: item.status === 'BLOCKED' ? 'PERMANENTLY_BANNED' : item.status,
+        loginCount: item.loginCount,
+        firstLoginAt: new Date(`${item.firstLogin}T08:00:00Z`),
+        lastLoginAt: new Date(`${item.lastLogin}T20:30:00Z`),
+        blockReason: item.reason ?? null,
+        blockedAt: item.status === 'BLOCKED' ? new Date(`${item.lastLogin}T21:00:00Z`) : null,
+        blockedByUserId: item.status === 'BLOCKED' ? (adminUser?.id ?? null) : null,
+      },
+    });
+  }
+}
+
+/* ========================================================================== */
+/* 6. PORTAL ANNOUNCEMENTS & EVENTS                                           */
+/* ========================================================================== */
+async function seedPortalContent(games: Map<string, { id: string }>) {
   const announcements = [
     {
       code: 'SEASON6_LDDM_2026',
       title: 'Bốn thế giới đang hoạt động',
-      message:
-        'Khám phá bốn game đang hoạt động, theo dõi mùa mới và nhận tin vận hành từ ZENX GO.',
+      message: 'Khám phá bốn game đang hoạt động, theo dõi mùa mới và nhận tin vận hành từ ZENX GO.',
       ctaLabel: 'Khám phá game',
       ctaPath: '/events/season-6-luc-dia-dam-me',
       status: 'PUBLISHED',
@@ -1139,8 +1467,7 @@ async function seedPortalContent() {
     {
       code: 'DEV_TALK_01_2026',
       title: 'Sự kiện cuối tuần ZENX GO',
-      message:
-        'Chuỗi hoạt động cuối tuần sắp diễn ra với phần thưởng mùa và nhiệm vụ cộng đồng từ các game.',
+      message: 'Chuỗi hoạt động cuối tuần sắp diễn ra với phần thưởng mùa và nhiệm vụ cộng đồng từ các game.',
       ctaLabel: 'Xem sự kiện',
       ctaPath: '/events/dev-talk-01-zenx-go',
       status: 'PUBLISHED',
@@ -1148,19 +1475,8 @@ async function seedPortalContent() {
       endsAt: new Date('2026-10-15T23:59:59.000Z'),
       sortOrder: 2,
     },
-    {
-      code: 'GAME_HUB_LAUNCH_2026',
-      title: 'Tuần lễ ra mắt Game Hub đã khép lại',
-      message:
-        'Cảm ơn cộng đồng đã đồng hành trong tuần lễ ra mắt. Bốn game ZENX GO tiếp tục cập nhật nội dung mỗi tuần.',
-      ctaLabel: 'Xem tin mới',
-      ctaPath: '/games',
-      status: 'PUBLISHED',
-      startsAt: new Date('2026-08-01T00:00:00.000Z'),
-      endsAt: new Date('2026-08-31T23:59:59.000Z'),
-      sortOrder: 3,
-    },
   ] as const;
+
   for (const announcement of announcements) {
     await prisma.portalAnnouncement.upsert({
       where: { code: announcement.code },
@@ -1169,61 +1485,33 @@ async function seedPortalContent() {
     });
   }
 
-  const gameRows = await prisma.game.findMany({
-    where: {
-      slug: { in: ['luc-dia-dam-me', 'vuong-trieu-hoa-long', 'thi-tran-may', 'chien-tuyen-orion'] },
-    },
-    select: { id: true, slug: true },
-  });
-  const gameIds = new Map(gameRows.map((game) => [game.slug, game.id]));
-  // Keep the natural date windows idempotent when upgrading from the previous seed set.
-  await prisma.portalAnnouncement.deleteMany({
-    where: {
-      startsAt: new Date('2026-09-01T00:00:00.000Z'),
-      title: { not: 'Bốn thế giới đang hoạt động' },
-    },
-  });
-  await prisma.gameEvent.deleteMany({
-    where: {
-      OR: [
-        {
-          gameId: gameIds.get('luc-dia-dam-me') ?? '',
-          startsAt: new Date('2026-09-01T00:00:00.000Z'),
-          title: { not: 'Season 6 Lục Địa Đam Mê' },
-        },
-        {
-          gameId: gameIds.get('thi-tran-may') ?? '',
-          startsAt: new Date('2026-09-01T00:00:00.000Z'),
-          title: { not: 'Lễ hội Khinh khí cầu Thị Trấn Mây' },
-        },
-      ],
-    },
-  });
+  const lddmId = games.get('LDDM')?.id ?? null;
+  const vthlId = games.get('VTHL')?.id ?? null;
+  const ttmId = games.get('TTM')?.id ?? null;
+  const ctoId = games.get('CTO')?.id ?? null;
+
   const events = [
     {
       title: 'Season 6 Lục Địa Đam Mê',
       slug: 'season-6-luc-dia-dam-me',
-      excerpt:
-        'Season 6 đang mở với nhiệm vụ bang hội, phần thưởng tân thủ và chuỗi hoạt động cộng đồng.',
+      excerpt: 'Season 6 đang mở với nhiệm vụ bang hội, phần thưởng tân thủ và chuỗi hoạt động cộng đồng.',
       content:
-        '# Season 6 Lục Địa Đam Mê\n\nSeason 6 đã mở cửa trên toàn Lục Địa với nhiệm vụ bang hội, công thành chiến và phần thưởng theo mùa.\n\nNgười chơi mới bắt đầu từ cổng thành, nhận bộ quà tân thủ và tham gia chuỗi hoạt động cộng đồng ngay trong tuần đầu.\n\n- 1,000 ZENX Coin tân thủ\n- Cánh Ánh Sáng mùa hiện tại\n- Nhiệm vụ cộng đồng theo tuần',
+        '# Season 6 Lục Địa Đam Mê\n\nSeason 6 đã mở cửa trên toàn Lục Địa với nhiệm vụ bang hội, công thành chiến và phần thưởng theo mùa.\n\n- 1,000 ZENX Coin tân thủ\n- Cánh Ánh Sáng mùa hiện tại\n- Nhiệm vụ cộng đồng theo tuần',
       coverImageUrl: '/images/games/luc-dia-dam-me/hero.webp',
       status: 'PUBLISHED',
       startsAt: new Date('2026-09-01T00:00:00.000Z'),
       endsAt: new Date('2026-12-31T23:59:59.000Z'),
       publishedAt: new Date('2026-09-01T00:00:00.000Z'),
       seoTitle: 'Season 6 Lục Địa Đam Mê | ZENX GO',
-      seoDescription:
-        'Theo dõi hoạt động Season 6, phần thưởng và nhiệm vụ cộng đồng của Lục Địa Đam Mê.',
-      gameId: gameIds.get('luc-dia-dam-me') ?? null,
+      seoDescription: 'Theo dõi hoạt động Season 6, phần thưởng và nhiệm vụ cộng đồng của Lục Địa Đam Mê.',
+      gameId: lddmId,
     },
     {
       title: 'Tuần lễ ra mắt ZENX GO',
       slug: 'zenx-go-game-hub-chinh-thuc-mo-cua',
-      excerpt:
-        'Tuần lễ ra mắt kết nối cộng đồng với bốn thế giới game, lịch sự kiện và các tiện ích tài khoản ZENX GO.',
+      excerpt: 'Tuần lễ ra mắt kết nối cộng đồng với bốn thế giới game, lịch sự kiện và các tiện ích tài khoản ZENX GO.',
       content:
-        '# Tuần lễ ra mắt ZENX GO\n\nGame Hub là điểm đến chung để khám phá bốn game đang hoạt động, theo dõi tin tức và quản lý tài khoản trên mọi thế giới.\n\nTrong tuần lễ ra mắt, cộng đồng đã cùng mở khóa các mốc tương tác và nhận lịch hoạt động mùa mới.\n\nHãy ghé trang Sự kiện để xem những hoạt động đang diễn ra trong tháng.',
+        '# Tuần lễ ra mắt ZENX GO\n\nGame Hub là điểm đến chung để khám phá bốn game đang hoạt động, theo dõi tin tức và quản lý tài khoản trên mọi thế giới.',
       coverImageUrl: '/images/image.webp',
       status: 'PUBLISHED',
       startsAt: new Date('2026-08-24T00:00:00.000Z'),
@@ -1236,110 +1524,1073 @@ async function seedPortalContent() {
     {
       title: 'Lễ hội Khinh khí cầu Thị Trấn Mây',
       slug: 'le-hoi-khinh-khi-cau-thi-tran-may',
-      excerpt:
-        'Lên khinh khí cầu, ghé thăm hàng xóm và đổi quà trang trí trong lễ hội cuối tuần trên các đảo mây.',
+      excerpt: 'Lên khinh khí cầu, ghé thăm hàng xóm và đổi quà trang trí trong lễ hội cuối tuần trên các đảo mây.',
       content:
-        '# Lễ hội Khinh khí cầu Thị Trấn Mây\n\nLễ hội đưa cư dân lên những chuyến khinh khí cầu nối liền quảng trường, khu vườn và các đảo hàng xóm.\n\nHoàn thành nhiệm vụ ghé thăm, chụp ảnh và trao đổi nông sản để nhận huy hiệu lễ hội cùng vật phẩm trang trí.\n\n- Tuyến bay lễ hội\n- Huy hiệu ghé thăm\n- Quà trang trí giới hạn',
+        '# Lễ hội Khinh khí cầu Thị Trấn Mây\n\nLễ hội đưa cư dân lên những chuyến khinh khí cầu nối liền quảng trường, khu vườn và các đảo hàng xóm.',
       coverImageUrl: '/images/games/thi-tran-may/detail-v1/town-square.webp',
       status: 'PUBLISHED',
       startsAt: new Date('2026-09-01T00:00:00.000Z'),
-      endsAt: new Date('2026-09-07T23:59:59.000Z'),
+      endsAt: new Date('2026-09-30T23:59:59.000Z'),
       publishedAt: new Date('2026-09-01T00:00:00.000Z'),
       seoTitle: 'Lễ hội Khinh khí cầu Thị Trấn Mây',
       seoDescription: 'Tham gia lễ hội Khinh khí cầu và nhận quà trang trí tại Thị Trấn Mây.',
-      gameId: gameIds.get('thi-tran-may') ?? null,
-    },
-    {
-      title: 'Bản tin vận hành tháng 9',
-      slug: 'dev-talk-01-zenx-go',
-      excerpt:
-        'Cập nhật lịch mùa, cân bằng hệ thống và hoạt động cộng đồng của bốn game trong tháng 9.',
-      content:
-        '# Bản tin vận hành tháng 9\n\nZENX GO công bố lịch vận hành tháng 9 với Season 6 Lục Địa Đam Mê, Mùa Liên Minh Hỏa Long, Lễ hội Khinh khí cầu và Ranked Season 1 Orion.\n\nBuổi phát sóng sẽ điểm qua các thay đổi cân bằng, lịch bảo trì và phần thưởng cộng đồng.\n\nBạn có thể gửi câu hỏi trước để đội ngũ trả lời trực tiếp trong sự kiện.',
-      coverImageUrl: '/images/image.webp',
-      status: 'PUBLISHED',
-      startsAt: new Date('2026-09-15T00:00:00.000Z'),
-      endsAt: new Date('2026-09-16T23:59:59.000Z'),
-      publishedAt: new Date('2026-09-02T00:00:00.000Z'),
-      seoTitle: 'Bản tin vận hành tháng 9 | ZENX GO',
-      seoDescription: 'Lịch vận hành và cập nhật mùa tháng 9 của hệ sinh thái ZENX GO.',
-      gameId: null,
+      gameId: ttmId,
     },
     {
       title: 'Mùa Liên Minh Hỏa Long',
       slug: 'khai-hoa-lien-minh-hoa-long',
-      excerpt:
-        'Các vương triều tranh quyền trên bản đồ liên vùng với mục tiêu liên minh, tiếp tế và phòng thủ Hoàng Thành.',
+      excerpt: 'Các vương triều tranh quyền trên bản đồ liên vùng với mục tiêu liên minh, tiếp tế và phòng thủ Hoàng Thành.',
       content:
-        '# Mùa Liên Minh Hỏa Long\n\nCác vương triều sẽ hội quân trên bản đồ liên vùng, phối hợp tuyến tiếp tế và bảo vệ Hoàng Thành qua từng vòng giao tranh.\n\nLong Thần hệ Hỏa mở thêm lựa chọn chiến thuật cho đội hình, còn phần thưởng mùa được tính theo đóng góp của từng thành viên.\n\nHãy lập liên minh sớm và theo dõi lịch chiến trường trong trang game.',
+        '# Mùa Liên Minh Hỏa Long\n\nCác vương triều sẽ hội quân trên bản đồ liên vùng, phối hợp tuyến tiếp tế và bảo vệ Hoàng Thành qua từng vòng giao tranh.',
       coverImageUrl: '/images/games/vuong-trieu-hoa-long/detail-v1/battlefield.webp',
       status: 'PUBLISHED',
       startsAt: new Date('2026-09-20T00:00:00.000Z'),
-      endsAt: new Date('2026-10-05T23:59:59.000Z'),
+      endsAt: new Date('2026-10-15T23:59:59.000Z'),
       publishedAt: new Date('2026-09-02T00:00:00.000Z'),
       seoTitle: 'Mùa Liên Minh Hỏa Long',
-      seoDescription:
-        'Tham gia Mùa Liên Minh và chiến đấu cùng Long Thần hệ Hỏa tại Vương Triều Hỏa Long.',
-      gameId: gameIds.get('vuong-trieu-hoa-long') ?? null,
+      seoDescription: 'Tham gia Mùa Liên Minh và chiến đấu cùng Long Thần hệ Hỏa tại Vương Triều Hỏa Long.',
+      gameId: vthlId,
     },
     {
       title: 'Ranked Season 1: Vành đai Orion',
       slug: 'orion-training-simulation',
-      excerpt:
-        'Ranked Season 1 mở bảng xếp hạng theo mùa và những mục tiêu xoay vòng cho các biệt đội Orion.',
+      excerpt: 'Ranked Season 1 mở bảng xếp hạng theo mùa và những mục tiêu xoay vòng cho các biệt đội Orion.',
       content:
-        '# Ranked Season 1: Vành đai Orion\n\nRanked Season 1 đưa các biệt đội vào Vành đai Orion với mục tiêu xoay vòng và bảng xếp hạng cập nhật theo tuần.\n\nRecon, Assault và Support cần phối hợp nhịp di chuyển, tầm nhìn và năng lượng để kiểm soát từng khu vực.\n\nPhần thưởng mùa được trao theo bậc xếp hạng và thành tích đội hình.',
+        '# Ranked Season 1: Vành đai Orion\n\nRanked Season 1 đưa các biệt đội vào Vành đai Orion với mục tiêu xoay vòng và bảng xếp hạng cập nhật theo tuần.',
       coverImageUrl: '/images/games/chien-tuyen-orion/detail-v3-light/role-assault.webp',
       status: 'PUBLISHED',
       startsAt: new Date('2026-10-05T00:00:00.000Z'),
-      endsAt: new Date('2026-10-20T23:59:59.000Z'),
+      endsAt: new Date('2026-10-31T23:59:59.000Z'),
       publishedAt: new Date('2026-09-02T00:00:00.000Z'),
       seoTitle: 'Ranked Season 1: Vành đai Orion',
       seoDescription: 'Theo dõi lịch Ranked Season 1 và phần thưởng mùa của Chiến Tuyến Orion.',
-      gameId: gameIds.get('chien-tuyen-orion') ?? null,
+      gameId: ctoId,
     },
-    {
-      title: 'Tuần lễ cộng đồng Season 6',
-      slug: 'khao-sat-cong-dong-season-6',
-      excerpt:
-        'Tuần lễ cộng đồng đã khép lại với hàng nghìn phản hồi về hoạt động bang hội và bản đồ liên vùng.',
-      content:
-        '# Tuần lễ cộng đồng Season 6\n\nCảm ơn cộng đồng đã chia sẻ phản hồi về hoạt động bang hội, công thành chiến và những tuyến đường muốn mở trong Season 6.\n\nĐội ngũ đã tổng hợp kết quả và đưa các ưu tiên phù hợp vào lịch vận hành những tuần tiếp theo.\n\nCác mốc cập nhật sẽ tiếp tục được thông báo trên trang tin Lục Địa Đam Mê.',
-      coverImageUrl: '/images/games/luc-dia-dam-me/nhan_vat.webp',
-      status: 'PUBLISHED',
-      startsAt: new Date('2026-08-01T00:00:00.000Z'),
-      endsAt: new Date('2026-08-10T23:59:59.000Z'),
-      publishedAt: new Date('2026-08-01T00:00:00.000Z'),
-      seoTitle: 'Tuần lễ cộng đồng Season 6',
-      seoDescription: 'Tổng kết hoạt động cộng đồng Season 6 của Lục Địa Đam Mê.',
-      gameId: null,
-    },
-    {
-      title: 'Lễ hội Mây mùa hè',
-      slug: 'cloud-town-sketchbook',
-      excerpt:
-        'Lễ hội Mây mùa hè đã khép lại sau ba tuần hoạt động cộng đồng, thăm đảo và sưu tầm vật phẩm.',
-      content:
-        '# Lễ hội Mây mùa hè\n\nLễ hội Mây mùa hè đã khép lại với các chuyến thăm đảo, hoạt động chụp ảnh và bộ sưu tập vật phẩm trang trí.\n\nNhững phần thưởng đã nhận vẫn được giữ trong kho của cư dân, còn các kỷ niệm nổi bật được lưu tại Quảng trường Mây.\n\nCảm ơn mọi người đã cùng tạo nên một mùa hè nhiều màu sắc trên những tầng mây.',
-      coverImageUrl: '/images/games/thi-tran-may/detail-v1/garden.webp',
-      status: 'PUBLISHED',
-      startsAt: new Date('2026-08-05T00:00:00.000Z'),
-      endsAt: new Date('2026-08-20T23:59:59.000Z'),
-      publishedAt: new Date('2026-08-05T00:00:00.000Z'),
-      seoTitle: 'Lễ hội Mây mùa hè',
-      seoDescription: 'Tổng kết Lễ hội Mây mùa hè tại Thị Trấn Mây.',
-      gameId: gameIds.get('thi-tran-may') ?? null,
-    },
-  ] as const;
+  ];
 
   for (const event of events) {
     await prisma.gameEvent.upsert({ where: { slug: event.slug }, update: event, create: event });
   }
 }
 
+/* ========================================================================== */
+/* 7. COIN PACKAGES                                                           */
+/* ========================================================================== */
+async function seedCoinPackages() {
+  const packages = [
+    ['ZENX_1000', 'ZENX 1,000', 20000n, 1000n, 1],
+    ['ZENX_2500', 'ZENX 2,500', 50000n, 2500n, 2],
+    ['ZENX_5000', 'ZENX 5,000', 100000n, 5000n, 3],
+    ['ZENX_12500', 'ZENX 12,500', 200000n, 12500n, 4],
+    ['ZENX_25000', 'ZENX 25,000', 500000n, 25000n, 5],
+    ['ZENX_50000', 'ZENX 50,000', 1000000n, 50000n, 6],
+    ['ZENX_100000', 'ZENX 100,000', 2000000n, 100000n, 7],
+  ] as const;
+
+  const packageMap = new Map<string, { id: string; code: string; name: string; priceVnd: bigint; coinAmount: bigint }>();
+
+  for (const [code, name, priceVnd, coinAmount, sortOrder] of packages) {
+    const pkg = await prisma.coinPackage.upsert({
+      where: { code },
+      update: { name, priceVnd, coinAmount, sortOrder },
+      create: { code, name, priceVnd, coinAmount, sortOrder },
+    });
+    packageMap.set(code, { id: pkg.id, code: pkg.code, name: pkg.name, priceVnd: pkg.priceVnd, coinAmount: pkg.coinAmount });
+  }
+
+  return packageMap;
+}
+
+/* ========================================================================== */
+/* 8. FINANCE & PAYMENTS & WALLET TRANSACTIONS                                */
+/* ========================================================================== */
+async function seedFinanceAndTransactions({
+  users,
+  packages,
+}: {
+  users: Map<string, { id: string }>;
+  packages: Map<string, { id: string; priceVnd: bigint; coinAmount: bigint; name: string }>;
+}) {
+  const paymentDefinitions = [
+    // --- Giao dịch Thành công (SUCCESS) ---
+    {
+      paymentNo: 'PAY260815001',
+      username: 'quang.tran',
+      packageCode: 'ZENX_50000',
+      provider: 'VNPAY',
+      method: PaymentMethod.BANK_TRANSFER,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-08-15T10:20:00Z',
+      providerTransId: 'VNP1482910482',
+    },
+    {
+      paymentNo: 'PAY260820002',
+      username: 'anh.nguyenthuy',
+      packageCode: 'ZENX_25000',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-08-20T14:15:00Z',
+      providerTransId: 'MM26082014152',
+    },
+    {
+      paymentNo: 'PAY260825003',
+      username: 'quang.tran',
+      packageCode: 'ZENX_100000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-08-25T19:40:00Z',
+      providerTransId: 'MB26082519401',
+    },
+    {
+      paymentNo: 'PAY260830004',
+      username: 'dat.vutien',
+      packageCode: 'ZENX_12500',
+      provider: 'ZALOPAY',
+      method: PaymentMethod.ZALOPAY,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-08-30T09:05:00Z',
+      providerTransId: 'ZLP26083009054',
+    },
+    {
+      paymentNo: 'PAY260901005',
+      username: 'bao.hoanggia',
+      packageCode: 'ZENX_100000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-01T08:30:00Z',
+      providerTransId: 'VCB26090108309',
+    },
+    {
+      paymentNo: 'PAY260903006',
+      username: 'linh.dangthuy',
+      packageCode: 'ZENX_25000',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-03T11:45:00Z',
+      providerTransId: 'MM26090311451',
+    },
+    {
+      paymentNo: 'PAY260905007',
+      username: 'quang.tran',
+      packageCode: 'ZENX_100000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-05T20:10:00Z',
+      providerTransId: 'MB26090520108',
+    },
+    {
+      paymentNo: 'PAY260907008',
+      username: 'son.lehoang',
+      packageCode: 'ZENX_25000',
+      provider: 'VNPAY',
+      method: PaymentMethod.BANK_TRANSFER,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-07T16:22:00Z',
+      providerTransId: 'VNP1489012384',
+    },
+    {
+      paymentNo: 'PAY260909009',
+      username: 'dat.vutien',
+      packageCode: 'ZENX_25000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-09T14:30:00Z',
+      providerTransId: 'MB26090914302',
+    },
+    {
+      paymentNo: 'PAY260911010',
+      username: 'bao.hoanggia',
+      packageCode: 'ZENX_50000',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-11T21:00:00Z',
+      providerTransId: 'MM26091121005',
+    },
+    {
+      paymentNo: 'PAY260913011',
+      username: 'thao.buiphuong',
+      packageCode: 'ZENX_5000',
+      provider: 'ZALOPAY',
+      method: PaymentMethod.ZALOPAY,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-13T10:15:00Z',
+      providerTransId: 'ZLP26091310158',
+    },
+    {
+      paymentNo: 'PAY260914012',
+      username: 'quang.tran',
+      packageCode: 'ZENX_50000',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-14T18:40:00Z',
+      providerTransId: 'MM26091418402',
+    },
+    {
+      paymentNo: 'PAY260915013',
+      username: 'anh.nguyenthuy',
+      packageCode: 'ZENX_50000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-15T09:20:00Z',
+      providerTransId: 'VCB26091509201',
+    },
+    {
+      paymentNo: 'PAY260916014',
+      username: 'phuc.voduc',
+      packageCode: 'ZENX_2500',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-16T12:00:00Z',
+      providerTransId: 'MM26091612009',
+    },
+    {
+      paymentNo: 'PAY260917015',
+      username: 'linh.dangthuy',
+      packageCode: 'ZENX_12500',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.SUCCESS,
+      date: '2026-09-17T08:15:00Z',
+      providerTransId: 'MB26091708154',
+    },
+
+    // --- Giao dịch Đang xử lý / Chờ (PENDING / CREATED) ---
+    {
+      paymentNo: 'PAY260917016',
+      username: 'dat.vutien',
+      packageCode: 'ZENX_25000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.PENDING,
+      date: '2026-09-17T14:30:00Z',
+      providerTransId: 'MB26091714309',
+    },
+    {
+      paymentNo: 'PAY260917017',
+      username: 'quang.tran',
+      packageCode: 'ZENX_50000',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.PENDING,
+      date: '2026-09-17T19:40:00Z',
+      providerTransId: 'MM26091719401',
+    },
+    {
+      paymentNo: 'PAY260917018',
+      username: 'bao.hoanggia',
+      packageCode: 'ZENX_12500',
+      provider: 'ZALOPAY',
+      method: PaymentMethod.ZALOPAY,
+      status: PaymentStatus.CREATED,
+      date: '2026-09-17T22:15:00Z',
+      providerTransId: null,
+    },
+
+    // --- Giao dịch Thất bại (FAILED) ---
+    {
+      paymentNo: 'PAY260915019',
+      username: 'son.lehoang',
+      packageCode: 'ZENX_1000',
+      provider: 'CARD',
+      method: PaymentMethod.CARD,
+      status: PaymentStatus.FAILED,
+      date: '2026-09-15T15:10:00Z',
+      providerTransId: null,
+    },
+    {
+      paymentNo: 'PAY260916020',
+      username: 'kien.trantung',
+      packageCode: 'ZENX_5000',
+      provider: 'VNPAY',
+      method: PaymentMethod.BANK_TRANSFER,
+      status: PaymentStatus.FAILED,
+      date: '2026-09-16T11:20:00Z',
+      providerTransId: null,
+    },
+
+    // --- Giao dịch Đã hoàn tiền (REFUNDED) ---
+    {
+      paymentNo: 'PAY260910021',
+      username: 'son.lehoang',
+      packageCode: 'ZENX_25000',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.REFUNDED,
+      date: '2026-09-10T13:00:00Z',
+      providerTransId: 'MB26091013008',
+    },
+    {
+      paymentNo: 'PAY260906022',
+      username: 'anh.nguyenthuy',
+      packageCode: 'ZENX_12500',
+      provider: 'MOMO',
+      method: PaymentMethod.MOMO,
+      status: PaymentStatus.REFUNDED,
+      date: '2026-09-06T17:35:00Z',
+      providerTransId: 'MM26090617354',
+    },
+
+    // --- Giao dịch Hết hạn (EXPIRED) ---
+    {
+      paymentNo: 'PAY260914023',
+      username: 'thao.buiphuong',
+      packageCode: 'ZENX_2500',
+      provider: 'VIETQR',
+      method: PaymentMethod.VIETQR,
+      status: PaymentStatus.EXPIRED,
+      date: '2026-09-14T09:00:00Z',
+      providerTransId: null,
+    },
+  ];
+
+  for (const item of paymentDefinitions) {
+    const user = users.get(item.username);
+    const pkg = packages.get(item.packageCode);
+    if (!user || !pkg) continue;
+
+    const createdAt = new Date(item.date);
+    const isSuccess = item.status === PaymentStatus.SUCCESS;
+    const isRefunded = item.status === PaymentStatus.REFUNDED;
+    const paidAt = isSuccess || isRefunded ? new Date(createdAt.getTime() + 120_000) : null;
+    const expiredAt = new Date(createdAt.getTime() + 900_000);
+
+    const payment = await prisma.payment.upsert({
+      where: { paymentNo: item.paymentNo },
+      update: {
+        status: item.status,
+        provider: item.provider,
+        paymentMethod: item.method,
+        providerTransactionId: item.providerTransId,
+        paidAt,
+        expiredAt,
+      },
+      create: {
+        paymentNo: item.paymentNo,
+        userId: user.id,
+        coinPackageId: pkg.id,
+        amountVnd: pkg.priceVnd,
+        coinAmount: pkg.coinAmount,
+        provider: item.provider,
+        paymentMethod: item.method,
+        providerTransactionId: item.providerTransId,
+        status: item.status,
+        createdAt,
+        paidAt,
+        expiredAt,
+      },
+    });
+
+    // Lấy thông tin ví của người dùng
+    const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
+    if (!wallet) continue;
+
+    // Ghi nhận WalletTransaction tương ứng nếu thanh toán thành công hoặc hoàn tiền
+    if (isSuccess || isRefunded) {
+      const txNo = `TX${item.paymentNo.slice(3)}`;
+      const currentBalance = wallet.balance;
+      const balanceBefore = currentBalance >= pkg.coinAmount ? currentBalance - pkg.coinAmount : 0n;
+
+      await prisma.walletTransaction.upsert({
+        where: { transactionNo: txNo },
+        update: {
+          status: WalletTransactionStatus.SUCCESS,
+          amount: pkg.coinAmount,
+        },
+        create: {
+          transactionNo: txNo,
+          walletId: wallet.id,
+          userId: user.id,
+          paymentId: payment.id,
+          type: WalletTransactionType.TOPUP,
+          amount: pkg.coinAmount,
+          balanceBefore,
+          balanceAfter: currentBalance,
+          status: WalletTransactionStatus.SUCCESS,
+          referenceType: 'PAYMENT',
+          referenceId: payment.id,
+          idempotencyKey: `topup_${payment.id}`,
+          description: `Nạp ${pkg.name} qua cổng ${item.provider}`,
+          createdAt: paidAt ?? createdAt,
+          completedAt: paidAt ?? createdAt,
+        },
+      });
+
+      // Nếu trạng thái là REFUNDED, ghi thêm transaction hoàn tiền
+      if (isRefunded) {
+        const refundTxNo = `RF${item.paymentNo.slice(3)}`;
+        await prisma.walletTransaction.upsert({
+          where: { transactionNo: refundTxNo },
+          update: {},
+          create: {
+            transactionNo: refundTxNo,
+            walletId: wallet.id,
+            userId: user.id,
+            paymentId: null,
+            type: WalletTransactionType.REFUND,
+            amount: pkg.coinAmount,
+            balanceBefore: currentBalance,
+            balanceAfter: currentBalance >= pkg.coinAmount ? currentBalance - pkg.coinAmount : 0n,
+            status: WalletTransactionStatus.SUCCESS,
+            referenceType: 'PAYMENT_REFUND',
+            referenceId: payment.id,
+            idempotencyKey: `refund_${payment.id}`,
+            description: `Hoàn tiền nạp ${pkg.name} theo yêu cầu đối soát`,
+            createdAt: new Date(createdAt.getTime() + 86_400_000),
+            completedAt: new Date(createdAt.getTime() + 86_400_000),
+          },
+        });
+      }
+    }
+  }
+
+  // --- Các Giao dịch Tiêu Coin Trong Game (DEBIT & PURCHASE) ---
+  const inGamePurchases = [
+    {
+      username: 'quang.tran',
+      amount: 50_000n,
+      desc: 'Nâng cấp Rương Trang Bị Thần Thoại - Lục Địa Đam Mê',
+      txNo: 'TXG26091401',
+      date: '2026-09-14T21:00:00Z',
+    },
+    {
+      username: 'quang.tran',
+      amount: 75_000n,
+      desc: 'Gia hạn Hội Viên Hoàng Gia 90 Ngày - Vương Triều Hỏa Long',
+      txNo: 'TXG26091502',
+      date: '2026-09-15T19:30:00Z',
+    },
+    {
+      username: 'dat.vutien',
+      amount: 20_000n,
+      desc: 'Mua Battle Pass Ranked Season 1 - Chiến Tuyến Orion',
+      txNo: 'TXG26091603',
+      date: '2026-09-16T14:15:00Z',
+    },
+    {
+      username: 'anh.nguyenthuy',
+      amount: 5_000n,
+      desc: 'Đổi Vé Khinh Khí Cầu Mùa Lễ Hội - Thị Trấn Mây',
+      txNo: 'TXG26091604',
+      date: '2026-09-16T16:40:00Z',
+    },
+    {
+      username: 'bao.hoanggia',
+      amount: 25_000n,
+      desc: 'Mở khóa Gói Tân Thủ Hoàng Kim - Vương Triều Hỏa Long',
+      txNo: 'TXG26091705',
+      date: '2026-09-17T11:00:00Z',
+    },
+    {
+      username: 'son.lehoang',
+      amount: 15_000n,
+      desc: 'Mua Thẻ Tháng VIP Season 6 - Lục Địa Đam Mê',
+      txNo: 'TXG26091706',
+      date: '2026-09-17T15:45:00Z',
+    },
+  ];
+
+  for (const item of inGamePurchases) {
+    const user = users.get(item.username);
+    if (!user) continue;
+    const wallet = await prisma.wallet.findUnique({ where: { userId: user.id } });
+    if (!wallet) continue;
+
+    const balanceBefore = wallet.balance + item.amount;
+    await prisma.walletTransaction.upsert({
+      where: { transactionNo: item.txNo },
+      update: {},
+      create: {
+        transactionNo: item.txNo,
+        walletId: wallet.id,
+        userId: user.id,
+        type: WalletTransactionType.DEBIT,
+        amount: item.amount,
+        balanceBefore,
+        balanceAfter: wallet.balance,
+        status: WalletTransactionStatus.SUCCESS,
+        referenceType: 'GAME_PURCHASE',
+        referenceId: `purchase_${item.txNo}`,
+        idempotencyKey: `ingame_${item.txNo}`,
+        description: item.desc,
+        createdAt: new Date(item.date),
+        completedAt: new Date(item.date),
+      },
+    });
+  }
+}
+
+/* ========================================================================== */
+/* 9. SUPPORT CENTER & TICKETS & MESSAGES                                     */
+/* ========================================================================== */
+async function seedSupportSystem({
+  users,
+  games,
+}: {
+  users: Map<string, { id: string }>;
+  games: Map<string, { id: string }>;
+}) {
+  const categories = [
+    {
+      code: 'ACCOUNT',
+      name: 'Tài khoản',
+      sortOrder: 1,
+      faqs: [
+        ['Làm thế nào để đổi mật khẩu?', 'Vào Tài khoản → Đổi mật khẩu, nhập mật khẩu hiện tại và mật khẩu mới, sau đó xác nhận thay đổi.'],
+        ['Tôi quên mật khẩu thì phải làm sao?', 'Chọn “Quên mật khẩu?” tại màn hình đăng nhập. Nhập email đã đăng ký và làm theo hướng dẫn để đặt lại mật khẩu.'],
+        ['Làm thế nào để cập nhật thông tin cá nhân?', 'Vào Tài khoản → Thông tin cá nhân để cập nhật họ tên, ngày sinh, giới tính, thành phố và địa chỉ.'],
+        ['Tôi có thể liên kết Google hoặc Facebook không?', 'Có. Vào Tài khoản → Liên kết tài khoản, chọn nền tảng muốn liên kết và hoàn tất xác thực.'],
+      ],
+    },
+    {
+      code: 'TOPUP',
+      name: 'Nạp tiền',
+      sortOrder: 2,
+      faqs: [
+        ['Nạp ZENX Coin bằng cách nào?', 'Vào Nạp Coin, chọn gói ZENX Coin và phương thức thanh toán phù hợp, sau đó hoàn tất hướng dẫn của cổng thanh toán.'],
+        ['Thanh toán thành công nhưng chưa nhận được Coin?', 'Kiểm tra Lịch sử giao dịch trước. Nếu giao dịch vẫn chưa được cập nhật, hãy tạo yêu cầu hỗ trợ và cung cấp mã payment.'],
+        ['Tôi có thể xem lại các lần nạp tiền ở đâu?', 'Vào Ví ZENX → Lịch sử giao dịch để xem số tiền, trạng thái, mã giao dịch và thông tin thanh toán.'],
+      ],
+    },
+    {
+      code: 'WALLET',
+      name: 'Ví ZENX',
+      sortOrder: 3,
+      faqs: [
+        ['Số dư ZENX Coin được cập nhật khi nào?', 'Số dư được cập nhật sau khi giao dịch được hệ thống xác nhận thành công. Bạn có thể tải lại trang Ví để kiểm tra.'],
+        ['Làm sao xem chi tiết một giao dịch?', 'Vào Ví ZENX → Lịch sử giao dịch và chọn giao dịch muốn xem để mở bảng chi tiết.'],
+        ['Nếu phát hiện giao dịch bất thường thì phải làm gì?', 'Không chia sẻ mật khẩu hoặc mã xác thực. Hãy tạo yêu cầu hỗ trợ ngay và ghi rõ mã giao dịch bất thường.'],
+      ],
+    },
+    {
+      code: 'OTHER',
+      name: 'Khác',
+      sortOrder: 4,
+      faqs: [
+        ['Làm thế nào để gửi yêu cầu hỗ trợ?', 'Chọn “Tạo yêu cầu hỗ trợ” trên trang Hỗ trợ, đăng nhập nếu được yêu cầu, chọn danh mục và mô tả vấn đề của bạn.'],
+        ['Tôi có thể theo dõi yêu cầu hỗ trợ ở đâu?', 'Vào Tài khoản → Hỗ trợ để xem danh sách ticket, trạng thái và nội dung từng yêu cầu.'],
+      ],
+    },
+  ] as const;
+
+  const categoryMap = new Map<string, string>();
+  for (const categoryData of categories) {
+    const category = await prisma.supportCategory.upsert({
+      where: { code: categoryData.code },
+      update: { name: categoryData.name, sortOrder: categoryData.sortOrder, status: SupportStatus.ACTIVE },
+      create: { code: categoryData.code, name: categoryData.name, sortOrder: categoryData.sortOrder, status: SupportStatus.ACTIVE },
+    });
+    categoryMap.set(categoryData.code, category.id);
+
+    for (const [sortOrder, [question, answer]] of categoryData.faqs.entries()) {
+      await prisma.supportFaq.upsert({
+        where: { categoryId_question: { categoryId: category.id, question } },
+        update: { answer, sortOrder, status: SupportStatus.ACTIVE },
+        create: { categoryId: category.id, question, answer, sortOrder, status: SupportStatus.ACTIVE },
+      });
+    }
+  }
+
+  // --- Seed Danh Sách Tickets Thực Tế ---
+  const lanStaff = users.get('lan.lengoc')!;
+  const namStaff = users.get('nam.tranhoang')!;
+  const lddmId = games.get('LDDM')?.id ?? null;
+  const vthlId = games.get('VTHL')?.id ?? null;
+  const ttmId = games.get('TTM')?.id ?? null;
+  const ctoId = games.get('CTO')?.id ?? null;
+
+  const tickets = [
+    {
+      ticketNo: 'TCK-2026-00101',
+      username: 'dat.vutien',
+      categoryCode: 'TOPUP',
+      gameId: null,
+      subject: 'Nạp gói ZENX 25,000 qua VietQR đã trừ tiền tài khoản ngân hàng nhưng chưa nhận được Coin',
+      description:
+        'Chào ban hỗ trợ, khoảng 14:30 chiều nay tôi có quét mã VietQR chuyển khoản 500,000đ mua gói ZENX 25,000. Tiền trong tài khoản MBBank đã trừ thành công với đúng nội dung thanh toán nhưng số dư trong ví vẫn chưa tăng. Nhờ hỗ trợ kiểm tra giúp tôi.',
+      status: SupportTicketStatus.RESOLVED,
+      priority: SupportTicketPriority.URGENT,
+      assigneeId: lanStaff.id,
+      createdAt: '2026-09-15T14:45:00Z',
+      resolvedAt: '2026-09-15T15:15:00Z',
+      messages: [
+        {
+          author: 'dat.vutien',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Tôi đã chuyển khoản lúc 14:30 qua mã thanh toán PAY260909009. Ảnh biên lai đã gửi qua hệ thống internet banking. Mong ban quản trị đối soát sớm.',
+          date: '2026-09-15T14:45:00Z',
+        },
+        {
+          author: 'lan.lengoc',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.INTERNAL,
+          body: 'Đã kiểm tra cổng VietQR MBBank, lệnh thanh toán bị delay webhook 15 phút. Đã đối soát khớp mã provider MB26090914302.',
+          date: '2026-09-15T15:00:00Z',
+        },
+        {
+          author: 'lan.lengoc',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn Đạt, đội ngũ hỗ trợ đã kiểm tra và xác nhận giao dịch thành công. Hệ thống vừa cập nhật 25,000 ZENX Coin vào ví của bạn. Bạn vui lòng tải lại trang Ví để kiểm tra số dư nhé!',
+          date: '2026-09-15T15:10:00Z',
+        },
+        {
+          author: 'dat.vutien',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Cảm ơn bạn, tôi đã nhận đủ số dư trong ví rồi.',
+          date: '2026-09-15T15:14:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00102',
+      username: 'linh.dangthuy',
+      categoryCode: 'ACCOUNT',
+      gameId: null,
+      subject: 'Yêu cầu hỗ trợ cập nhật số điện thoại xác thực tài khoản do mất SIM cũ',
+      description:
+        'Số điện thoại đăng ký ban đầu của tôi là 0905777888 hiện đã bị khóa và không nhận được mã OTP xác thực. Tôi muốn cập nhật sang số điện thoại mới để thuận tiện quản lý tài khoản.',
+      status: SupportTicketStatus.IN_PROGRESS,
+      priority: SupportTicketPriority.HIGH,
+      assigneeId: namStaff.id,
+      createdAt: '2026-09-16T09:20:00Z',
+      resolvedAt: null,
+      messages: [
+        {
+          author: 'linh.dangthuy',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn, SIM cũ của mình bị hỏng không làm lại được. Mình có đầy đủ thông tin CCCD đã xác minh trên hệ thống.',
+          date: '2026-09-16T09:20:00Z',
+        },
+        {
+          author: 'nam.tranhoang',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn Linh, để đảm bảo an toàn thông tin, chuyên viên cần đối chiếu số CCCD và câu hỏi bảo mật của tài khoản. Bạn vui lòng trả lời tin nhắn này với thông tin 4 số cuối CCCD và câu trả lời bảo mật nhé.',
+          date: '2026-09-16T10:00:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00103',
+      username: 'bao.hoanggia',
+      categoryCode: 'OTHER',
+      gameId: lddmId,
+      subject: 'Lỗi gián đoạn kết nối máy chủ khi tham gia hoạt động Công thành chiến',
+      description:
+        'Tối qua bang của tôi tham gia Công thành chiến lúc 20:15 thì nhiều thành viên đồng loạt bị ngắt kết nối với mã lỗi 10054. Nhờ ban kỹ thuật kiểm tra lại đường truyền cụm máy chủ Season 6.',
+      status: SupportTicketStatus.WAITING_USER,
+      priority: SupportTicketPriority.NORMAL,
+      assigneeId: lanStaff.id,
+      createdAt: '2026-09-16T22:30:00Z',
+      resolvedAt: null,
+      messages: [
+        {
+          author: 'bao.hoanggia',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Cả tổ đội 5 người của tôi đều bị văng cùng một lúc lúc 20:15 khi đang chiếm cứ điểm trung tâm.',
+          date: '2026-09-16T22:30:00Z',
+        },
+        {
+          author: 'lan.lengoc',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn Bảo, đội ngũ kỹ thuật Lục Địa Đam Mê đã rà soát nhật ký máy chủ và phát hiện một đợt biến động kết nối mạng cục bộ. Bạn có thể cung cấp tên nhân vật và server cụ thể của các thành viên để chúng mình gửi quà bù đắp hoạt động không ạ?',
+          date: '2026-09-17T08:45:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00104',
+      username: 'long.vudinh',
+      categoryCode: 'ACCOUNT',
+      gameId: ctoId,
+      subject: 'Khiếu nại về việc tài khoản bị khóa trong trận đấu Ranked Chiến Tuyến Orion',
+      description:
+        'Tôi đang tham gia trận đấu bình thường lúc 14:00 ngày 14/09 thì bị ngắt kết nối và hiển thị tài khoản bị khóa. Tôi cam kết không sử dụng bất kỳ phần mềm gian lận nào, đề nghị ban quản trị kiểm tra lại replay.',
+      status: SupportTicketStatus.NEW,
+      priority: SupportTicketPriority.HIGH,
+      assigneeId: null,
+      createdAt: '2026-09-17T11:00:00Z',
+      resolvedAt: null,
+      messages: [
+        {
+          author: 'long.vudinh',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Tôi chơi tại nhà riêng, máy tính cá nhân không cài đặt tool can thiệp. Đề nghị ban quản trị Orion rà soát lại nhật ký trận đấu chiều ngày 14/09.',
+          date: '2026-09-17T11:00:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00105',
+      username: 'thao.buiphuong',
+      categoryCode: 'WALLET',
+      gameId: null,
+      subject: 'Tư vấn hạn mức nạp ZENX Coin và phương thức thanh toán ví điện tử MoMo',
+      description:
+        'Cho mình hỏi tài khoản mới đăng ký thì hạn mức nạp Coin tối đa trong ngày là bao nhiêu và nạp qua MoMo có bị trừ thêm phí giao dịch không?',
+      status: SupportTicketStatus.RESOLVED,
+      priority: SupportTicketPriority.LOW,
+      assigneeId: namStaff.id,
+      createdAt: '2026-09-14T10:00:00Z',
+      resolvedAt: '2026-09-14T10:30:00Z',
+      messages: [
+        {
+          author: 'thao.buiphuong',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Mình muốn nạp gói 500,000đ nhưng muốn biết rõ phí nạp trước khi quét mã.',
+          date: '2026-09-14T10:00:00Z',
+        },
+        {
+          author: 'nam.tranhoang',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn Thảo, việc nạp ZENX Coin qua cổng MoMo hoàn toàn miễn phí giao dịch. Bạn thanh toán đúng giá trị hiển thị trên gói. Hạn mức thanh toán phụ thuộc vào mức định danh tài khoản MoMo của bạn (tối đa 20,000,000đ/ngày).',
+          date: '2026-09-14T10:25:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00106',
+      username: 'quang.tran',
+      categoryCode: 'TOPUP',
+      gameId: vthlId,
+      subject: 'Thanh toán gói ZENX 50,000 báo thành công nhưng trạng thái cổng MoMo hiển thị đang treo',
+      description:
+        'Tôi quét mã thanh toán 1,000,000đ gói ZENX 50,000 lúc 19:40 ngày hôm nay. Ứng dụng MoMo đã báo trừ tiền thành công nhưng màn hình web vẫn xoay đang chờ phản hồi từ đối tác.',
+      status: SupportTicketStatus.IN_PROGRESS,
+      priority: SupportTicketPriority.URGENT,
+      assigneeId: lanStaff.id,
+      createdAt: '2026-09-17T19:50:00Z',
+      resolvedAt: null,
+      messages: [
+        {
+          author: 'quang.tran',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Mã đơn thanh toán trên web là PAY260917017. Nhờ bạn đối soát ngay để tôi kịp tham gia sự kiện đấu giá lúc 20:30.',
+          date: '2026-09-17T19:50:00Z',
+        },
+        {
+          author: 'lan.lengoc',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào anh Quang, chuyên viên đã nhận được yêu cầu và đang tra soát mã giao dịch với đại diện kỹ thuật MoMo. Chúng em sẽ cập nhật Coin cho anh trong ít phút tới.',
+          date: '2026-09-17T20:02:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00107',
+      username: 'anh.nguyenthuy',
+      categoryCode: 'OTHER',
+      gameId: ttmId,
+      subject: 'Góp ý mở rộng tính năng trang trí nhà vườn và kết nối bạn bè đảo lân cận',
+      description:
+        'Mình rất thích game Thị Trấn Mây, mong ban phát triển có thể bổ sung thêm tính năng cho phép bạn bè cùng nhau chăm sóc khu vườn chung và gửi quà lưu niệm mỗi tuần.',
+      status: SupportTicketStatus.CLOSED,
+      priority: SupportTicketPriority.LOW,
+      assigneeId: namStaff.id,
+      createdAt: '2026-09-12T15:00:00Z',
+      resolvedAt: '2026-09-13T09:00:00Z',
+      messages: [
+        {
+          author: 'anh.nguyenthuy',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Mình gửi kèm một vài ý tưởng về vật phẩm trang trí mới cho mùa Lễ hội Khinh khí cầu.',
+          date: '2026-09-12T15:00:00Z',
+        },
+        {
+          author: 'nam.tranhoang',
+          type: SupportMessageAuthorType.STAFF,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Chào bạn Thùy Anh, cảm ơn bạn đã đóng góp những ý tưởng rất đáng yêu! Ban vận hành đã ghi nhận và chuyển tiếp sang bộ phận phát triển để cân nhắc trong bản cập nhật tới.',
+          date: '2026-09-13T09:00:00Z',
+        },
+      ],
+    },
+    {
+      ticketNo: 'TCK-2026-00108',
+      username: 'phuc.voduc',
+      categoryCode: 'ACCOUNT',
+      gameId: null,
+      subject: 'Đề nghị hỗ trợ hủy liên kết tài khoản Google cũ để liên kết tài khoản mới',
+      description:
+        'Hộp thư Google liên kết hiện tại của tôi sắp ngưng hoạt động. Tôi muốn chuyển liên kết đăng nhập sang hòm thư Google cá nhân mới.',
+      status: SupportTicketStatus.NEW,
+      priority: SupportTicketPriority.NORMAL,
+      assigneeId: null,
+      createdAt: '2026-09-17T16:30:00Z',
+      resolvedAt: null,
+      messages: [
+        {
+          author: 'phuc.voduc',
+          type: SupportMessageAuthorType.CUSTOMER,
+          visibility: SupportMessageVisibility.PUBLIC,
+          body: 'Nhờ ban quản trị hướng dẫn quy trình hủy liên kết tài khoản Google an toàn.',
+          date: '2026-09-17T16:30:00Z',
+        },
+      ],
+    },
+  ];
+
+  for (const item of tickets) {
+    const user = users.get(item.username);
+    const categoryId = categoryMap.get(item.categoryCode);
+    if (!user || !categoryId) continue;
+
+    const createdAt = new Date(item.createdAt);
+    const resolvedAt = item.resolvedAt ? new Date(item.resolvedAt) : null;
+    const closedAt = item.status === SupportTicketStatus.CLOSED ? resolvedAt : null;
+
+    const ticket = await prisma.supportTicket.upsert({
+      where: { ticketNo: item.ticketNo },
+      update: {
+        status: item.status,
+        priority: item.priority,
+        assigneeUserId: item.assigneeId,
+        subject: item.subject,
+        description: item.description,
+        resolvedAt,
+        closedAt,
+      },
+      create: {
+        ticketNo: item.ticketNo,
+        userId: user.id,
+        categoryId,
+        gameId: item.gameId,
+        subject: item.subject,
+        description: item.description,
+        status: item.status,
+        priority: item.priority,
+        assigneeUserId: item.assigneeId,
+        createdAt,
+        updatedAt: createdAt,
+        lastActivityAt: createdAt,
+        resolvedAt,
+        closedAt,
+      },
+    });
+
+    await prisma.supportTicketMessage.deleteMany({ where: { ticketId: ticket.id } });
+
+    for (const msg of item.messages) {
+      const authorUser = users.get(msg.author);
+      if (!authorUser) continue;
+      await prisma.supportTicketMessage.create({
+        data: {
+          ticketId: ticket.id,
+          authorUserId: authorUser.id,
+          authorType: msg.type,
+          visibility: msg.visibility,
+          body: msg.body,
+          createdAt: new Date(msg.date),
+        },
+      });
+    }
+
+    if (item.assigneeId) {
+      await prisma.supportTicketReadState.upsert({
+        where: { ticketId_userId: { ticketId: ticket.id, userId: item.assigneeId } },
+        update: { lastReadAt: new Date() },
+        create: { ticketId: ticket.id, userId: item.assigneeId, lastReadAt: new Date() },
+      });
+    }
+  }
+}
+
+/* ========================================================================== */
+/* 10. USER ACTIVITY LOGS & AUTHORIZATION AUDIT LOGS                           */
+/* ========================================================================== */
+async function seedActivityAndAuditLogs({
+  users,
+  games,
+}: {
+  users: Map<string, { id: string }>;
+  games: Map<string, { id: string }>;
+}) {
+  const adminUser = users.get('admin')!;
+  const quangUser = users.get('quang.tran')!;
+  const datUser = users.get('dat.vutien')!;
+  const lanUser = users.get('lan.lengoc')!;
+  const longUser = users.get('long.vudinh')!;
+  const lddmId = games.get('LDDM')?.id ?? null;
+  const ctoId = games.get('CTO')?.id ?? null;
+
+  // Dọn dẹp logs cũ của các users được seed để đảm bảo tính idempotent
+  const seededUserIds = Array.from(users.values()).map((u) => u.id);
+  await prisma.userActivityLog.deleteMany({
+    where: { userId: { in: seededUserIds } },
+  });
+  await prisma.authorizationAuditLog.deleteMany({
+    where: { actorUserId: adminUser.id },
+  });
+  await prisma.refreshSession.deleteMany({
+    where: { userId: { in: seededUserIds } },
+  });
+
+  // 1. Activity Logs (Lịch sử hoạt động người dùng)
+  const activityLogs = [
+    {
+      userId: quangUser.id,
+      category: 'LOGIN',
+      eventType: 'AUTH_LOGIN',
+      outcome: 'SUCCESS',
+      actorType: 'USER',
+      ipAddress: '14.161.42.10',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      deviceLabel: 'Chrome · macOS · Desktop',
+      createdAt: new Date('2026-09-17T15:20:00Z'),
+    },
+    {
+      userId: quangUser.id,
+      category: 'SECURITY',
+      eventType: 'UPDATE_SENSITIVE_PROFILE',
+      outcome: 'SUCCESS',
+      actorType: 'USER',
+      ipAddress: '14.161.42.10',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      deviceLabel: 'Chrome · macOS · Desktop',
+      createdAt: new Date('2026-09-14T18:42:00Z'),
+      metadata: JSON.stringify({ field: 'CITIZEN_ID' }),
+    },
+    {
+      userId: datUser.id,
+      category: 'LOGIN',
+      eventType: 'AUTH_LOGIN',
+      outcome: 'SUCCESS',
+      actorType: 'USER',
+      ipAddress: '113.190.234.88',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      deviceLabel: 'Chrome · Windows · Desktop',
+      createdAt: new Date('2026-09-17T08:10:00Z'),
+    },
+    {
+      userId: datUser.id,
+      category: 'SECURITY',
+      eventType: 'CHANGE_PASSWORD',
+      outcome: 'SUCCESS',
+      actorType: 'USER',
+      ipAddress: '113.190.234.88',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      deviceLabel: 'Chrome · Windows · Desktop',
+      createdAt: new Date('2026-09-15T11:00:00Z'),
+      metadata: JSON.stringify({ reason: 'Người dùng chủ động đổi mật khẩu định kỳ' }),
+    },
+    {
+      userId: longUser.id,
+      category: 'LOGIN',
+      eventType: 'AUTH_LOGIN',
+      outcome: 'FAILED',
+      actorType: 'USER',
+      ipAddress: '42.112.98.15',
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+      deviceLabel: 'Firefox · Windows · Desktop',
+      createdAt: new Date('2026-09-16T10:30:00Z'),
+      metadata: JSON.stringify({ reason: 'Tài khoản đang trong trạng thái bị khóa' }),
+    },
+  ];
+
+  for (const log of activityLogs) {
+    await prisma.userActivityLog.create({
+      data: log,
+    });
+  }
+
+  // 2. Authorization Audit Logs (Nhật ký phân quyền & thao tác nhạy cảm)
+  const auditLogs = [
+    {
+      actorUserId: adminUser.id,
+      action: 'ASSIGN_ROLE',
+      targetType: 'USER',
+      targetId: lanUser.id,
+      beforeData: JSON.stringify({ roles: [] }),
+      afterData: JSON.stringify({ roles: ['SUPPORT'] }),
+      reason: 'Bổ nhiệm Trưởng nhóm chăm sóc khách hàng',
+      ipAddress: '14.161.42.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      createdAt: new Date('2026-06-01T08:30:00Z'),
+    },
+    {
+      actorUserId: adminUser.id,
+      action: 'ASSIGN_GAME_ROLE',
+      targetType: 'GAME_ROLE',
+      targetId: lddmId,
+      gameId: lddmId,
+      beforeData: null,
+      afterData: JSON.stringify({ role: 'GAME_ADMIN', game: 'Lục Địa Đam Mê' }),
+      reason: 'Phân quyền quản trị vận hành game Lục Địa Đam Mê',
+      ipAddress: '14.161.42.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      createdAt: new Date('2026-06-01T09:00:00Z'),
+    },
+    {
+      actorUserId: adminUser.id,
+      action: 'BLOCK_PLAYER',
+      targetType: 'GAME_PLAYER',
+      targetId: longUser.id,
+      gameId: ctoId,
+      beforeData: JSON.stringify({ status: 'ACTIVE' }),
+      afterData: JSON.stringify({ status: 'PERMANENTLY_BANNED', reason: 'Phát hiện can thiệp chỉnh sửa gói tin mạng trong trận đấu' }),
+      reason: 'Xử lý vi phạm an ninh trận đấu Ranked Season 1',
+      ipAddress: '14.161.42.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      createdAt: new Date('2026-09-14T21:05:00Z'),
+    },
+    {
+      actorUserId: adminUser.id,
+      action: 'ADJUST_WALLET',
+      targetType: 'WALLET',
+      targetId: datUser.id,
+      beforeData: JSON.stringify({ balance: '895000' }),
+      afterData: JSON.stringify({ balance: '920000', adjustment: '+25000' }),
+      reason: 'Cộng bù Coin theo kết quả đối soát ticket TCK-2026-00101',
+      ipAddress: '14.161.42.1',
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      createdAt: new Date('2026-09-15T15:12:00Z'),
+    },
+  ];
+
+  for (const log of auditLogs) {
+    await prisma.authorizationAuditLog.create({
+      data: log,
+    });
+  }
+
+  // 3. Refresh Sessions (Phiên đăng nhập thực tế)
+  const sessionUsers = [adminUser, lanUser, quangUser, datUser];
+  for (const user of sessionUsers) {
+    await prisma.refreshSession.create({
+      data: {
+        userId: user.id,
+        tokenHash: `token_hash_${user.id}_active_${Date.now()}`,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+      },
+    });
+  }
+}
+
 main()
   .catch((error) => {
-    console.error(error);
+    console.error('❌ Lỗi khi chạy seed:', error);
     process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());

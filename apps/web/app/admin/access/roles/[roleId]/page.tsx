@@ -108,7 +108,7 @@ export default function RoleDetailPage() {
 
   const catalogQuery = useQuery({
     queryKey: ['admin', 'access', 'permissions'],
-    queryFn: api.admin.access.permissions,
+    queryFn: () => api.admin.access.permissions(),
     enabled: canView,
     retry: false,
   });
@@ -219,7 +219,11 @@ export default function RoleDetailPage() {
   });
 
   // Modules & Permissions grouping
-  const catalog = catalogQuery.data ?? [];
+  const catalog = useMemo(() => {
+    const permissions = catalogQuery.data ?? [];
+    if (!role?.scopeType) return permissions;
+    return permissions.filter((permission) => (permission.scopeType ?? 'PLATFORM') === role.scopeType);
+  }, [catalogQuery.data, role?.scopeType]);
 
   const groupedPermissions = useMemo(() => {
     const map: Record<string, typeof catalog> = {};
@@ -419,6 +423,9 @@ export default function RoleDetailPage() {
             </h1>
             <Badge variant="default" className="font-mono font-bold tracking-wide">
               {role.code}
+            </Badge>
+            <Badge variant="secondary" className="font-semibold border border-slate-200 bg-slate-50 text-slate-700">
+              {role.scopeType === 'GAME' ? 'Phạm vi Game' : 'Phạm vi Platform'}
             </Badge>
             {isSystemRole ? (
               <Badge

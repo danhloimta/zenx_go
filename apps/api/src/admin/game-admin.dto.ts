@@ -17,11 +17,33 @@ export class GamePlayersQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 20;
   @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @MaxLength(100) search?: string;
-  @IsOptional() @IsIn(['ACTIVE', 'BLOCKED']) status?: 'ACTIVE' | 'BLOCKED';
+  @IsOptional() @IsIn(['ACTIVE', 'TEMPORARILY_BLOCKED', 'PERMANENTLY_BANNED', 'BLOCKED']) status?: 'ACTIVE' | 'TEMPORARILY_BLOCKED' | 'PERMANENTLY_BANNED' | 'BLOCKED';
 }
 
 export class GamePlayerStatusDto {
   @IsIn(['ACTIVE', 'BLOCKED']) status!: 'ACTIVE' | 'BLOCKED';
+  @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class GamePlayerTemporaryLockDto {
+  @IsDateString() expiresAt!: string;
+  @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class GamePlayerPermanentBanDto {
+  @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class GamePlayerReleaseRestrictionDto {
+  @IsDateString() expectedUpdatedAt!: string;
+  @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
+}
+
+export class GamePlayerChatRestrictionDto {
+  @IsBoolean() locked!: boolean;
   @IsDateString() expectedUpdatedAt!: string;
   @Transform(({ value }) => trim(value)) @IsString() @MinLength(3) @MaxLength(500) reason!: string;
 }
@@ -62,5 +84,8 @@ export class GameAuditQueryDto {
 
 export class GameSupportTicketsQueryDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
-  @IsOptional() @Type(() => Number) @IsInt() @IsIn([10, 20, 50]) pageSize = 20;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 20;
+  @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @MaxLength(100) search?: string;
+  @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @IsIn(['NEW', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED']) status?: string;
+  @IsOptional() @Transform(({ value }) => trim(value)) @IsString() @IsIn(['URGENT', 'HIGH', 'NORMAL', 'LOW']) priority?: string;
 }

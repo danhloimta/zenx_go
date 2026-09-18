@@ -23,12 +23,14 @@ export function CreateRoleModal({ open, onClose }: CreateRoleModalProps) {
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [scopeType, setScopeType] = useState<'PLATFORM' | 'GAME'>('PLATFORM');
   const [reason, setReason] = useState('');
 
   const resetForm = () => {
     setCode('');
     setName('');
     setDescription('');
+    setScopeType('PLATFORM');
     setReason('');
   };
 
@@ -49,6 +51,7 @@ export function CreateRoleModal({ open, onClose }: CreateRoleModalProps) {
         code: code.trim().toUpperCase(),
         name: name.trim(),
         description: description.trim() || undefined,
+        scopeType,
         reason: reason.trim(),
       }),
     onSuccess: (newRole) => {
@@ -111,6 +114,15 @@ export function CreateRoleModal({ open, onClose }: CreateRoleModalProps) {
           }}
           className="space-y-4"
         >
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Phạm vi vai trò <span className="text-rose-500">*</span></label>
+            <select value={scopeType} onChange={(e) => setScopeType(e.target.value as 'PLATFORM' | 'GAME')} className="h-9.5 w-full rounded-xl border border-slate-200 px-3 text-xs">
+              <option value="PLATFORM">Toàn hệ thống (Platform)</option>
+              <option value="GAME">Một hoặc nhiều game (Game)</option>
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">Role Game chỉ có thể được gán trong phạm vi game và chỉ nhận quyền game.</p>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Tên hiển thị vai trò <span className="text-rose-500">*</span>

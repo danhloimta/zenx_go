@@ -142,7 +142,7 @@ export default function GameOperationsPage() {
   const game = context.data.game;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="w-full space-y-6">
       <PageHeader
         icon={Settings2}
         title="Vận hành game"

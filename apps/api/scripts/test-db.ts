@@ -43,6 +43,9 @@ async function reset() {
   // Delete children before parents. Finance fixtures are reset explicitly so
   // E2E-created packages cannot change the assumptions of integration tests.
   for (const table of [
+    'game_sso_authorization_codes',
+    'game_players',
+    'game_role_assignments',
     'support_ticket_read_states',
     'support_ticket_messages',
     'support_tickets',

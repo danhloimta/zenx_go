@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -22,16 +21,14 @@ import {
   Users,
   UserX,
   X,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
-import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
+import { UserAvatar } from '@/components/user-avatar';
 
 function formatRelativeTime(dateStr: string): string {
   const time = new Date(dateStr).getTime();
@@ -49,22 +46,13 @@ function formatRelativeTime(dateStr: string): string {
   return formatDate(dateStr);
 }
 
-function getAvatarInitials(name?: string | null, username?: string | null): string {
-  const target = (name || username || 'U').trim();
-  const parts = target.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return target.slice(0, 2).toUpperCase();
-}
-
 export default function GamePlayersPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
   const router = useRouter();
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
-  const [status, setStatus] = useState<'ACTIVE' | 'BLOCKED' | undefined>(undefined);
+  const [status, setStatus] = useState<'ACTIVE' | 'TEMPORARILY_BLOCKED' | 'PERMANENTLY_BANNED' | 'BLOCKED' | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
@@ -129,8 +117,15 @@ export default function GamePlayersPage() {
   });
 
   const countBlockedQuery = useQuery({
-    queryKey: ['game-admin', 'players', gameId, 'count', 'blocked'],
-    queryFn: () => api.gameAdmin.players(gameId!, { page: 1, pageSize: 10, status: 'BLOCKED' }),
+    queryKey: ['game-admin', 'players', gameId, 'count', 'banned'],
+    queryFn: () => api.gameAdmin.players(gameId!, { page: 1, pageSize: 10, status: 'PERMANENTLY_BANNED' }),
+    enabled: Boolean(gameId),
+    staleTime: 30_000,
+  });
+
+  const countTemporaryQuery = useQuery({
+    queryKey: ['game-admin', 'players', gameId, 'count', 'temporary'],
+    queryFn: () => api.gameAdmin.players(gameId!, { page: 1, pageSize: 10, status: 'TEMPORARILY_BLOCKED' }),
     enabled: Boolean(gameId),
     staleTime: 30_000,
   });
@@ -177,6 +172,7 @@ export default function GamePlayersPage() {
         dashboardQuery.refetch(),
         countActiveQuery.refetch(),
         countBlockedQuery.refetch(),
+        countTemporaryQuery.refetch(),
       ]);
       toast.success('Đã cập nhật danh sách người chơi mới nhất');
     } catch {
@@ -209,7 +205,6 @@ export default function GamePlayersPage() {
 
   const items = playersQuery.data?.items ?? [];
   const totalItems = playersQuery.data?.total ?? 0;
-  const totalPages = playersQuery.data?.totalPages ?? 1;
 
   // Tính số liệu cho 4 thẻ KPI
   const totalAllCount =
@@ -221,9 +216,7 @@ export default function GamePlayersPage() {
     (!debounced && status === 'ACTIVE' ? playersQuery.data?.total : 0) ??
     0;
   const totalBlockedCount =
-    countBlockedQuery.data?.total ??
-    (!debounced && status === 'BLOCKED' ? playersQuery.data?.total : 0) ??
-    0;
+    (countBlockedQuery.data?.total ?? 0) + (countTemporaryQuery.data?.total ?? 0);
   const totalSsoLogins = dashboardQuery.data?.totals.totalSsoLogins ?? 0;
 
   const hasActiveFilters = Boolean(search || status !== undefined);
@@ -234,25 +227,19 @@ export default function GamePlayersPage() {
       header: 'Người chơi',
       cell: (player) => {
         const displayName = player.user.profile?.fullName || player.user.username || 'Người chơi';
-        const initials = getAvatarInitials(
-          player.user.profile?.fullName,
-          player.user.username,
-        );
         const firstLoginExact = formatDate(player.firstLoginAt);
 
         return (
           <div className="flex items-center gap-3">
-            <div className="size-9 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-800 font-bold text-xs shadow-2xs">
-              {player.user.profile?.avatarUrl ? (
-                <img
-                  src={player.user.profile.avatarUrl}
-                  alt={displayName}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
+            <UserAvatar
+              id={player.userId}
+              name={player.user.profile?.fullName}
+              username={player.user.username}
+              avatarUrl={player.user.profile?.avatarUrl}
+              status={player.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'}
+              showStatusDot
+              size="md"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-slate-900 text-xs truncate">
@@ -307,13 +294,13 @@ export default function GamePlayersPage() {
       id: 'status',
       header: 'Trạng thái',
       cell: (player) => {
-        const isBlocked = player.status === 'BLOCKED';
+        const isBlocked = player.status !== 'ACTIVE';
         return isBlocked ? (
           <div className="space-y-0.5">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 whitespace-nowrap shrink-0">
               <span className="size-1.5 rounded-full bg-rose-500 shrink-0" />
               <Lock className="size-3 shrink-0" />
-              <span>Đã khóa</span>
+              <span>{player.status === 'TEMPORARILY_BLOCKED' ? 'Khóa tạm thời' : 'Cấm vĩnh viễn'}</span>
             </span>
             {player.blockReason && (
               <p className="text-[11px] text-rose-600 line-clamp-1 italic max-w-[200px]">
@@ -333,13 +320,13 @@ export default function GamePlayersPage() {
   ], []);
 
   const actions = useMemo<(player: GamePlayer) => TableAction<GamePlayer>[]>(() => (player: GamePlayer) => {
-    const isBlocked = player.status === 'BLOCKED';
+    const isBlocked = player.status !== 'ACTIVE';
     return [
       {
         key: 'view',
         label: 'Xem chi tiết',
         icon: Eye,
-        onClick: (p) => router.push(`/admin/players/${encodeURIComponent(p.userId)}`),
+        onClick: (p) => router.push(`/game-admin/${subdomain}/players/${encodeURIComponent(p.userId)}`),
       },
       {
         key: 'toggle-block',
@@ -355,7 +342,7 @@ export default function GamePlayersPage() {
         },
       },
     ];
-  }, [router]);
+  }, [router, subdomain]);
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-12 w-full relative">
@@ -453,7 +440,7 @@ export default function GamePlayersPage() {
           </div>
         </button>
 
-        {/* Thẻ 3: Đã bị khóa */}
+        {/* Thẻ 3: Đang bị hạn chế */}
         <button
           type="button"
           onClick={() => {
@@ -461,13 +448,13 @@ export default function GamePlayersPage() {
             setPage(1);
           }}
           className={`text-left transition-all p-3.5 sm:p-4 rounded-xl border bg-white shadow-2xs hover:shadow-xs ${
-            status === 'BLOCKED'
+            status === 'PERMANENTLY_BANNED' || status === 'TEMPORARILY_BLOCKED'
               ? 'border-rose-500 ring-2 ring-rose-500/10 bg-rose-50/30'
               : 'border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Đã bị khóa</span>
+            <span className="text-xs font-medium text-slate-500">Đang bị hạn chế</span>
             <div className="flex size-7 items-center justify-center rounded-lg bg-rose-50 text-rose-700">
               <UserX className="size-3.5" />
             </div>
@@ -543,7 +530,7 @@ export default function GamePlayersPage() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Đã khóa ({totalBlockedCount})
+              Đang bị hạn chế ({totalBlockedCount})
             </button>
           </div>
 
@@ -586,14 +573,16 @@ export default function GamePlayersPage() {
               aria-label="Lọc trạng thái người chơi"
               value={status ?? ''}
               onChange={(e) => {
-                setStatus((e.target.value || undefined) as 'ACTIVE' | 'BLOCKED' | undefined);
+                setStatus((e.target.value || undefined) as 'ACTIVE' | 'TEMPORARILY_BLOCKED' | 'PERMANENTLY_BANNED' | 'BLOCKED' | undefined);
                 setPage(1);
               }}
               className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 outline-none transition focus:border-[#00873E] focus:ring-2 focus:ring-[#00873E]/10 cursor-pointer"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="ACTIVE">🟢 Đang hoạt động</option>
-              <option value="BLOCKED">🔴 Đã khóa</option>
+              <option value="TEMPORARILY_BLOCKED">🟠 Khóa tạm thời</option>
+              <option value="PERMANENTLY_BANNED">🔴 Cấm vĩnh viễn</option>
+              <option value="BLOCKED">🔴 Đã khóa (cũ)</option>
             </select>
 
             {/* Nút đặt lại bộ lọc */}
@@ -619,7 +608,7 @@ export default function GamePlayersPage() {
         actions={actions}
         isLoading={playersQuery.isLoading && !playersQuery.data}
         showIndexColumn={true}
-        onRowClick={(player) => router.push(`/admin/players/${encodeURIComponent(player.userId)}`)}
+        onRowClick={(player) => router.push(`/game-admin/${subdomain}/players/${encodeURIComponent(player.userId)}`)}
         pagination={{
           page,
           pageSize,
@@ -682,12 +671,15 @@ export default function GamePlayersPage() {
 
               {/* Thông tin tóm tắt người chơi */}
               <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 flex items-center gap-3">
-                <div className="size-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center shrink-0">
-                  {getAvatarInitials(
-                    pendingAction.player.user.profile?.fullName,
-                    pendingAction.player.user.username,
-                  )}
-                </div>
+                <UserAvatar
+                  id={pendingAction.player.userId}
+                  name={pendingAction.player.user.profile?.fullName}
+                  username={pendingAction.player.user.username}
+                  avatarUrl={pendingAction.player.user.profile?.avatarUrl}
+                  status={pendingAction.player.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'}
+                  showStatusDot
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-slate-900 text-xs truncate">
                     {pendingAction.player.user.profile?.fullName ||

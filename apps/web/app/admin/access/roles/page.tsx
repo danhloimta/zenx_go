@@ -11,8 +11,6 @@ import {
   Lock,
   Layers,
   Settings,
-  CheckCircle2,
-  XCircle,
   Shield,
   KeyRound,
   X,
@@ -109,6 +107,9 @@ export default function RolesPage() {
                     Tùy chỉnh
                   </span>
                 )}
+                <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200/60 whitespace-nowrap">
+                  {role.scopeType === 'GAME' ? 'Game' : 'Platform'}
+                </span>
               </div>
               <span className="font-mono text-[11px] text-slate-400 block mt-0.5 whitespace-nowrap">
                 {role.code}
@@ -149,13 +150,13 @@ export default function RolesPage() {
       },
       {
         id: 'userCount',
-        header: 'Người dùng',
+        header: 'Được gán',
         minWidth: 110,
         align: 'center',
         cell: (role) => (
           <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-slate-700 bg-slate-100/90 px-2.5 py-1 rounded-lg text-xs whitespace-nowrap border border-slate-200/50">
             <Users className="size-3.5 text-slate-400" />
-            {role.userCount ?? 0}
+            {role.scopeType === 'GAME' ? (role.gameAssignmentCount ?? 0) : (role.userCount ?? 0)}
           </span>
         ),
       },

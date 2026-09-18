@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { CommonTable, type ColumnDef, type TableAction } from '@/components/ui/common-table';
+import { UserAvatar } from '@/components/user-avatar';
 
 // Cấu hình nhãn hành động thuần Việt & icon
 const AUDIT_ACTION_CONFIG: Record<
@@ -112,14 +113,7 @@ function formatRelativeTime(dateStr: string): string {
   return formatDate(dateStr);
 }
 
-function getAvatarInitials(name?: string | null, username?: string | null): string {
-  const target = (name || username || 'U').trim();
-  const parts = target.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return target.slice(0, 2).toUpperCase();
-}
+
 
 export default function GameAuditPage() {
   const { subdomain } = useParams<{ subdomain: string }>();
@@ -305,13 +299,15 @@ export default function GameAuditPage() {
       header: 'Người thực hiện',
       cell: (entry) => {
         const actorName = entry.actor?.displayName || entry.actor?.username || 'Hệ thống';
-        const initials = getAvatarInitials(entry.actor?.displayName, entry.actor?.username);
 
         return (
           <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center border border-slate-200 shrink-0">
-              {initials}
-            </div>
+            <UserAvatar
+              id={entry.actor?.id}
+              name={entry.actor?.displayName}
+              username={entry.actor?.username}
+              size="sm"
+            />
             <div className="min-w-0">
               <p className="font-bold text-slate-900 text-xs truncate">
                 {actorName}
@@ -757,14 +753,24 @@ function AuditDetailDrawer({
           <div className="grid grid-cols-2 gap-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 text-xs">
             <div>
               <span className="text-slate-500 font-medium">Người thực hiện</span>
-              <p className="font-bold text-slate-900 mt-1">
-                {entry.actor?.displayName ?? 'Hệ thống'}
-              </p>
-              {entry.actor?.username && (
-                <p className="font-mono text-[11px] text-slate-400">
-                  @{entry.actor.username}
-                </p>
-              )}
+              <div className="flex items-center gap-2 mt-1">
+                <UserAvatar
+                  id={entry.actor?.id}
+                  name={entry.actor?.displayName}
+                  username={entry.actor?.username}
+                  size="sm"
+                />
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-900">
+                    {entry.actor?.displayName ?? 'Hệ thống'}
+                  </p>
+                  {entry.actor?.username && (
+                    <p className="font-mono text-[11px] text-slate-400">
+                      @{entry.actor.username}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div>
